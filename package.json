@@ -42,6 +42,11 @@
         "command": "winccoa.core.refreshProjects",
         "title": "Refresh WinCC OA Projects",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.core.showProjectInfo",
+        "title": "Show Current Project Info",
+        "category": "WinCC OA"
       }
     ]
   },

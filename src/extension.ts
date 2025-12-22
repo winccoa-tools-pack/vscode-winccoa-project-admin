@@ -41,6 +41,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         );
         console.log('[WinCC OA Core] Registered refreshProjects command');
 
+        // Register command to show current project info (for testing)
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.core.showProjectInfo', async () => {
+                // Force refresh to get latest data
+                await projectManager.refreshProjects();
+                
+                const project = projectManager.getCurrentProject();
+                if (!project) {
+                    vscode.window.showWarningMessage('No project selected');
+                    return;
+                }
+                
+                const info = [
+                    `Project: ${project.name}`,
+                    `ID: ${project.id}`,
+                    `Version: ${project.version}`,
+                    `Project Path: ${project.projectDir}`,
+                    `Install Dir: ${project.installDir}`,
+                    `OA Install Path: ${project.oaInstallPath || 'NOT FOUND'}`,
+                    `Config Path: ${project.configPath || 'NOT FOUND'}`,
+                    `Running: ${project.isRunning}`
+                ].join('\n');
+                
+                vscode.window.showInformationMessage(info, { modal: true });
+                console.log('[WinCC OA Core] Project Info:\n' + info);
+            })
+        );
+        console.log('[WinCC OA Core] Registered showProjectInfo command');
+
         // Cleanup on dispose
         context.subscriptions.push(projectManager, statusBarManager);
 
