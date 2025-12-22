@@ -1,4 +1,5 @@
 import type { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
+import { getWinCCOAInstallationPathByVersion } from '@winccoa-tools-pack/core-utils';
 
 /**
  * Simplified project info for extension API
@@ -14,6 +15,10 @@ export interface ProjectInfo {
     projectDir: string;
     /** WinCC OA version */
     version: string;
+    /** WinCC OA installation path (e.g. /opt/WinCC_OA/3.20) */
+    oaInstallPath: string;
+    /** Config file path (projectDir/config/config) */
+    configPath: string;
     /** Is project currently running */
     isRunning: boolean;
 }
@@ -22,12 +27,19 @@ export interface ProjectInfo {
  * Convert ProjEnvProject to simplified ProjectInfo
  */
 export function toProjectInfo(project: ProjEnvProject): ProjectInfo {
+    const version = project.getVersion() || 'unknown';
+    const oaInstallPath = version !== 'unknown' 
+        ? getWinCCOAInstallationPathByVersion(version) || ''
+        : '';
+    
     return {
         id: project.getId(),
         name: project.getName() || project.getId(),
         installDir: project.getInstallDir() || '',
         projectDir: project.getDir(),
-        version: project.getVersion() || 'unknown',
+        version: version,
+        oaInstallPath: oaInstallPath,
+        configPath: project.getConfigPath(),
         isRunning: project.isRunning()
     };
 }
