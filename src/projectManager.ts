@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getRunningProjects } from '@winccoa-tools-pack/core-utils';
+import { getRunnableProjects } from '@winccoa-tools-pack/core-utils';
 import type { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
 import { ProjectInfo, toProjectInfo } from './types';
 
@@ -61,8 +61,18 @@ export class ProjectManager {
      */
     async refreshProjects(): Promise<void> {
         try {
-            const projects: ProjEnvProject[] = await getRunningProjects();
-            this._runningProjects = projects.map(toProjectInfo);
+            // WORKAROUND: getRunningProjects() is broken (uses sync isRunning() stub)
+            // Use getRunnableProjects() + isPmonRunning() instead
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const running: ProjEnvProject[] = [];
+            
+            for (const project of runnable) {
+                if (await project.isPmonRunning()) {
+                    running.push(project);
+                }
+            }
+            
+            this._runningProjects = running.map(toProjectInfo);
 
             // If current project is not running anymore, clear it
             if (this._currentProject) {
