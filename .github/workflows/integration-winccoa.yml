@@ -1,0 +1,83 @@
+name: Integration Tests - WinCC OA
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      WORKDIR: /workspace
+      REPO_NAME: ${{ github.event.inputs.repo_name != '' && github.event.inputs.repo_name || github.event.repository.name }}
+      DOCKER_NAMESPACE: ${{ github.event.inputs.docker_namespace != '' && github.event.inputs.docker_namespace || github.repository_owner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Determine WinCC OA image from package.json
+        id: image
+        run: |
+          IMAGE=$(node -p "require('./package.json').config && require('./package.json').config.winccoaImage || '${{ secrets.DOCKER_USER }}/${{ env.DOCKER_NAMESPACE }}-${{ env.REPO_NAME }}:${{ env.REPO_NAME }}'")
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+
+      - name: Pull WinCC OA image
+        run: docker pull $IMAGE
+
+      - name: Run WinCC OA container
+        run: |
+          docker run -d --name winccoa-ci \
+            -v "$GITHUB_WORKSPACE":$WORKDIR:rw \
+            -e CI=true \
+            -w $WORKDIR \
+            $IMAGE tail -f /dev/null
+
+      - name: Wait for WinCC OA readiness
+        run: |
+          set -e
+          echo "Waiting for WinCC OA inside container..."
+          for i in {1..60}; do
+            docker exec winccoa-ci sh -c "[ -x /opt/WinCC_OA/bin/winccoa ] || true"
+            if [ $? -eq 0 ]; then
+              echo "Container responsive (attempt $i)";
+              break;
+            fi
+            sleep 2
+          done
+
+      - name: Run integration tests inside container
+        run: |
+          docker exec --user root winccoa-ci sh -c '
+            set -e
+
+            # Run tests under Xvfb so VS Code can start headlessly
+            echo "Starting tests under Xvfb";
+            xvfb-run -s "-screen 0 1280x1024x24" sh -c "npm run ci:integration"
+          '
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "==== docker logs ===="
+          docker logs winccoa-ci || true
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker rm -f winccoa-ci || true
