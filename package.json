@@ -31,6 +31,20 @@
     "onStartupFinished"
   ],
   "main": "dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "winccoa.core.selectProject",
+        "title": "Select WinCC OA Project",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.core.refreshProjects",
+        "title": "Refresh WinCC OA Projects",
+        "category": "WinCC OA"
+      }
+    ]
+  },
   "scripts": {
     "build": "tsc --build",
     "compile": "tsc --build",
@@ -39,7 +53,6 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
     "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix",
-    
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "format:md": "prettier --write \"**/*.md\"",
@@ -54,18 +67,21 @@
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
-    "typescript": "^5.2.0",
-    "@types/vscode": "^1.80.0",
-    "@types/node": "^24.10.1",
     "@types/mocha": "^10.0.6",
-    "@vscode/vsce": "^3.7.1",
-    "@vscode/test-electron": "^2.3.9",
-    "mocha": "^11.7.5",
-    "glob": "^13.0.0",
-    "eslint": "^8.50.0",
-    "@typescript-eslint/parser": "^6.10.0",
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.50.0",
+    "glob": "^13.0.0",
+    "markdownlint-cli": "^0.47.0",
+    "mocha": "^11.7.5",
     "prettier": "^2.8.8",
-    "markdownlint-cli": "^0.36.0"
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "@winccoa-tools-pack/core-utils": "file:../npm-shared-library-core"
   }
 }
