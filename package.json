@@ -1,27 +1,65 @@
 {
-  "name": "winccoa-vscode-extension",
-  "displayName": "WinCC OA Tools (template)",
+  "name": "winccoa-core",
+  "displayName": "WinCC OA Core",
+  "description": "Shared core library for WinCC OA VS Code extensions",
   "publisher": "winccoa-tools-pack",
-  "version": "0.1.3",
+  "version": "0.1.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
+  "icon": "resources/wincc_oa_core_512.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-core"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "wincc-oa",
+    "wincc",
+    "oa",
+    "scada",
+    "siemens",
+    "core",
+    "library",
+    "shared"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "winccoa.core.selectProject",
+        "title": "Select WinCC OA Project",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.core.refreshProjects",
+        "title": "Refresh WinCC OA Projects",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.core.showProjectInfo",
+        "title": "Show Current Project Info",
+        "category": "WinCC OA"
+      }
+    ]
+  },
   "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
     "build": "tsc --build",
-    "compile": "tsc --build",
-    "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
     "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix",
-    
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "format:md": "prettier --write \"**/*.md\"",
@@ -30,24 +68,27 @@
     "style-fix": "npm run lint:fix && npm run format && npm run lint:md:fix && npm run format:md",
     "test": "npm run style-check && npm run compile && node ./dist/test/runTest.js",
     "test:integration": "npm run build && node ./dist/test/runTest.js",
-    "ci:integration": "npm ci && npm run test:integration",
-    "watch": "tsc --build --watch",
-    "package": "vsce package",
-    "vscode:prepublish": "npm run compile"
+    "ci:integration": "npm ci && npm run test:integration"
   },
   "devDependencies": {
-    "typescript": "^5.2.0",
-    "@types/vscode": "^1.80.0",
-    "@types/node": "^24.10.1",
     "@types/mocha": "^10.0.6",
-    "@vscode/vsce": "^3.7.1",
-    "@vscode/test-electron": "^2.3.9",
-    "mocha": "^11.7.5",
-    "glob": "^13.0.0",
-    "eslint": "^8.50.0",
-    "@typescript-eslint/parser": "^6.10.0",
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.50.0",
+    "glob": "^13.0.0",
+    "markdownlint-cli": "^0.47.0",
+    "mocha": "^11.7.5",
     "prettier": "^2.8.8",
-    "markdownlint-cli": "^0.36.0"
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.2.0",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@winccoa-tools-pack/core-utils": "file:../npm-shared-library-core"
   }
 }

@@ -1,0 +1,17 @@
+.vscode-test/**
+.vscode-test-web/**
+.git
+.gitignore
+.gitattributes
+**/*.map
+**/*.ts
+!dist/**/*.d.ts
+.eslintrc.json
+tsconfig.json
+src/**
+test/**
+quick-test.js
+USAGE_EXAMPLE.ts
+../**
+node_modules/**
+webpack.config.js

@@ -29,3 +29,4 @@ coverage/
 *.tmp
 .cache/
 .vscode-test/
+bin/winccoa-core-0.1.0.vsix
