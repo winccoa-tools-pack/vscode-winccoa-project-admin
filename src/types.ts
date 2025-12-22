@@ -25,12 +25,21 @@ export interface ProjectInfo {
 
 /**
  * Convert ProjEnvProject to simplified ProjectInfo
+ * @param project - The project to convert
+ * @param isRunning - Override running status (use when already checked via isPmonRunning)
  */
-export function toProjectInfo(project: ProjEnvProject): ProjectInfo {
+export function toProjectInfo(project: ProjEnvProject, isRunning = true): ProjectInfo {
     const version = project.getVersion() || 'unknown';
     const oaInstallPath = version !== 'unknown' 
         ? getWinCCOAInstallationPathByVersion(version) || ''
         : '';
+    
+    console.log('[ProjectInfo] Converting project:', {
+        id: project.getId(),
+        version: version,
+        oaInstallPath: oaInstallPath,
+        configPath: project.getConfigPath()
+    });
     
     return {
         id: project.getId(),
@@ -40,7 +49,7 @@ export function toProjectInfo(project: ProjEnvProject): ProjectInfo {
         version: version,
         oaInstallPath: oaInstallPath,
         configPath: project.getConfigPath(),
-        isRunning: project.isRunning()
+        isRunning: isRunning  // Use passed parameter, not broken isRunning()
     };
 }
 
