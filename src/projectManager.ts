@@ -10,18 +10,26 @@ export class ProjectManager {
     private _currentProject: ProjectInfo | undefined;
     private _runningProjects: ProjectInfo[] = [];
     private _onDidChangeProject = new vscode.EventEmitter<ProjectInfo | undefined>();
+    private _refreshInterval: NodeJS.Timeout | undefined;
 
     public readonly onDidChangeProject = this._onDidChangeProject.event;
 
     constructor(private context: vscode.ExtensionContext) {
-        this.loadState();
+        // Don't load old state - always start fresh
     }
 
     /**
-     * Initialize - load running projects
+     * Initialize - load running projects and start auto-refresh
      */
     async initialize(): Promise<void> {
         await this.refreshProjects();
+        
+        // Auto-refresh every 10 seconds to detect project start/stop
+        this._refreshInterval = setInterval(() => {
+            this.refreshProjects();
+        }, 10000);
+        
+        console.log('[ProjectManager] Auto-refresh enabled (every 10 seconds)');
     }
 
     /**
@@ -68,11 +76,20 @@ export class ProjectManager {
             
             for (const project of runnable) {
                 if (await project.isPmonRunning()) {
+                    console.log('[ProjectManager] Running project found:', {
+                        id: project.getId(),
+                        name: project.getName(),
+                        version: project.getVersion(),
+                        installDir: project.getInstallDir(),
+                        dir: project.getDir(),
+                        configPath: project.getConfigPath()
+                    });
                     running.push(project);
                 }
             }
             
-            this._runningProjects = running.map(toProjectInfo);
+            // All projects in 'running' are actually running (we just checked)
+            this._runningProjects = running.map(p => toProjectInfo(p, true));
 
             // If current project is not running anymore, clear it
             if (this._currentProject) {
@@ -116,6 +133,9 @@ export class ProjectManager {
     }
 
     dispose(): void {
+        if (this._refreshInterval) {
+            clearInterval(this._refreshInterval);
+        }
         this._onDidChangeProject.dispose();
     }
 }
