@@ -37,7 +37,7 @@
         {
           "id": "winccoa-control",
           "title": "WinCC OA Control",
-          "icon": "resources/sidebar_industrial_calm_128.png"
+          "icon": "resources/winccoa-icon.svg"
         }
       ]
     },
