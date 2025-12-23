@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sidebar Integration**: Consolidated sidebar features from vscode-winccoa-sidepanel
 - **System Status View**: Monitor WinCC OA system status, project information, and running projects
 - **Manager View**: Real-time manager monitoring and control
-- **Manager Control**: Start, stop, and restart managers using ProjEnvProject API
-- Tree view context menus for manager control actions
+- **Manager Control**: Start, stop, and restart managers using ProjEnvProject API- **System Control**: Start, stop, and restart entire WinCC OA system
+  - startProject(), stopProject(), restartProject() via PmonComponent
+  - Inline buttons on system status item
+  - Confirmation dialogs for stop/restart
+  - Automatic status refresh after operations- Tree view context menus for manager control actions
 - Toolbar refresh buttons for both views
 - Activity bar icon for WinCC OA Control
 - Auto-refresh of manager status (5-second polling)

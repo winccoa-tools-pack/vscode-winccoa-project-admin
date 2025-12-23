@@ -90,17 +90,20 @@
       {
         "command": "winccoa.system.start",
         "title": "Start WinCC OA System",
-        "category": "WinCC OA"
+        "category": "WinCC OA",
+        "icon": "$(play)"
       },
       {
         "command": "winccoa.system.stop",
         "title": "Stop WinCC OA System",
-        "category": "WinCC OA"
+        "category": "WinCC OA",
+        "icon": "$(stop)"
       },
       {
         "command": "winccoa.system.restart",
         "title": "Restart WinCC OA System",
-        "category": "WinCC OA"
+        "category": "WinCC OA",
+        "icon": "$(debug-restart)"
       },
       {
         "command": "winccoa.systemView.refresh",
@@ -143,6 +146,21 @@
           "command": "winccoa.manager.restart",
           "when": "view == winccoa.managerView && viewItem == manager",
           "group": "inline"
+        },
+        {
+          "command": "winccoa.system.start",
+          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "group": "inline@1"
+        },
+        {
+          "command": "winccoa.system.stop",
+          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "group": "inline@2"
+        },
+        {
+          "command": "winccoa.system.restart",
+          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "group": "inline@3"
         }
       ]
     }

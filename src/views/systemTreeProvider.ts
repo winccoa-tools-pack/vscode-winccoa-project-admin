@@ -1,10 +1,13 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
+import { PmonComponent } from '@winccoa-tools-pack/core-utils';
 import type { ProjectInfo } from '../types';
 
 export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<SystemItem | undefined | null | void> = new vscode.EventEmitter<SystemItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<SystemItem | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    private pmon: PmonComponent = new PmonComponent();
 
     constructor(private projectManager: ProjectManager) {
         // Subscribe to project changes
@@ -96,13 +99,39 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     }
 
     async startOASystem(): Promise<void> {
-        vscode.window.showInformationMessage('⟳ Starting WinCC OA System...');
+        const currentProject = this.projectManager.getCurrentProject();
         
-        // TODO: Implement with npm-shared-library-core
-        vscode.window.showWarningMessage('System start functionality coming soon');
+        if (!currentProject) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
+        try {
+            vscode.window.showInformationMessage('⟳ Starting WinCC OA System...');
+            
+            const result = await this.pmon.startProject(currentProject.id, true);
+            
+            if (result === 0) {
+                vscode.window.showInformationMessage('✓ WinCC OA System started successfully');
+                // Refresh to update status
+                await this.projectManager.refreshProjects();
+                this.refresh();
+            } else {
+                vscode.window.showErrorMessage(`Failed to start system (error code: ${result})`);
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to start system: ${error}`);
+        }
     }
 
     async stopOASystem(): Promise<void> {
+        const currentProject = this.projectManager.getCurrentProject();
+        
+        if (!currentProject) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
         const answer = await vscode.window.showWarningMessage(
             'Are you sure you want to stop the WinCC OA System?',
             'Yes',
@@ -110,14 +139,33 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         );
         
         if (answer === 'Yes') {
-            vscode.window.showInformationMessage('⏹ Stopping WinCC OA System...');
-            
-            // TODO: Implement with npm-shared-library-core
-            vscode.window.showWarningMessage('System stop functionality coming soon');
+            try {
+                vscode.window.showInformationMessage('⏹ Stopping WinCC OA System...');
+                
+                const result = await this.pmon.stopProject(currentProject.id);
+                
+                if (result === 0) {
+                    vscode.window.showInformationMessage('✓ WinCC OA System stopped');
+                    // Refresh to update status
+                    await this.projectManager.refreshProjects();
+                    this.refresh();
+                } else {
+                    vscode.window.showErrorMessage(`Failed to stop system (error code: ${result})`);
+                }
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to stop system: ${error}`);
+            }
         }
     }
 
     async restartOASystem(): Promise<void> {
+        const currentProject = this.projectManager.getCurrentProject();
+        
+        if (!currentProject) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
         const answer = await vscode.window.showWarningMessage(
             'Are you sure you want to restart the WinCC OA System?',
             'Yes',
@@ -125,10 +173,22 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         );
         
         if (answer === 'Yes') {
-            vscode.window.showInformationMessage('⟳ Restarting WinCC OA System...');
-            
-            // TODO: Implement with npm-shared-library-core
-            vscode.window.showWarningMessage('System restart functionality coming soon');
+            try {
+                vscode.window.showInformationMessage('⟳ Restarting WinCC OA System...');
+                
+                const result = await this.pmon.restartProject(currentProject.id);
+                
+                if (result === 0) {
+                    vscode.window.showInformationMessage('✓ WinCC OA System restarted successfully');
+                    // Refresh to update status
+                    await this.projectManager.refreshProjects();
+                    this.refresh();
+                } else {
+                    vscode.window.showErrorMessage(`Failed to restart system (error code: ${result})`);
+                }
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to restart system: ${error}`);
+            }
         }
     }
 }
