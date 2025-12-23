@@ -89,19 +89,37 @@
       },
       {
         "command": "winccoa.system.start",
-        "title": "Start WinCC OA System",
+        "title": "Start PMON",
         "category": "WinCC OA",
         "icon": "$(play)"
       },
       {
         "command": "winccoa.system.stop",
-        "title": "Stop WinCC OA System",
+        "title": "Stop PMON",
         "category": "WinCC OA",
         "icon": "$(stop)"
       },
       {
         "command": "winccoa.system.restart",
-        "title": "Restart WinCC OA System",
+        "title": "Restart PMON",
+        "category": "WinCC OA",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "winccoa.project.start",
+        "title": "Start Project",
+        "category": "WinCC OA",
+        "icon": "$(play)"
+      },
+      {
+        "command": "winccoa.project.stop",
+        "title": "Stop Project",
+        "category": "WinCC OA",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "winccoa.project.restart",
+        "title": "Restart Project",
         "category": "WinCC OA",
         "icon": "$(debug-restart)"
       },
@@ -148,18 +166,18 @@
           "group": "inline"
         },
         {
-          "command": "winccoa.system.start",
-          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "command": "winccoa.project.start",
+          "when": "view == winccoa.systemView && viewItem == project",
           "group": "inline@1"
         },
         {
-          "command": "winccoa.system.stop",
-          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "command": "winccoa.project.stop",
+          "when": "view == winccoa.systemView && viewItem == project",
           "group": "inline@2"
         },
         {
-          "command": "winccoa.system.restart",
-          "when": "view == winccoa.systemView && viewItem == systemStatus",
+          "command": "winccoa.project.restart",
+          "when": "view == winccoa.systemView && viewItem == project",
           "group": "inline@3"
         }
       ]

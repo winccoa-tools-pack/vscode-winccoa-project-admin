@@ -148,6 +148,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         );
         console.log('[WinCC OA Core] Registered system control commands');
 
+        // Register project control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.start', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.startProject(item.projectData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.stop', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.stopProject(item.projectData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.restart', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.restartProject(item.projectData);
+                }
+            })
+        );
+        console.log('[WinCC OA Core] Registered project control commands');
+
         // Cleanup on dispose
         context.subscriptions.push(projectManager, statusBarManager);
 

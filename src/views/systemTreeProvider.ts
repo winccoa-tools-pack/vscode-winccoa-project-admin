@@ -26,19 +26,21 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
     async getChildren(element?: SystemItem): Promise<SystemItem[]> {
         if (!element) {
+            // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
             const isRunning = currentProject?.isRunning || false;
             
-            const statusLabel = 'WinCC OA System';
-            const statusDesc = isRunning ? '● Online' : '○ Offline';
-            const statusTooltip = isRunning ? 'System is operational' : 'System is not running';
+            const statusDescription = isRunning ? '● Running' : '○ Stopped';
+            const statusTooltip = currentProject 
+                ? `System status for ${currentProject.name}: ${isRunning ? 'Running' : 'Stopped'}`
+                : 'No project selected';
             
             return [
                 new SystemItem(
-                    statusLabel, 
-                    vscode.TreeItemCollapsibleState.None, 
-                    'systemStatus', 
-                    statusDesc,
+                    'System Status',
+                    vscode.TreeItemCollapsibleState.None,
+                    'systemStatus',
+                    statusDescription,
                     statusTooltip,
                     isRunning
                 ),
@@ -87,15 +89,101 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 new SystemItem(
                     project.name,
                     vscode.TreeItemCollapsibleState.None,
-                    'projectPath',
+                    'project',
                     project.isRunning ? '● Running' : '○ Stopped',
-                    `Open in Explorer: ${project.projectDir}`,
-                    undefined,
-                    project.projectDir
+                    `Project: ${project.name}`,
+                    project.isRunning,
+                    project.projectDir,
+                    project
                 )
             );
         }
         return [];
+    }
+
+    async startProject(project: any): Promise<void> {
+        if (!project || !project.id) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        try {
+            vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
+            
+            const result = await this.pmon.startProject(project.id, true);
+            
+            if (result === 0) {
+                vscode.window.showInformationMessage(`✓ ${project.name} started successfully`);
+                await this.projectManager.refreshProjects();
+                this.refresh();
+            } else {
+                vscode.window.showErrorMessage(`Failed to start ${project.name} (error code: ${result})`);
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to start project: ${error}`);
+        }
+    }
+
+    async stopProject(project: any): Promise<void> {
+        if (!project || !project.id) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        const answer = await vscode.window.showWarningMessage(
+            `Are you sure you want to stop ${project.name}?`,
+            'Yes',
+            'No'
+        );
+        
+        if (answer === 'Yes') {
+            try {
+                vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
+                
+                const result = await this.pmon.stopProject(project.id);
+                
+                if (result === 0) {
+                    vscode.window.showInformationMessage(`✓ ${project.name} stopped`);
+                    await this.projectManager.refreshProjects();
+                    this.refresh();
+                } else {
+                    vscode.window.showErrorMessage(`Failed to stop ${project.name} (error code: ${result})`);
+                }
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to stop project: ${error}`);
+            }
+        }
+    }
+
+    async restartProject(project: any): Promise<void> {
+        if (!project || !project.id) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        const answer = await vscode.window.showWarningMessage(
+            `Are you sure you want to restart ${project.name}?`,
+            'Yes',
+            'No'
+        );
+        
+        if (answer === 'Yes') {
+            try {
+                vscode.window.showInformationMessage(`⟳ Restarting ${project.name}...`);
+                
+                const result = await this.pmon.restartProject(project.id);
+                
+                if (result === 0) {
+                    vscode.window.showInformationMessage(`✓ ${project.name} restarted successfully`);
+                    await this.projectManager.refreshProjects();
+                    this.refresh();
+                } else {
+                    vscode.window.showErrorMessage(`Failed to restart ${project.name} (error code: ${result})`);
+                }
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to restart project: ${error}`);
+            }
+        }
     }
 
     async startOASystem(): Promise<void> {
@@ -107,20 +195,20 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            vscode.window.showInformationMessage('⟳ Starting WinCC OA System...');
+            vscode.window.showInformationMessage(`⟳ Starting PMON for ${currentProject.name}...`);
             
-            const result = await this.pmon.startProject(currentProject.id, true);
+            const result = await this.pmon.startPmonOnly(currentProject.id);
             
             if (result === 0) {
-                vscode.window.showInformationMessage('✓ WinCC OA System started successfully');
+                vscode.window.showInformationMessage(`✓ PMON started for ${currentProject.name}`);
                 // Refresh to update status
                 await this.projectManager.refreshProjects();
                 this.refresh();
             } else {
-                vscode.window.showErrorMessage(`Failed to start system (error code: ${result})`);
+                vscode.window.showErrorMessage(`Failed to start PMON (error code: ${result})`);
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to start system: ${error}`);
+            vscode.window.showErrorMessage(`Failed to start PMON: ${error}`);
         }
     }
 
@@ -133,27 +221,27 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         const answer = await vscode.window.showWarningMessage(
-            'Are you sure you want to stop the WinCC OA System?',
+            `Stop PMON and all managers for ${currentProject.name}?`,
             'Yes',
             'No'
         );
         
         if (answer === 'Yes') {
             try {
-                vscode.window.showInformationMessage('⏹ Stopping WinCC OA System...');
+                vscode.window.showInformationMessage(`⏹ Stopping PMON for ${currentProject.name}...`);
                 
-                const result = await this.pmon.stopProject(currentProject.id);
+                const result = await this.pmon.stopProjectAndPmon(currentProject.id);
                 
                 if (result === 0) {
-                    vscode.window.showInformationMessage('✓ WinCC OA System stopped');
+                    vscode.window.showInformationMessage(`✓ PMON stopped for ${currentProject.name}`);
                     // Refresh to update status
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to stop system (error code: ${result})`);
+                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${result})`);
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to stop system: ${error}`);
+                vscode.window.showErrorMessage(`Failed to stop PMON: ${error}`);
             }
         }
     }
@@ -167,27 +255,34 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         const answer = await vscode.window.showWarningMessage(
-            'Are you sure you want to restart the WinCC OA System?',
+            `Restart PMON for ${currentProject.name}?`,
             'Yes',
             'No'
         );
         
         if (answer === 'Yes') {
             try {
-                vscode.window.showInformationMessage('⟳ Restarting WinCC OA System...');
+                vscode.window.showInformationMessage(`⟳ Restarting PMON for ${currentProject.name}...`);
                 
-                const result = await this.pmon.restartProject(currentProject.id);
+                // Stop PMON first
+                await this.pmon.stopProjectAndPmon(currentProject.id);
+                
+                // Wait a moment
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Start PMON again
+                const result = await this.pmon.startPmonOnly(currentProject.id);
                 
                 if (result === 0) {
-                    vscode.window.showInformationMessage('✓ WinCC OA System restarted successfully');
+                    vscode.window.showInformationMessage(`✓ PMON restarted for ${currentProject.name}`);
                     // Refresh to update status
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to restart system (error code: ${result})`);
+                    vscode.window.showErrorMessage(`Failed to restart PMON (error code: ${result})`);
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to restart system: ${error}`);
+                vscode.window.showErrorMessage(`Failed to restart PMON: ${error}`);
             }
         }
     }
@@ -197,11 +292,12 @@ class SystemItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly itemType: 'systemStatus' | 'projectInfo' | 'info' | 'projects' | 'projectPath',
+        public readonly itemType: 'systemStatus' | 'projectInfo' | 'info' | 'projects' | 'project',
         public readonly description?: string,
         public readonly tooltipText?: string,
         public readonly isRunning?: boolean,
-        public readonly projectPath?: string
+        public readonly projectPath?: string,
+        public readonly projectData?: any
     ) {
         super(label, collapsibleState);
         
@@ -222,9 +318,13 @@ class SystemItem extends vscode.TreeItem {
             this.iconPath = new vscode.ThemeIcon('folder-library');
             this.contextValue = 'projects';
             this.tooltip = tooltipText;
-        } else if (itemType === 'projectPath') {
-            this.iconPath = new vscode.ThemeIcon('folder');
-            this.contextValue = 'projectPath';
+        } else if (itemType === 'project') {
+            if (isRunning) {
+                this.iconPath = new vscode.ThemeIcon('server-process', new vscode.ThemeColor('testing.iconPassed'));
+            } else {
+                this.iconPath = new vscode.ThemeIcon('server', new vscode.ThemeColor('testing.iconFailed'));
+            }
+            this.contextValue = 'project';
             this.tooltip = tooltipText;
             this.description = description;
             if (projectPath) {
