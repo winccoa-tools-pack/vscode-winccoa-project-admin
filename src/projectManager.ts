@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getRunnableProjects } from '@winccoa-tools-pack/core-utils';
 import type { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
 import { ProjectInfo, toProjectInfo } from './types';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 /**
  * Manages WinCC OA project state and notifications
@@ -22,14 +23,17 @@ export class ProjectManager {
      * Initialize - load running projects and start auto-refresh
      */
     async initialize(): Promise<void> {
+        // Wait for initial refresh to complete before continuing
         await this.refreshProjects();
         
-        // Auto-refresh every 10 seconds to detect project start/stop
+        // Auto-refresh every 15 seconds to detect project start/stop
         this._refreshInterval = setInterval(() => {
-            this.refreshProjects();
-        }, 10000);
+            this.refreshProjects().catch(err => {
+                ExtensionOutputChannel.error('ProjectManager', 'Refresh failed', err instanceof Error ? err : new Error(String(err)));
+            });
+        }, 15000);
         
-        console.log('[ProjectManager] Auto-refresh enabled (every 10 seconds)');
+        ExtensionOutputChannel.info('ProjectManager', 'Auto-refresh enabled (every 15 seconds)');
     }
 
     /**
@@ -44,6 +48,26 @@ export class ProjectManager {
      */
     getRunningProjects(): ProjectInfo[] {
         return this._runningProjects;
+    }
+
+    /**
+     * Get all runnable projects (registered, both running and stopped)
+     */
+    async getAllRunnableProjects(): Promise<ProjectInfo[]> {
+        try {
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const projects: ProjectInfo[] = [];
+            
+            for (const project of runnable) {
+                const isRunning = await project.isPmonRunning();
+                projects.push(toProjectInfo(project, isRunning));
+            }
+            
+            return projects;
+        } catch (error) {
+            ExtensionOutputChannel.error('ProjectManager', 'Failed to get runnable projects', error instanceof Error ? error : new Error(String(error)));
+            return [];
+        }
     }
 
     /**
@@ -76,14 +100,6 @@ export class ProjectManager {
             
             for (const project of runnable) {
                 if (await project.isPmonRunning()) {
-                    console.log('[ProjectManager] Running project found:', {
-                        id: project.getId(),
-                        name: project.getName(),
-                        version: project.getVersion(),
-                        installDir: project.getInstallDir(),
-                        dir: project.getDir(),
-                        configPath: project.getConfigPath()
-                    });
                     running.push(project);
                 }
             }
@@ -110,7 +126,7 @@ export class ProjectManager {
                 this._onDidChangeProject.fire(this._currentProject);
             }
         } catch (error) {
-            console.error('[ProjectManager] Failed to refresh projects:', error);
+            ExtensionOutputChannel.error('ProjectManager', 'Failed to refresh projects', error instanceof Error ? error : new Error(String(error)));
             vscode.window.showErrorMessage('Failed to load WinCC OA projects');
         }
     }

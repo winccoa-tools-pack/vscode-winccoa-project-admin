@@ -1,28 +1,52 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from './projectManager';
 import { StatusBarManager } from './statusBarManager';
+import { SystemTreeProvider } from './views/systemTreeProvider';
+import { ManagerTreeProvider } from './views/managerTreeProvider';
 import { WinCCOACoreAPI } from './types';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 let projectManager: ProjectManager;
 let statusBarManager: StatusBarManager;
+let systemTreeProvider: SystemTreeProvider;
+let managerTreeProvider: ManagerTreeProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
-    console.log('[WinCC OA Core] ========== EXTENSION STARTING ==========');
+    // Initialize logger first
+    ExtensionOutputChannel.initialize();
+    ExtensionOutputChannel.info('Extension', '========== EXTENSION STARTING ==========');
     
     try {
-        console.log('[WinCC OA Core] Activating extension...');
+        ExtensionOutputChannel.info('Extension', 'Activating extension...');
 
-        // Initialize project manager
-        console.log('[WinCC OA Core] Creating ProjectManager...');
+        // Initialize project manager (async, non-blocking)
+        ExtensionOutputChannel.info('Extension', 'Creating ProjectManager...');
         projectManager = new ProjectManager(context);
-        console.log('[WinCC OA Core] Initializing ProjectManager...');
-        await projectManager.initialize();
-        console.log('[WinCC OA Core] ProjectManager initialized');
-
+        
         // Initialize status bar
-        console.log('[WinCC OA Core] Creating StatusBarManager...');
+        ExtensionOutputChannel.info('Extension', 'Creating StatusBarManager...');
         statusBarManager = new StatusBarManager(projectManager);
-        console.log('[WinCC OA Core] StatusBarManager created');
+        
+        // Initialize tree view providers immediately (they handle loading state)
+        ExtensionOutputChannel.info('Extension', 'Creating TreeView providers...');
+        systemTreeProvider = new SystemTreeProvider(projectManager);
+        managerTreeProvider = new ManagerTreeProvider(projectManager);
+        
+        // Register tree views immediately
+        context.subscriptions.push(
+            vscode.window.registerTreeDataProvider('winccoa.systemView', systemTreeProvider)
+        );
+        context.subscriptions.push(
+            vscode.window.registerTreeDataProvider('winccoa.managerView', managerTreeProvider)
+        );
+        ExtensionOutputChannel.info('Extension', 'TreeView providers registered');
+        
+        // Start background initialization (don't block activation)
+        projectManager.initialize().then(() => {
+            ExtensionOutputChannel.info('Extension', 'Background initialization complete');
+        }).catch(err => {
+            ExtensionOutputChannel.error('Extension', 'Background initialization failed', err);
+        });
 
         // Register command for project selection
         context.subscriptions.push(
@@ -30,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 await statusBarManager.showProjectPicker();
             })
         );
-        console.log('[WinCC OA Core] Registered selectProject command');
+        ExtensionOutputChannel.info('Extension', 'Registered selectProject command');
 
         // Register command for manual project refresh
         context.subscriptions.push(
@@ -39,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 vscode.window.showInformationMessage('WinCC OA projects refreshed');
             })
         );
-        console.log('[WinCC OA Core] Registered refreshProjects command');
+        ExtensionOutputChannel.info('Extension', 'Registered refreshProjects command');
 
         // Register command to show current project info (for testing)
         context.subscriptions.push(
@@ -65,16 +89,140 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 ].join('\n');
                 
                 vscode.window.showInformationMessage(info, { modal: true });
-                console.log('[WinCC OA Core] Project Info:\n' + info);
+                ExtensionOutputChannel.info('Extension', `Project Info:\n${info}`);
             })
         );
-        console.log('[WinCC OA Core] Registered showProjectInfo command');
+        ExtensionOutputChannel.info('Extension', 'Registered showProjectInfo command');
+
+        // Register view refresh commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.systemView.refresh', () => {
+                systemTreeProvider.refresh();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.managerView.refresh', () => {
+                managerTreeProvider.refresh();
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered view refresh commands');
+
+        // Register manager control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.start', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.startManager(item.managerData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.stop', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.stopManager(item.managerData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.restart', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.restartManager(item.managerData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.add', async () => {
+                await managerTreeProvider.addManager();
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered manager control commands');
+
+        // Register system control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.start', async () => {
+                await systemTreeProvider.startOASystem();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.stop', async () => {
+                await systemTreeProvider.stopOASystem();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.restart', async () => {
+                await systemTreeProvider.restartOASystem();
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered system control commands');
+
+        // Register project control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.start', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.startProject(item.projectData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.stop', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.stopProject(item.projectData);
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered project control commands');
+
+        // Register utility commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.openConfig', async () => {
+                const project = projectManager.getCurrentProject();
+                if (!project) {
+                    vscode.window.showErrorMessage('No project selected');
+                    return;
+                }
+
+                if (project.configPath && require('fs').existsSync(project.configPath)) {
+                    const configUri = vscode.Uri.file(project.configPath);
+                    const document = await vscode.workspace.openTextDocument(configUri);
+                    await vscode.window.showTextDocument(document);
+                    ExtensionOutputChannel.info('Extension', `Opened config file: ${project.configPath}`);
+                } else {
+                    vscode.window.showErrorMessage(`Config file not found: ${project.configPath}`);
+                }
+            })
+        );
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.openLogViewer', async () => {
+                const logViewerExtension = vscode.extensions.getExtension('richardjanisch.winccoa-vscode-logviewer');
+                
+                if (logViewerExtension) {
+                    ExtensionOutputChannel.info('Extension', 'Log Viewer extension found, opening...');
+                    await vscode.commands.executeCommand('winccoa-logviewer.open');
+                } else {
+                    const selection = await vscode.window.showInformationMessage(
+                        'WinCC OA Log Viewer extension is not installed.',
+                        'Install Extension'
+                    );
+                    
+                    if (selection === 'Install Extension') {
+                        await vscode.env.openExternal(vscode.Uri.parse('vscode:extension/richardjanisch.winccoa-vscode-logviewer'));
+                    }
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered utility commands');
 
         // Cleanup on dispose
         context.subscriptions.push(projectManager, statusBarManager);
 
-        console.log('[WinCC OA Core] Extension activated successfully');
-        vscode.window.showInformationMessage('WinCC OA Core activated!');
+        ExtensionOutputChannel.success('Extension', 'Extension activated successfully');
 
         // Return public API for other extensions
         return {
@@ -87,13 +235,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             }
         };
     } catch (error) {
-        console.error('[WinCC OA Core] ACTIVATION FAILED:', error);
+        ExtensionOutputChannel.error('Extension', 'ACTIVATION FAILED', error instanceof Error ? error : new Error(String(error)));
         vscode.window.showErrorMessage(`WinCC OA Core failed to activate: ${error}`);
         throw error;
     }
 }
 
 export function deactivate() {
-    console.log('[WinCC OA Core] Extension deactivated');
+    ExtensionOutputChannel.info('Extension', 'Extension deactivated');
 }
 
