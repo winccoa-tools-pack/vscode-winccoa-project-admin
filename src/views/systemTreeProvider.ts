@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ProjectManager } from '../projectManager';
 import { PmonComponent } from '@winccoa-tools-pack/core-utils';
 import type { ProjectInfo } from '../types';
@@ -65,17 +67,51 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             const currentProject = this.projectManager.getCurrentProject();
             
             if (currentProject) {
-                return [
+                const items = [
                     new SystemItem('Project Name', vscode.TreeItemCollapsibleState.None, 'info', currentProject.name, undefined, undefined),
                     new SystemItem('Version', vscode.TreeItemCollapsibleState.None, 'info', currentProject.version || 'N/A', undefined, undefined),
                     new SystemItem('Project Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.projectDir, undefined, undefined),
                     new SystemItem('Install Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.oaInstallPath, undefined, undefined)
                 ];
+
+                // Parse and add subprojects
+                const subProjects = this.parseSubProjects(currentProject);
+                if (subProjects.length > 0) {
+                    items.push(
+                        new SystemItem(
+                            'Subprojects',
+                            vscode.TreeItemCollapsibleState.Collapsed,
+                            'subprojects',
+                            `${subProjects.length} subproject(s)`,
+                            'Linked subprojects',
+                            undefined,
+                            undefined,
+                            subProjects
+                        )
+                    );
+                }
+
+                return items;
             } else {
                 return [
                     new SystemItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined, undefined)
                 ];
             }
+        } else if (element.itemType === 'subprojects') {
+            // Display subprojects stored in projectData
+            const subProjects = element.projectData || [];
+            return subProjects.map((subProj: string) => {
+                const baseName = path.basename(subProj);
+                return new SystemItem(
+                    baseName,
+                    vscode.TreeItemCollapsibleState.None,
+                    'subproject',
+                    subProj,
+                    `Subproject path: ${subProj}`,
+                    undefined,
+                    subProj
+                );
+            });
         } else if (element.itemType === 'projects') {
             const allProjects = await this.projectManager.getAllRunnableProjects();
             
@@ -255,13 +291,58 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
         }
     }
+
+    /**
+     * Parse subprojects from config file
+     * Returns array of proj_path entries (excluding the project itself)
+     */
+    private parseSubProjects(project: ProjectInfo): string[] {
+        try {
+            const configPath = path.join(project.projectDir, 'config', 'config');
+            if (!fs.existsSync(configPath)) {
+                return [];
+            }
+
+            const content = fs.readFileSync(configPath, 'utf-8');
+            const lines = content.split('\n');
+            const projPaths: string[] = [];
+            let inGeneralSection = false;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                
+                // Check for section headers
+                if (trimmed.startsWith('[')) {
+                    inGeneralSection = trimmed === '[general]';
+                    continue;
+                }
+
+                // Only process proj_path in [general] section
+                if (inGeneralSection && trimmed.startsWith('proj_path')) {
+                    const match = trimmed.match(/proj_path\s*=\s*"([^"]+)"/);
+                    if (match && match[1]) {
+                        const projPath = match[1];
+                        // Exclude the project itself (last entry is usually the main project)
+                        if (!projPath.endsWith(project.id)) {
+                            projPaths.push(projPath);
+                        }
+                    }
+                }
+            }
+
+            return projPaths;
+        } catch (error) {
+            console.error('[SystemTreeProvider] Failed to parse subprojects:', error);
+            return [];
+        }
+    }
 }
 
 class SystemItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly itemType: 'systemStatus' | 'projectInfo' | 'info' | 'projects' | 'project',
+        public readonly itemType: 'systemStatus' | 'projectInfo' | 'info' | 'projects' | 'project' | 'subprojects' | 'subproject',
         public readonly description?: string,
         public readonly tooltipText?: string,
         public readonly isRunning?: boolean,
@@ -287,6 +368,23 @@ class SystemItem extends vscode.TreeItem {
             this.iconPath = new vscode.ThemeIcon('folder-library');
             this.contextValue = 'projects';
             this.tooltip = tooltipText;
+        } else if (itemType === 'subprojects') {
+            this.iconPath = new vscode.ThemeIcon('symbol-namespace');
+            this.contextValue = 'subprojects';
+            this.tooltip = tooltipText;
+            this.description = description;
+        } else if (itemType === 'subproject') {
+            this.iconPath = new vscode.ThemeIcon('folder-opened');
+            this.contextValue = 'subproject';
+            this.tooltip = tooltipText;
+            this.description = description;
+            if (projectPath) {
+                this.command = {
+                    command: 'revealFileInOS',
+                    title: 'Open in Explorer',
+                    arguments: [vscode.Uri.file(projectPath)]
+                };
+            }
         } else if (itemType === 'project') {
             if (isRunning) {
                 this.iconPath = new vscode.ThemeIcon('server-process', new vscode.ThemeColor('testing.iconPassed'));
