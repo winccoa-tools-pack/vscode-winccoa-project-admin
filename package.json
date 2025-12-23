@@ -1,9 +1,9 @@
 {
   "name": "winccoa-core",
-  "displayName": "WinCC OA Core",
-  "description": "Shared core library for WinCC OA VS Code extensions",
+  "displayName": "WinCC OA Control",
+  "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "winccoa-tools-pack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
   "icon": "resources/wincc_oa_core_512.png",
@@ -32,6 +32,27 @@
   ],
   "main": "dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "winccoa-control",
+          "title": "WinCC OA Control",
+          "icon": "resources/sidebar_industrial_calm_128.png"
+        }
+      ]
+    },
+    "views": {
+      "winccoa-control": [
+        {
+          "id": "winccoa.systemView",
+          "name": "System Status"
+        },
+        {
+          "id": "winccoa.managerView",
+          "name": "Managers"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "winccoa.core.selectProject",
@@ -47,8 +68,84 @@
         "command": "winccoa.core.showProjectInfo",
         "title": "Show Current Project Info",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.manager.start",
+        "title": "Start Manager",
+        "category": "WinCC OA",
+        "icon": "$(play)"
+      },
+      {
+        "command": "winccoa.manager.stop",
+        "title": "Stop Manager",
+        "category": "WinCC OA",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "winccoa.manager.restart",
+        "title": "Restart Manager",
+        "category": "WinCC OA",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "winccoa.system.start",
+        "title": "Start WinCC OA System",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.system.stop",
+        "title": "Stop WinCC OA System",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.system.restart",
+        "title": "Restart WinCC OA System",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.systemView.refresh",
+        "title": "Refresh",
+        "category": "WinCC OA",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "winccoa.managerView.refresh",
+        "title": "Refresh",
+        "category": "WinCC OA",
+        "icon": "$(refresh)"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "winccoa.systemView.refresh",
+          "when": "view == winccoa.systemView",
+          "group": "navigation"
+        },
+        {
+          "command": "winccoa.managerView.refresh",
+          "when": "view == winccoa.managerView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "winccoa.manager.start",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline"
+        },
+        {
+          "command": "winccoa.manager.stop",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline"
+        },
+        {
+          "command": "winccoa.manager.restart",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from './projectManager';
 import { StatusBarManager } from './statusBarManager';
+import { SystemTreeProvider } from './views/systemTreeProvider';
+import { ManagerTreeProvider } from './views/managerTreeProvider';
 import { WinCCOACoreAPI } from './types';
 
 let projectManager: ProjectManager;
 let statusBarManager: StatusBarManager;
+let systemTreeProvider: SystemTreeProvider;
+let managerTreeProvider: ManagerTreeProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
     console.log('[WinCC OA Core] ========== EXTENSION STARTING ==========');
@@ -23,6 +27,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         console.log('[WinCC OA Core] Creating StatusBarManager...');
         statusBarManager = new StatusBarManager(projectManager);
         console.log('[WinCC OA Core] StatusBarManager created');
+
+        // Initialize tree view providers
+        console.log('[WinCC OA Core] Creating TreeView providers...');
+        systemTreeProvider = new SystemTreeProvider(projectManager);
+        managerTreeProvider = new ManagerTreeProvider(projectManager);
+        
+        // Register tree views
+        context.subscriptions.push(
+            vscode.window.registerTreeDataProvider('winccoa.systemView', systemTreeProvider)
+        );
+        context.subscriptions.push(
+            vscode.window.registerTreeDataProvider('winccoa.managerView', managerTreeProvider)
+        );
+        console.log('[WinCC OA Core] TreeView providers registered');
 
         // Register command for project selection
         context.subscriptions.push(
@@ -69,6 +87,66 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             })
         );
         console.log('[WinCC OA Core] Registered showProjectInfo command');
+
+        // Register view refresh commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.systemView.refresh', () => {
+                systemTreeProvider.refresh();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.managerView.refresh', () => {
+                managerTreeProvider.refresh();
+            })
+        );
+        console.log('[WinCC OA Core] Registered view refresh commands');
+
+        // Register manager control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.start', async (item: any) => {
+                if (item && item.managerIdx !== undefined) {
+                    await managerTreeProvider.startManager(item.managerIdx);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.stop', async (item: any) => {
+                if (item && item.managerIdx !== undefined) {
+                    await managerTreeProvider.stopManager(item.managerIdx);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.restart', async (item: any) => {
+                if (item && item.managerIdx !== undefined) {
+                    await managerTreeProvider.restartManager(item.managerIdx);
+                }
+            })
+        );
+        console.log('[WinCC OA Core] Registered manager control commands');
+
+        // Register system control commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.start', async () => {
+                await systemTreeProvider.startOASystem();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.stop', async () => {
+                await systemTreeProvider.stopOASystem();
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.system.restart', async () => {
+                await systemTreeProvider.restartOASystem();
+            })
+        );
+        console.log('[WinCC OA Core] Registered system control commands');
 
         // Cleanup on dispose
         context.subscriptions.push(projectManager, statusBarManager);

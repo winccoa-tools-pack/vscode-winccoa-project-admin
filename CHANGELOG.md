@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-12-23
+
+### Added
+- **Sidebar Integration**: Consolidated sidebar features from vscode-winccoa-sidepanel
+- **System Status View**: Monitor WinCC OA system status, project information, and running projects
+- **Manager View**: Manager control interface (implementation pending)
+- Tree view context menus for manager control actions
+- Toolbar refresh buttons for both views
+- Activity bar icon for WinCC OA Control
+- Project information display (name, version, paths)
+- Running projects overview
+
+### Changed
+- **Extension renamed** from "WinCC OA Core" to "WinCC OA Control"
+- Description updated to reflect unified project management and monitoring capabilities
+- System and manager views automatically update when project changes
+- Manager view shows placeholder for upcoming pmon integration
+
+### Removed
+- REST API dependency (no longer needed for future implementation)
+
+### Technical Notes
+- Manager control functionality marked as TODO - will be implemented with direct pmon communication
+- ProjEnvProject integration prepared for future manager control
+- Views are fully functional with project information display
+- Manager start/stop/restart commands registered but show "coming soon" message
+
 ## [0.1.0] - 2025-12-22
 
 ### Added
