@@ -205,6 +205,24 @@
       ]
     }
   },
+  "configuration": {
+    "title": "WinCC OA Core",
+    "properties": {
+      "winccoaCore.logLevel": {
+        "type": "string",
+        "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+        "default": "INFO",
+        "description": "Logging level for extension output",
+        "enumDescriptions": [
+          "Only critical errors",
+          "Errors and warnings",
+          "General information, errors and warnings (recommended)",
+          "Detailed debugging information",
+          "Very verbose trace information (for troubleshooting)"
+        ]
+      }
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",

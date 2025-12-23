@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
 import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/core-utils';
+import { ExtensionOutputChannel } from '../extensionOutput';
 
 interface ManagerDisplayData {
     idx: number;
@@ -34,7 +35,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         
         this.pollInterval = setInterval(() => {
             this.loadManagers().catch(err => {
-                console.error('[ManagerTreeProvider] Load failed:', err);
+                ExtensionOutputChannel.error('ManagerTreeProvider', 'Load failed', err instanceof Error ? err : new Error(String(err)));
             });
         }, 10000); // Poll every 10 seconds
     }
@@ -78,7 +79,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             
             this._onDidChangeTreeData.fire();
         } catch (error) {
-            console.error('Failed to load managers:', error);
+            ExtensionOutputChannel.error('ManagerTreeProvider', 'Failed to load managers', error instanceof Error ? error : new Error(String(error)));
             this.managers = [];
             this._onDidChangeTreeData.fire();
         }
@@ -252,7 +253,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             });
 
             if (!typeSelection) {
-                console.log('[ManagerTreeProvider] User cancelled at type selection');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at type selection');
                 return;
             }
 
@@ -277,7 +278,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             });
 
             if (!managerNum) {
-                console.log('[ManagerTreeProvider] User cancelled at number input');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at number input');
                 return;
             }
 
@@ -296,7 +297,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             });
 
             if (!modeSelection) {
-                console.log('[ManagerTreeProvider] User cancelled at mode selection');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at mode selection');
                 return;
             }
 
@@ -309,7 +310,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             });
 
             if (startOptions === undefined) {
-                console.log('[ManagerTreeProvider] User cancelled at start options');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at start options');
                 return;
             }
 
@@ -330,7 +331,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             });
 
             if (!positionSelection) {
-                console.log('[ManagerTreeProvider] User cancelled at position selection');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at position selection');
                 return;
             }
 
@@ -342,7 +343,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             );
 
             if (confirm !== 'Add Manager') {
-                console.log('[ManagerTreeProvider] User cancelled at confirmation');
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled at confirmation');
                 return;
             }
 
@@ -362,11 +363,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                         startOptions: startOptions || ''
                     };
 
-                    console.log('[ManagerTreeProvider] Calling insertManagerAt with:', {
-                        options,
-                        projectName: this.currentProjectId,
-                        managerIndex: positionSelection.index
-                    });
+                    ExtensionOutputChannel.debug('ManagerTreeProvider', `Calling insertManagerAt: ${componentName} at position ${positionSelection.index}`);
 
                     const exitCode = await this.pmon.insertManagerAt(
                         options,
@@ -374,7 +371,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                         positionSelection.index
                     );
 
-                    console.log('[ManagerTreeProvider] insertManagerAt returned:', exitCode);
+                    ExtensionOutputChannel.debug('ManagerTreeProvider', `insertManagerAt returned: ${exitCode}`);
 
                     if (exitCode === 0) {
                         vscode.window.showInformationMessage(`✓ Manager ${componentName} added successfully`);
@@ -383,26 +380,26 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                         await new Promise(resolve => setTimeout(resolve, 500));
                         
                         // Reload managers
-                        console.log('[ManagerTreeProvider] Reloading managers after insert...');
+                        ExtensionOutputChannel.debug('ManagerTreeProvider', 'Reloading managers after insert...');
                         await this.loadManagers();
                         
                         // Force refresh the tree view
                         this._onDidChangeTreeData.fire();
-                        console.log('[ManagerTreeProvider] Tree view refreshed');
+                        ExtensionOutputChannel.info('ManagerTreeProvider', `Manager ${componentName} added successfully`);
                     } else {
                         vscode.window.showErrorMessage(`Failed to add manager (exit code: ${exitCode})`);
-                        console.error('[ManagerTreeProvider] insertManagerAt failed with exit code:', exitCode);
+                        ExtensionOutputChannel.error('ManagerTreeProvider', `insertManagerAt failed with exit code: ${exitCode}`);
                     }
                 } catch (error) {
                     const errorMsg = error instanceof Error ? error.message : String(error);
                     vscode.window.showErrorMessage(`Failed to add manager: ${errorMsg}`);
-                    console.error('[ManagerTreeProvider] Error during insertManagerAt:', error);
+                    ExtensionOutputChannel.error('ManagerTreeProvider', 'Error during insertManagerAt', error instanceof Error ? error : new Error(String(error)));
                 }
             });
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Error in add manager wizard: ${errorMsg}`);
-            console.error('[ManagerTreeProvider] Error in addManager wizard:', error);
+            ExtensionOutputChannel.error('ManagerTreeProvider', 'Error in addManager wizard', error instanceof Error ? error : new Error(String(error)));
         }
     }
 
