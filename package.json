@@ -118,6 +118,18 @@
         "icon": "$(stop)"
       },
       {
+        "command": "winccoa.openConfig",
+        "title": "Open Config",
+        "category": "WinCC OA",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "winccoa.openLogViewer",
+        "title": "Open Log Viewer",
+        "category": "WinCC OA",
+        "icon": "$(output)"
+      },
+      {
         "command": "winccoa.systemView.refresh",
         "title": "Refresh",
         "category": "WinCC OA",
@@ -136,6 +148,16 @@
           "command": "winccoa.systemView.refresh",
           "when": "view == winccoa.systemView",
           "group": "navigation"
+        },
+        {
+          "command": "winccoa.openConfig",
+          "when": "view == winccoa.systemView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "winccoa.openLogViewer",
+          "when": "view == winccoa.systemView",
+          "group": "navigation@3"
         },
         {
           "command": "winccoa.managerView.refresh",

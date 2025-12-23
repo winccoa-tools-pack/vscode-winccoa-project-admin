@@ -166,6 +166,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         );
         console.log('[WinCC OA Core] Registered project control commands');
 
+        // Register utility commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.openConfig', async () => {
+                const project = projectManager.getCurrentProject();
+                if (!project) {
+                    vscode.window.showErrorMessage('No project selected');
+                    return;
+                }
+
+                if (project.configPath && require('fs').existsSync(project.configPath)) {
+                    const configUri = vscode.Uri.file(project.configPath);
+                    const document = await vscode.workspace.openTextDocument(configUri);
+                    await vscode.window.showTextDocument(document);
+                    console.log('[WinCC OA Core] Opened config file:', project.configPath);
+                } else {
+                    vscode.window.showErrorMessage(`Config file not found: ${project.configPath}`);
+                }
+            })
+        );
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.openLogViewer', async () => {
+                const logViewerExtension = vscode.extensions.getExtension('richardjanisch.winccoa-vscode-logviewer');
+                
+                if (logViewerExtension) {
+                    console.log('[WinCC OA Core] Log Viewer extension found, opening...');
+                    await vscode.commands.executeCommand('winccoa-logviewer.open');
+                } else {
+                    const selection = await vscode.window.showInformationMessage(
+                        'WinCC OA Log Viewer extension is not installed.',
+                        'Install Extension'
+                    );
+                    
+                    if (selection === 'Install Extension') {
+                        await vscode.env.openExternal(vscode.Uri.parse('vscode:extension/richardjanisch.winccoa-vscode-logviewer'));
+                    }
+                }
+            })
+        );
+        console.log('[WinCC OA Core] Registered utility commands');
+
         // Cleanup on dispose
         context.subscriptions.push(projectManager, statusBarManager);
 
