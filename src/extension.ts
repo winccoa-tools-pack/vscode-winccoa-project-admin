@@ -105,24 +105,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         // Register manager control commands
         context.subscriptions.push(
             vscode.commands.registerCommand('winccoa.manager.start', async (item: any) => {
-                if (item && item.managerIdx !== undefined) {
-                    await managerTreeProvider.startManager(item.managerIdx);
+                if (item && item.managerData) {
+                    await managerTreeProvider.startManager(item.managerData);
                 }
             })
         );
         
         context.subscriptions.push(
             vscode.commands.registerCommand('winccoa.manager.stop', async (item: any) => {
-                if (item && item.managerIdx !== undefined) {
-                    await managerTreeProvider.stopManager(item.managerIdx);
+                if (item && item.managerData) {
+                    await managerTreeProvider.stopManager(item.managerData);
                 }
             })
         );
         
         context.subscriptions.push(
             vscode.commands.registerCommand('winccoa.manager.restart', async (item: any) => {
-                if (item && item.managerIdx !== undefined) {
-                    await managerTreeProvider.restartManager(item.managerIdx);
+                if (item && item.managerData) {
+                    await managerTreeProvider.restartManager(item.managerData);
                 }
             })
         );

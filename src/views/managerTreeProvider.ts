@@ -1,22 +1,21 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
-import { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
+import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/core-utils';
 
-interface ManagerData {
+interface ManagerDisplayData {
     idx: number;
-    type: string;
-    status: number;     // 0=stopped, 2=running
-    pid: number | null;
-    options?: string;
+    info: ProjEnvManagerInfo;
+    options?: ProjEnvManagerOptions;
 }
 
 export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ManagerItem | undefined | null | void> = new vscode.EventEmitter<ManagerItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ManagerItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private managers: ManagerData[] = [];
+    private managers: ManagerDisplayData[] = [];
     private pollInterval: NodeJS.Timeout | undefined;
-    private currentProjEnv: ProjEnvProject | undefined;
+    private pmon: PmonComponent = new PmonComponent();
+    private currentProjectId: string | undefined;
 
     constructor(private projectManager: ProjectManager) {
         // Start polling for manager status
@@ -24,6 +23,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         
         // Refresh when project changes
         this.projectManager.onDidChangeProject(() => {
+            this.currentProjectId = undefined;
             this.refresh();
         });
     }
@@ -47,25 +47,36 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         
         if (!currentProject) {
             this.managers = [];
-            this.currentProjEnv = undefined;
+            this.currentProjectId = undefined;
             this._onDidChangeTreeData.fire();
             return;
         }
 
         try {
-            // Create ProjEnvProject instance from current project
-            const projEnv = new ProjEnvProject();
-            // TODO: Initialize from currentProject data
-            // For now, we'll show a placeholder until we implement proper manager control
+            this.currentProjectId = currentProject.id;
+
+            // Get project status with manager info
+            const projectStatus = await this.pmon.getProjectStatus(currentProject.id);
             
-            this.managers = [];
-            this.currentProjEnv = projEnv;
+            // Get manager options (component names, start modes, etc.)
+            const managerOptions = await this.pmon.getManagerOptionsList(currentProject.id);
+            
+            if (projectStatus && projectStatus.managers) {
+                this.managers = projectStatus.managers
+                    .map((info, idx) => ({
+                        idx,
+                        info,
+                        options: managerOptions[idx]
+                    }))
+                    .filter(m => m.idx > 0); // Skip pmon itself (idx 0)
+            } else {
+                this.managers = [];
+            }
             
             this._onDidChangeTreeData.fire();
         } catch (error) {
             console.error('Failed to load managers:', error);
             this.managers = [];
-            this.currentProjEnv = undefined;
             this._onDidChangeTreeData.fire();
         }
     }
@@ -84,127 +95,184 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             
             if (!currentProject) {
                 return [
-                    new ManagerItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined, undefined, undefined)
+                    new ManagerItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined)
+                ];
+            }
+            
+            // Check if project is running
+            if (!currentProject.isRunning) {
+                return [
+                    new ManagerItem('Project not running', vscode.TreeItemCollapsibleState.None, 'info', 'Start the project to see managers', undefined)
                 ];
             }
             
             // Root level - show Managers folder
-            const managerCount = this.managers.length > 0 ? `${this.managers.length} managers` : 'Loading...';
+            const managerCount = this.managers.length > 0 ? `${this.managers.length} managers` : 'No managers';
             return [
-                new ManagerItem('Managers', vscode.TreeItemCollapsibleState.Expanded, 'folder', managerCount, undefined, undefined, undefined)
+                new ManagerItem('Managers', vscode.TreeItemCollapsibleState.Expanded, 'folder', managerCount, undefined)
             ];
         } else if (element.label === 'Managers' && element.itemType === 'folder') {
             // Show all managers
             if (this.managers.length === 0) {
                 return [
-                    new ManagerItem('Manager control coming soon', vscode.TreeItemCollapsibleState.None, 'info', 'Will be implemented with direct pmon integration', undefined, undefined, undefined)
+                    new ManagerItem('No managers found', vscode.TreeItemCollapsibleState.None, 'info', 'Check project configuration', undefined)
                 ];
             }
             
-            return this.managers.map(mgr => 
-                new ManagerItem(
-                    mgr.type,
+            return this.managers.map(mgr => {
+                const componentName = mgr.options?.component || 'Unknown';
+                const startOptions = mgr.options?.startOptions || '';
+                
+                return new ManagerItem(
+                    componentName,
                     vscode.TreeItemCollapsibleState.None, 
                     'manager', 
-                    this.getStatusText(mgr.status),
-                    mgr.idx,
-                    mgr.pid,
-                    mgr.options
-                )
-            );
+                    this.getStatusText(mgr.info.state),
+                    mgr,
+                    startOptions
+                );
+            });
         }
         return [];
     }
 
-    private getStatusText(status: number): string {
-        return status === 2 ? 'running' : 'stopped';
+    private getStatusText(state: ProjEnvManagerState): string {
+        switch (state) {
+            case ProjEnvManagerState.Running:
+                return 'running';
+            case ProjEnvManagerState.NotRunning:
+                return 'stopped';
+            case ProjEnvManagerState.Init:
+                return 'initializing';
+            case ProjEnvManagerState.Blocked:
+                return 'blocked';
+            default:
+                return 'unknown';
+        }
     }
 
-    async startManager(managerIdx: number): Promise<void> {
-        const currentProject = this.projectManager.getCurrentProject();
-        
-        if (!currentProject) {
+    async startManager(managerData: ManagerDisplayData): Promise<void> {
+        if (!this.currentProjectId) {
             vscode.window.showErrorMessage('No project selected');
             return;
         }
 
-        // TODO: Implement with direct pmon communication
-        vscode.window.showWarningMessage('Manager control coming soon - will be implemented with direct pmon integration');
+        try {
+            const result = await this.pmon.startManager(this.currentProjectId, managerData.idx);
+            if (result === 0) {
+                vscode.window.showInformationMessage(`✓ Manager started successfully`);
+            } else {
+                vscode.window.showErrorMessage(`Failed to start manager (error code: ${result})`);
+            }
+            await this.loadManagers();
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to start manager: ${error}`);
+        }
     }
 
-    async stopManager(managerIdx: number): Promise<void> {
-        const currentProject = this.projectManager.getCurrentProject();
-        
-        if (!currentProject) {
+    async stopManager(managerData: ManagerDisplayData): Promise<void> {
+        if (!this.currentProjectId) {
             vscode.window.showErrorMessage('No project selected');
             return;
         }
 
-        // TODO: Implement with direct pmon communication
-        vscode.window.showWarningMessage('Manager control coming soon - will be implemented with direct pmon integration');
+        try {
+            const result = await this.pmon.stopManager(this.currentProjectId, managerData.idx);
+            if (result === 0) {
+                vscode.window.showInformationMessage(`✓ Manager stopped successfully`);
+            } else {
+                vscode.window.showErrorMessage(`Failed to stop manager (error code: ${result})`);
+            }
+            await this.loadManagers();
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to stop manager: ${error}`);
+        }
     }
 
-    async restartManager(managerIdx: number): Promise<void> {
-        const currentProject = this.projectManager.getCurrentProject();
-        
-        if (!currentProject) {
+    async restartManager(managerData: ManagerDisplayData): Promise<void> {
+        if (!this.currentProjectId) {
             vscode.window.showErrorMessage('No project selected');
             return;
         }
 
-        // TODO: Implement with direct pmon communication
-        vscode.window.showWarningMessage('Manager control coming soon - will be implemented with direct pmon integration');
+        try {
+            vscode.window.showInformationMessage('⟳ Restarting manager...');
+            
+            // Stop then start
+            const stopResult = await this.pmon.stopManager(this.currentProjectId, managerData.idx);
+            if (stopResult !== 0) {
+                vscode.window.showErrorMessage(`Failed to stop manager (error code: ${stopResult})`);
+                return;
+            }
+            
+            // Wait a bit before starting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const startResult = await this.pmon.startManager(this.currentProjectId, managerData.idx);
+            if (startResult === 0) {
+                vscode.window.showInformationMessage(`✓ Manager restarted successfully`);
+            } else {
+                vscode.window.showErrorMessage(`Failed to restart manager (error code: ${startResult})`);
+            }
+            
+            await this.loadManagers();
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to restart manager: ${error}`);
+        }
     }
 }
 
 class ManagerItem extends vscode.TreeItem {
-    public readonly managerIdx?: number;
+    public readonly managerData?: ManagerDisplayData;
     
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly itemType: 'folder' | 'manager' | 'info',
         public readonly status?: string,
-        managerIdx?: number,
-        public readonly pid?: number | null,
-        public readonly options?: string
+        managerData?: ManagerDisplayData,
+        startOptions?: string
     ) {
         super(label, collapsibleState);
         
-        this.managerIdx = managerIdx;
+        this.managerData = managerData;
         
-        if (itemType === 'manager' && managerIdx !== undefined) {
-            this.id = `manager-${managerIdx}`;
+        if (itemType === 'manager' && managerData) {
+            this.id = `manager-${managerData.idx}`;
         }
         
         if (itemType === 'folder') {
             this.iconPath = new vscode.ThemeIcon('folder');
             this.contextValue = 'managerFolder';
             this.description = status;
-        } else if (itemType === 'manager') {
-            if (status === 'running') {
+        } else if (itemType === 'manager' && managerData) {
+            const info = managerData.info;
+            
+            if (info.state === ProjEnvManagerState.Running) {
                 this.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
-                if (options && options.trim()) {
-                    this.description = `${options}${pid ? ` (PID: ${pid})` : ''}`;
-                } else {
-                    this.description = pid ? `(PID: ${pid})` : '';
-                }
-            } else if (status === 'stopped') {
+                const desc = startOptions ? `${startOptions} (PID: ${info.pid})` : `PID: ${info.pid}`;
+                this.description = desc;
+            } else if (info.state === ProjEnvManagerState.NotRunning) {
                 this.iconPath = new vscode.ThemeIcon('circle-outline', new vscode.ThemeColor('testing.iconFailed'));
-                if (options && options.trim()) {
-                    this.description = options;
-                } else {
-                    this.description = '';
-                }
+                this.description = startOptions || status;
+            } else if (info.state === ProjEnvManagerState.Init) {
+                this.iconPath = new vscode.ThemeIcon('loading~spin', new vscode.ThemeColor('testing.iconQueued'));
+                this.description = startOptions || status;
+            } else {
+                this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('testing.iconErrored'));
+                this.description = startOptions || status;
             }
+            
             this.contextValue = 'manager';
             
-            let tooltipText = `${this.label} - ${status}`;
-            if (options && options.trim()) {
-                tooltipText += `\nOptions: ${options}`;
+            let tooltipText = `${this.label} - ${status}\nManager Index: ${managerData.idx}`;
+            tooltipText += `\nPID: ${info.pid}`;
+            tooltipText += `\nStart Mode: ${info.startMode}`;
+            if (startOptions) {
+                tooltipText += `\nOptions: ${startOptions}`;
             }
-            if (pid) {
-                tooltipText += `\nPID: ${pid}`;
+            if (info.startTime) {
+                tooltipText += `\nStart Time: ${info.startTime}`;
             }
             this.tooltip = tooltipText;
         } else if (itemType === 'info') {

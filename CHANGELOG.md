@@ -12,27 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Sidebar Integration**: Consolidated sidebar features from vscode-winccoa-sidepanel
 - **System Status View**: Monitor WinCC OA system status, project information, and running projects
-- **Manager View**: Manager control interface (implementation pending)
+- **Manager View**: Real-time manager monitoring and control
+- **Manager Control**: Start, stop, and restart managers using ProjEnvProject API
 - Tree view context menus for manager control actions
 - Toolbar refresh buttons for both views
 - Activity bar icon for WinCC OA Control
+- Auto-refresh of manager status (5-second polling)
+- Manager information display (PID, state, start mode, start time)
 - Project information display (name, version, paths)
 - Running projects overview
+- Direct integration with npm-shared-library-core ProjEnvProject class
 
 ### Changed
 - **Extension renamed** from "WinCC OA Core" to "WinCC OA Control"
 - Description updated to reflect unified project management and monitoring capabilities
+- Manager control now uses ProjEnvProject from npm-shared-library-core
 - System and manager views automatically update when project changes
-- Manager view shows placeholder for upcoming pmon integration
+- Manager states properly displayed: Running, NotRunning, Init, Blocked
+- Icons reflect manager status with color coding
 
-### Removed
-- REST API dependency (no longer needed for future implementation)
-
-### Technical Notes
-- Manager control functionality marked as TODO - will be implemented with direct pmon communication
-- ProjEnvProject integration prepared for future manager control
-- Views are fully functional with project information display
-- Manager start/stop/restart commands registered but show "coming soon" message
+### Technical Implementation
+- ProjEnvProject integration for manager operations
+- startManager(idx), stopManager(idx), restartManager(idx) methods
+- getProjectStatus() for real-time manager information
+- ProjEnvManagerInfo for detailed manager data
+- ProjEnvManagerState enum for status display
+- Automatic project environment initialization from ProjectManager
 
 ## [0.1.0] - 2025-12-22
 
