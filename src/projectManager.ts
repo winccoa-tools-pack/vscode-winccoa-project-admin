@@ -22,14 +22,17 @@ export class ProjectManager {
      * Initialize - load running projects and start auto-refresh
      */
     async initialize(): Promise<void> {
+        // Wait for initial refresh to complete before continuing
         await this.refreshProjects();
         
-        // Auto-refresh every 10 seconds to detect project start/stop
+        // Auto-refresh every 15 seconds to detect project start/stop
         this._refreshInterval = setInterval(() => {
-            this.refreshProjects();
-        }, 10000);
+            this.refreshProjects().catch(err => {
+                console.error('[ProjectManager] Refresh failed:', err);
+            });
+        }, 15000);
         
-        console.log('[ProjectManager] Auto-refresh enabled (every 10 seconds)');
+        console.log('[ProjectManager] Auto-refresh enabled (every 15 seconds)');
     }
 
     /**
@@ -96,14 +99,6 @@ export class ProjectManager {
             
             for (const project of runnable) {
                 if (await project.isPmonRunning()) {
-                    console.log('[ProjectManager] Running project found:', {
-                        id: project.getId(),
-                        name: project.getName(),
-                        version: project.getVersion(),
-                        installDir: project.getInstallDir(),
-                        dir: project.getDir(),
-                        configPath: project.getConfigPath()
-                    });
                     running.push(project);
                 }
             }

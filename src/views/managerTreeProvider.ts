@@ -29,11 +29,14 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
     }
 
     private startPolling(): void {
-        this.loadManagers();
+        // Don't load on startup - wait for TreeView to be visible
+        // Initial load will happen automatically when VS Code calls getChildren()
         
         this.pollInterval = setInterval(() => {
-            this.loadManagers();
-        }, 5000); // Poll every 5 seconds
+            this.loadManagers().catch(err => {
+                console.error('[ManagerTreeProvider] Load failed:', err);
+            });
+        }, 10000); // Poll every 10 seconds
     }
 
     dispose(): void {
@@ -48,7 +51,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         if (!currentProject) {
             this.managers = [];
             this.currentProjectId = undefined;
-            this._onDidChangeTreeData.fire();
+            // Don't fire immediately - let getChildren() show loading state
             return;
         }
 

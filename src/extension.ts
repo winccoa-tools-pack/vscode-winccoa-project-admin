@@ -16,24 +16,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
     try {
         console.log('[WinCC OA Core] Activating extension...');
 
-        // Initialize project manager
+        // Initialize project manager (async, non-blocking)
         console.log('[WinCC OA Core] Creating ProjectManager...');
         projectManager = new ProjectManager(context);
-        console.log('[WinCC OA Core] Initializing ProjectManager...');
-        await projectManager.initialize();
-        console.log('[WinCC OA Core] ProjectManager initialized');
-
+        
         // Initialize status bar
         console.log('[WinCC OA Core] Creating StatusBarManager...');
         statusBarManager = new StatusBarManager(projectManager);
-        console.log('[WinCC OA Core] StatusBarManager created');
-
-        // Initialize tree view providers
+        
+        // Initialize tree view providers immediately (they handle loading state)
         console.log('[WinCC OA Core] Creating TreeView providers...');
         systemTreeProvider = new SystemTreeProvider(projectManager);
         managerTreeProvider = new ManagerTreeProvider(projectManager);
         
-        // Register tree views
+        // Register tree views immediately
         context.subscriptions.push(
             vscode.window.registerTreeDataProvider('winccoa.systemView', systemTreeProvider)
         );
@@ -41,6 +37,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             vscode.window.registerTreeDataProvider('winccoa.managerView', managerTreeProvider)
         );
         console.log('[WinCC OA Core] TreeView providers registered');
+        
+        // Start background initialization (don't block activation)
+        projectManager.initialize().then(() => {
+            console.log('[WinCC OA Core] Background initialization complete');
+        }).catch(err => {
+            console.error('[WinCC OA Core] Background initialization failed:', err);
+        });
 
         // Register command for project selection
         context.subscriptions.push(
@@ -217,7 +220,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         context.subscriptions.push(projectManager, statusBarManager);
 
         console.log('[WinCC OA Core] Extension activated successfully');
-        vscode.window.showInformationMessage('WinCC OA Core activated!');
 
         // Return public API for other extensions
         return {

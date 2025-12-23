@@ -30,6 +30,28 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         if (!element) {
             // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
+            
+            // If no projects loaded yet, show loading state
+            if (!currentProject && this.projectManager.getRunningProjects().length === 0) {
+                // Check if we have any runnable projects yet
+                try {
+                    const all = await this.projectManager.getAllRunnableProjects();
+                    if (all.length === 0) {
+                        return [
+                            new SystemItem(
+                                'Loading projects...',
+                                vscode.TreeItemCollapsibleState.None,
+                                'info',
+                                'Initializing',
+                                'Please wait...',
+                                undefined
+                            )
+                        ];
+                    }
+                } catch (err) {
+                    // Still loading
+                }
+            }
             const isRunning = currentProject?.isRunning || false;
             
             const statusDescription = isRunning ? '● Running' : '○ Stopped';
