@@ -88,6 +88,12 @@
         "icon": "$(debug-restart)"
       },
       {
+        "command": "winccoa.manager.add",
+        "title": "Add Manager",
+        "category": "WinCC OA",
+        "icon": "$(add)"
+      },
+      {
         "command": "winccoa.system.start",
         "title": "Start PMON",
         "category": "WinCC OA",
@@ -163,6 +169,11 @@
           "command": "winccoa.managerView.refresh",
           "when": "view == winccoa.managerView",
           "group": "navigation"
+        },
+        {
+          "command": "winccoa.manager.add",
+          "when": "view == winccoa.managerView",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [

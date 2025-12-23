@@ -220,6 +220,208 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             vscode.window.showErrorMessage(`Failed to restart manager: ${error}`);
         }
     }
+
+    async addManager(): Promise<void> {
+        if (!this.currentProjectId) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
+        try {
+            // Get current managers to detect existing numbers
+            const managers = await this.pmon.getManagerOptionsList(this.currentProjectId);
+
+            // Step 1: Select Manager Type
+            const managerTypes = [
+                { label: 'CTRL', detail: 'Control Manager - Script execution' },
+                { label: 'UI', detail: 'User Interface Manager - Panels and HMI' },
+                { label: 'EVENT', detail: 'Event Manager - Alarm handling' },
+                { label: 'DB', detail: 'Database Manager - Archive access' },
+                { label: 'DIST', detail: 'Distribution Manager - Distributed systems' },
+                { label: 'API', detail: 'API Manager - HTTP/REST interface' },
+                { label: 'DRIVER', detail: 'Driver Manager - Hardware communication' },
+                { label: 'REDU', detail: 'Redundancy Manager - Failover' },
+            ];
+
+            const typeSelection = await vscode.window.showQuickPick(managerTypes, {
+                placeHolder: 'Select manager type',
+                title: 'Add Manager - Step 1/5: Manager Type'
+            });
+
+            if (!typeSelection) {
+                console.log('[ManagerTreeProvider] User cancelled at type selection');
+                return;
+            }
+
+            // Step 2: Find next free number and get manager number
+            const nextFree = this.getNextFreeNumber(managers, typeSelection.label);
+            const managerNum = await vscode.window.showInputBox({
+                prompt: `Enter manager number for ${typeSelection.label}`,
+                placeHolder: `Next available: ${nextFree}`,
+                value: nextFree.toString(),
+                title: 'Add Manager - Step 2/5: Manager Number',
+                validateInput: (value) => {
+                    const num = parseInt(value);
+                    if (isNaN(num) || num < 0) {
+                        return 'Please enter a valid number >= 0';
+                    }
+                    const componentName = `${typeSelection.label}_${num}`;
+                    if (managers.some(m => m.component === componentName)) {
+                        return `Manager ${componentName} already exists`;
+                    }
+                    return null;
+                }
+            });
+
+            if (!managerNum) {
+                console.log('[ManagerTreeProvider] User cancelled at number input');
+                return;
+            }
+
+            const componentName = `${typeSelection.label}_${managerNum}`;
+
+            // Step 3: Select Start Mode
+            const startModes = [
+                { label: 'Manual', detail: 'Start manually (mode 0)', mode: 0 },
+                { label: 'Always', detail: 'Auto-start on boot (mode 1)', mode: 1 },
+                { label: 'Once', detail: 'Start once, no restart (mode 2)', mode: 2 }
+            ];
+
+            const modeSelection = await vscode.window.showQuickPick(startModes, {
+                placeHolder: 'Select start mode',
+                title: 'Add Manager - Step 3/5: Start Mode'
+            });
+
+            if (!modeSelection) {
+                console.log('[ManagerTreeProvider] User cancelled at mode selection');
+                return;
+            }
+
+            // Step 4: Start Options (optional)
+            const startOptions = await vscode.window.showInputBox({
+                prompt: 'Enter start options (optional)',
+                placeHolder: 'e.g. -num 0 -lang en_US.utf8 (leave empty for defaults)',
+                title: 'Add Manager - Step 4/5: Start Options',
+                value: ''
+            });
+
+            if (startOptions === undefined) {
+                console.log('[ManagerTreeProvider] User cancelled at start options');
+                return;
+            }
+
+            // Step 5: Insert Position
+            const positionItems = [
+                { label: 'At beginning', detail: 'Insert as first manager', index: 0 },
+                { label: 'At end', detail: `Append after all managers (position ${managers.length})`, index: managers.length },
+                ...managers.map((m, idx) => ({
+                    label: `After ${m.component}`,
+                    detail: m.startOptions || 'No start options',
+                    index: idx + 1
+                }))
+            ];
+
+            const positionSelection = await vscode.window.showQuickPick(positionItems, {
+                placeHolder: 'Select insert position',
+                title: 'Add Manager - Step 5/5: Position'
+            });
+
+            if (!positionSelection) {
+                console.log('[ManagerTreeProvider] User cancelled at position selection');
+                return;
+            }
+
+            // Confirmation
+            const confirm = await vscode.window.showInformationMessage(
+                `Add ${componentName} (${modeSelection.label} mode) at position ${positionSelection.index}?`,
+                { modal: true },
+                'Add Manager'
+            );
+
+            if (confirm !== 'Add Manager') {
+                console.log('[ManagerTreeProvider] User cancelled at confirmation');
+                return;
+            }
+
+            // Execute insert
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Adding ${componentName}...`,
+                cancellable: false
+            }, async () => {
+                try {
+                    const options = {
+                        component: componentName,
+                        startMode: modeSelection.mode,
+                        secondToKill: 30,
+                        resetStartCounter: 1,
+                        restart: 0,
+                        startOptions: startOptions || ''
+                    };
+
+                    console.log('[ManagerTreeProvider] Calling insertManagerAt with:', {
+                        options,
+                        projectName: this.currentProjectId,
+                        managerIndex: positionSelection.index
+                    });
+
+                    const exitCode = await this.pmon.insertManagerAt(
+                        options,
+                        this.currentProjectId!,
+                        positionSelection.index
+                    );
+
+                    console.log('[ManagerTreeProvider] insertManagerAt returned:', exitCode);
+
+                    if (exitCode === 0) {
+                        vscode.window.showInformationMessage(`✓ Manager ${componentName} added successfully`);
+                        
+                        // Wait a bit for config to be written
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        // Reload managers
+                        console.log('[ManagerTreeProvider] Reloading managers after insert...');
+                        await this.loadManagers();
+                        
+                        // Force refresh the tree view
+                        this._onDidChangeTreeData.fire();
+                        console.log('[ManagerTreeProvider] Tree view refreshed');
+                    } else {
+                        vscode.window.showErrorMessage(`Failed to add manager (exit code: ${exitCode})`);
+                        console.error('[ManagerTreeProvider] insertManagerAt failed with exit code:', exitCode);
+                    }
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Failed to add manager: ${errorMsg}`);
+                    console.error('[ManagerTreeProvider] Error during insertManagerAt:', error);
+                }
+            });
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Error in add manager wizard: ${errorMsg}`);
+            console.error('[ManagerTreeProvider] Error in addManager wizard:', error);
+        }
+    }
+
+    private getNextFreeNumber(managers: any[], managerType: string): number {
+        const existingNumbers = managers
+            .filter(m => m.component.startsWith(managerType + '_'))
+            .map(m => {
+                const parts = m.component.split('_');
+                return parseInt(parts[parts.length - 1]);
+            })
+            .filter(n => !isNaN(n))
+            .sort((a, b) => a - b);
+
+        // Find first gap or return next number
+        for (let i = 0; i < existingNumbers.length; i++) {
+            if (existingNumbers[i] !== i) {
+                return i;
+            }
+        }
+
+        return existingNumbers.length;
+    }
 }
 
 class ManagerItem extends vscode.TreeItem {

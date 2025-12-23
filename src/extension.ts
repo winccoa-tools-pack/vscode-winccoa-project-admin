@@ -126,6 +126,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 }
             })
         );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.add', async () => {
+                await managerTreeProvider.addManager();
+            })
+        );
         console.log('[WinCC OA Core] Registered manager control commands');
 
         // Register system control commands
