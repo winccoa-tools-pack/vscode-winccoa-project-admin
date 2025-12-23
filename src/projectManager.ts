@@ -47,6 +47,26 @@ export class ProjectManager {
     }
 
     /**
+     * Get all runnable projects (registered, both running and stopped)
+     */
+    async getAllRunnableProjects(): Promise<ProjectInfo[]> {
+        try {
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const projects: ProjectInfo[] = [];
+            
+            for (const project of runnable) {
+                const isRunning = await project.isPmonRunning();
+                projects.push(toProjectInfo(project, isRunning));
+            }
+            
+            return projects;
+        } catch (error) {
+            console.error('[ProjectManager] Failed to get runnable projects:', error);
+            return [];
+        }
+    }
+
+    /**
      * Set current project by ID
      */
     async setCurrentProject(projectId: string): Promise<boolean> {

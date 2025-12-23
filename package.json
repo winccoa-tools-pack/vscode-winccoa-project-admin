@@ -118,12 +118,6 @@
         "icon": "$(stop)"
       },
       {
-        "command": "winccoa.project.restart",
-        "title": "Restart Project",
-        "category": "WinCC OA",
-        "icon": "$(debug-restart)"
-      },
-      {
         "command": "winccoa.systemView.refresh",
         "title": "Refresh",
         "category": "WinCC OA",
@@ -174,11 +168,6 @@
           "command": "winccoa.project.stop",
           "when": "view == winccoa.systemView && viewItem == project",
           "group": "inline@2"
-        },
-        {
-          "command": "winccoa.project.restart",
-          "when": "view == winccoa.systemView && viewItem == project",
-          "group": "inline@3"
         }
       ]
     }

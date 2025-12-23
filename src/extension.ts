@@ -164,14 +164,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 }
             })
         );
-        
-        context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.restart', async (item: any) => {
-                if (item && item.projectData) {
-                    await systemTreeProvider.restartProject(item.projectData);
-                }
-            })
-        );
         console.log('[WinCC OA Core] Registered project control commands');
 
         // Cleanup on dispose

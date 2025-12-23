@@ -77,15 +77,15 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 ];
             }
         } else if (element.itemType === 'projects') {
-            const runningProjects = await this.projectManager.getRunningProjects();
+            const allProjects = await this.projectManager.getAllRunnableProjects();
             
-            if (runningProjects.length === 0) {
+            if (allProjects.length === 0) {
                 return [
-                    new SystemItem('No running projects', vscode.TreeItemCollapsibleState.None, 'info', 'Start a project to see it here', undefined, undefined)
+                    new SystemItem('No projects found', vscode.TreeItemCollapsibleState.None, 'info', 'Register a project first', undefined, undefined)
                 ];
             }
             
-            return runningProjects.map(project => 
+            return allProjects.map(project => 
                 new SystemItem(
                     project.name,
                     vscode.TreeItemCollapsibleState.None,
@@ -151,37 +151,6 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to stop project: ${error}`);
-            }
-        }
-    }
-
-    async restartProject(project: any): Promise<void> {
-        if (!project || !project.id) {
-            vscode.window.showErrorMessage('Invalid project');
-            return;
-        }
-
-        const answer = await vscode.window.showWarningMessage(
-            `Are you sure you want to restart ${project.name}?`,
-            'Yes',
-            'No'
-        );
-        
-        if (answer === 'Yes') {
-            try {
-                vscode.window.showInformationMessage(`⟳ Restarting ${project.name}...`);
-                
-                const result = await this.pmon.restartProject(project.id);
-                
-                if (result === 0) {
-                    vscode.window.showInformationMessage(`✓ ${project.name} restarted successfully`);
-                    await this.projectManager.refreshProjects();
-                    this.refresh();
-                } else {
-                    vscode.window.showErrorMessage(`Failed to restart ${project.name} (error code: ${result})`);
-                }
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to restart project: ${error}`);
             }
         }
     }
