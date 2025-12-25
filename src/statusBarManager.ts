@@ -8,7 +8,7 @@ import { ProjectInfo } from './types';
 export class StatusBarManager {
     private statusBarItem: vscode.StatusBarItem;
 
-    constructor(private projectManager: ProjectManager) {
+    constructor(private projectManager: ProjectManager, initialUpdate: boolean = true) {
         // Create status bar item (right side, high priority)
         this.statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Right,
@@ -21,9 +21,22 @@ export class StatusBarManager {
         // Listen for project changes
         this.projectManager.onDidChangeProject(() => this.updateStatusBar());
         
-        // Initial update
-        this.updateStatusBar();
+        // Initial update only if requested
+        if (initialUpdate) {
+            this.updateStatusBar();
+        } else {
+            // Show loading state
+            this.statusBarItem.text = '$(sync~spin) Loading WinCC OA...';
+            this.statusBarItem.backgroundColor = undefined;
+        }
         this.statusBarItem.show();
+    }
+
+    /**
+     * Force update of status bar (called after initialization)
+     */
+    public forceUpdate(): void {
+        this.updateStatusBar();
     }
 
     /**

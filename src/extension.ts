@@ -23,9 +23,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         ExtensionOutputChannel.info('Extension', 'Creating ProjectManager...');
         projectManager = new ProjectManager(context);
         
-        // Initialize status bar
+        // Initialize status bar (without initial update)
         ExtensionOutputChannel.info('Extension', 'Creating StatusBarManager...');
-        statusBarManager = new StatusBarManager(projectManager);
+        statusBarManager = new StatusBarManager(projectManager, false);
         
         // Initialize tree view providers immediately (they handle loading state)
         ExtensionOutputChannel.info('Extension', 'Creating TreeView providers...');
@@ -44,6 +44,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         // Start background initialization (don't block activation)
         projectManager.initialize().then(() => {
             ExtensionOutputChannel.info('Extension', 'Background initialization complete');
+            // Update status bar after initialization
+            statusBarManager.forceUpdate();
         }).catch(err => {
             ExtensionOutputChannel.error('Extension', 'Background initialization failed', err);
         });
