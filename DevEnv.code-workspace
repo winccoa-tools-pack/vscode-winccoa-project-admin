@@ -1,0 +1,33 @@
+{
+	"folders": [
+		{
+			"name": "WinCC OA Test Extension",
+			"path": "."
+		},
+		{
+			"name": "Test Project Example",
+			"path": "../test-workspace"
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"activityBar.background": "#1e3a5f",
+			"titleBar.activeBackground": "#2a5285",
+			"titleBar.activeForeground": "#e7f3ff"
+		},
+		"files.exclude": {
+			"**/node_modules": true,
+			"**/dist": true,
+			"**/out": true,
+			"**/bin": true,
+			"**/.vscode-test": true
+		},
+		"winccoaTests.testFilesPattern": "**/*_test.ctl",
+		"winccoaTests.logLevel": "DEBUG"
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.test-adapter-converter"
+		]
+	}
+}

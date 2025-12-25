@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Control",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "winccoa-tools-pack",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "winccoa-tools-pack",
   "license": "MIT",
   "icon": "resources/wincc_oa_core_512.png",

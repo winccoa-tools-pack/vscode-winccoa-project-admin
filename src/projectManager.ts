@@ -119,11 +119,15 @@ export class ProjectManager {
                 }
             }
 
-            // Auto-select if only one project running and none selected
-            if (!this._currentProject && this._runningProjects.length === 1) {
+            // Auto-select first project if none selected and at least one running
+            if (!this._currentProject && this._runningProjects.length > 0) {
                 this._currentProject = this._runningProjects[0];
                 this.saveState();
                 this._onDidChangeProject.fire(this._currentProject);
+                ExtensionOutputChannel.info(
+                    'ProjectManager',
+                    `Auto-selected first available project: ${this._currentProject.name}`
+                );
             }
         } catch (error) {
             ExtensionOutputChannel.error('ProjectManager', 'Failed to refresh projects', error instanceof Error ? error : new Error(String(error)));

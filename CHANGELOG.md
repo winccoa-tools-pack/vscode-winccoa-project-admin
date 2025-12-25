@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-25
+
+### Changed
+- Auto-select first available project on startup if no project is selected
+- Improved project selection: now automatically selects first running project instead of only when exactly one project is running
+- Added logging for auto-selected projects
+
 ## [0.2.0] - 2025-12-23
 
 ### Added
