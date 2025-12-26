@@ -178,7 +178,49 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 }
             })
         );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.setActive', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.setActiveProject(item.projectData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.addToWorkspace', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.addProjectToWorkspace(item.projectData);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.openInExplorer', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.openProjectInExplorer(item.projectData);
+                }
+            })
+        );
         ExtensionOutputChannel.info('Extension', 'Registered project control commands');
+        
+        // Register subproject commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.subproject.addToWorkspace', async (item: any) => {
+                if (item && item.subprojectPath) {
+                    await systemTreeProvider.addSubprojectToWorkspace(item.subprojectPath);
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.subproject.openInExplorer', async (item: any) => {
+                if (item && item.subprojectPath) {
+                    await systemTreeProvider.openSubprojectInExplorer(item.subprojectPath);
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered subproject commands');
 
         // Register utility commands
         context.subscriptions.push(

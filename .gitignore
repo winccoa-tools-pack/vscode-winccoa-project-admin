@@ -29,4 +29,7 @@ coverage/
 *.tmp
 .cache/
 .vscode-test/
-bin/winccoa-core-0.1.0.vsix
+
+# VSIX packages (local builds)
+bin/*.vsix
+bin/.local_build_counter

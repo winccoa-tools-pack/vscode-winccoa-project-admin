@@ -1,33 +1,30 @@
 {
 	"folders": [
 		{
-			"name": "WinCC OA Test Extension",
-			"path": "."
+			"path": "../../wincc_proj/DevEnv"
 		},
 		{
-			"name": "Test Project Example",
-			"path": "../test-workspace"
+			"name": "SIMARIScontrol_RTP",
+			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_RTP"
+		},
+		{
+			"name": "SIMARIScontrol_UnitTest",
+			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_UnitTest"
+		},
+		{
+			"name": "SIMARIScontrol_EP",
+			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_EP"
+		},
+		{
+			"name": "TestProject",
+			"path": "../../wincc_proj/TestProject"
 		}
 	],
 	"settings": {
 		"workbench.colorCustomizations": {
-			"activityBar.background": "#1e3a5f",
-			"titleBar.activeBackground": "#2a5285",
-			"titleBar.activeForeground": "#e7f3ff"
-		},
-		"files.exclude": {
-			"**/node_modules": true,
-			"**/dist": true,
-			"**/out": true,
-			"**/bin": true,
-			"**/.vscode-test": true
-		},
-		"winccoaTests.testFilesPattern": "**/*_test.ctl",
-		"winccoaTests.logLevel": "DEBUG"
-	},
-	"extensions": {
-		"recommendations": [
-			"ms-vscode.test-adapter-converter"
-		]
+			"activityBar.background": "#2F1A77",
+			"titleBar.activeBackground": "#4225A6",
+			"titleBar.activeForeground": "#FAF9FE"
+		}
 	}
 }

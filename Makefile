@@ -12,7 +12,7 @@ NPM := npm
 VSCE := npx vsce
 
 # Test workspace configuration
-TEST_WORKSPACE ?= ../DevEnv.code-workspace
+TEST_WORKSPACE ?= DevEnv.code-workspace
 CODE_BIN ?= code
 FORCE_CLOSE_VSCODE ?= no
 SKIP_UNINSTALL ?= yes

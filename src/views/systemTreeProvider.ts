@@ -90,10 +90,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             
             if (currentProject) {
                 const items = [
-                    new SystemItem('Project Name', vscode.TreeItemCollapsibleState.None, 'info', currentProject.name, undefined, undefined),
-                    new SystemItem('Version', vscode.TreeItemCollapsibleState.None, 'info', currentProject.version || 'N/A', undefined, undefined),
-                    new SystemItem('Project Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.projectDir, undefined, undefined),
-                    new SystemItem('Install Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.oaInstallPath, undefined, undefined)
+                    new SystemItem('Project Name', vscode.TreeItemCollapsibleState.None, 'info', currentProject.name, undefined, undefined, undefined, undefined, undefined),
+                    new SystemItem('Version', vscode.TreeItemCollapsibleState.None, 'info', currentProject.version || 'N/A', undefined, undefined, undefined, undefined, undefined),
+                    new SystemItem('Project Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.projectDir, undefined, undefined, undefined, undefined, undefined),
+                    new SystemItem('Install Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.oaInstallPath, undefined, undefined, undefined, undefined, undefined)
                 ];
 
                 // Parse and add subprojects
@@ -108,7 +108,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                             'Linked subprojects',
                             undefined,
                             undefined,
-                            subProjects
+                            subProjects,
+                            undefined
                         )
                     );
                 }
@@ -116,7 +117,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 return items;
             } else {
                 return [
-                    new SystemItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined, undefined)
+                    new SystemItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined, undefined, undefined, undefined, undefined)
                 ];
             }
         } else if (element.itemType === 'subprojects') {
@@ -131,6 +132,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     subProj,
                     `Subproject path: ${subProj}`,
                     undefined,
+                    subProj,
+                    undefined,
                     subProj
                 );
             });
@@ -139,7 +142,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             
             if (allProjects.length === 0) {
                 return [
-                    new SystemItem('No projects found', vscode.TreeItemCollapsibleState.None, 'info', 'Register a project first', undefined, undefined)
+                    new SystemItem('No projects found', vscode.TreeItemCollapsibleState.None, 'info', 'Register a project first', undefined, undefined, undefined, undefined, undefined)
                 ];
             }
             
@@ -152,7 +155,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     `Project: ${project.name}`,
                     project.isRunning,
                     project.projectDir,
-                    project
+                    project,
+                    undefined // subprojectPath not needed for projects
                 )
             );
         }
@@ -273,6 +277,109 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
     }
 
+    async setActiveProject(project: any): Promise<void> {
+        if (!project || !project.id) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        try {
+            await this.projectManager.setCurrentProject(project.id);
+            vscode.window.showInformationMessage(`✓ ${project.name} set as active project`);
+            this.refresh();
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to set active project: ${error}`);
+        }
+    }
+
+    async addProjectToWorkspace(project: any): Promise<void> {
+        if (!project || !project.projectDir) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        try {
+            const workspaceFolders = vscode.workspace.workspaceFolders || [];
+            const alreadyInWorkspace = workspaceFolders.some(folder => folder.uri.fsPath === project.projectDir);
+            
+            if (alreadyInWorkspace) {
+                vscode.window.showInformationMessage(`Project already in workspace`);
+                return;
+            }
+
+            const success = vscode.workspace.updateWorkspaceFolders(
+                workspaceFolders.length,
+                0,
+                { uri: vscode.Uri.file(project.projectDir) }
+            );
+
+            if (success) {
+                vscode.window.showInformationMessage(`✓ Project added to workspace`);
+            } else {
+                vscode.window.showErrorMessage('Failed to add project to workspace');
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to add project to workspace: ${error}`);
+        }
+    }
+
+    async openProjectInExplorer(project: any): Promise<void> {
+        if (!project || !project.projectDir) {
+            vscode.window.showErrorMessage('Invalid project');
+            return;
+        }
+
+        try {
+            await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(project.projectDir));
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to open project in explorer: ${error}`);
+        }
+    }
+
+    async addSubprojectToWorkspace(subprojectPath: string): Promise<void> {
+        if (!subprojectPath || !fs.existsSync(subprojectPath)) {
+            vscode.window.showErrorMessage('Invalid subproject path');
+            return;
+        }
+
+        try {
+            const workspaceFolders = vscode.workspace.workspaceFolders || [];
+            const alreadyInWorkspace = workspaceFolders.some(folder => folder.uri.fsPath === subprojectPath);
+            
+            if (alreadyInWorkspace) {
+                vscode.window.showInformationMessage(`Subproject already in workspace`);
+                return;
+            }
+
+            const success = vscode.workspace.updateWorkspaceFolders(
+                workspaceFolders.length,
+                0,
+                { uri: vscode.Uri.file(subprojectPath) }
+            );
+
+            if (success) {
+                vscode.window.showInformationMessage(`✓ Subproject added to workspace`);
+            } else {
+                vscode.window.showErrorMessage('Failed to add subproject to workspace');
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to add subproject to workspace: ${error}`);
+        }
+    }
+
+    async openSubprojectInExplorer(subprojectPath: string): Promise<void> {
+        if (!subprojectPath || !fs.existsSync(subprojectPath)) {
+            vscode.window.showErrorMessage('Invalid subproject path');
+            return;
+        }
+
+        try {
+            await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(subprojectPath));
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to open subproject in explorer: ${error}`);
+        }
+    }
+
     async restartOASystem(): Promise<void> {
         const currentProject = this.projectManager.getCurrentProject();
         
@@ -369,7 +476,8 @@ class SystemItem extends vscode.TreeItem {
         public readonly tooltipText?: string,
         public readonly isRunning?: boolean,
         public readonly projectPath?: string,
-        public readonly projectData?: any
+        public readonly projectData?: any,
+        public readonly subprojectPath?: string
     ) {
         super(label, collapsibleState);
         
@@ -400,11 +508,12 @@ class SystemItem extends vscode.TreeItem {
             this.contextValue = 'subproject';
             this.tooltip = tooltipText;
             this.description = description;
-            if (projectPath) {
+            // FIX: Use subprojectPath instead of projectPath for correct folder navigation
+            if (subprojectPath) {
                 this.command = {
                     command: 'revealFileInOS',
                     title: 'Open in Explorer',
-                    arguments: [vscode.Uri.file(projectPath)]
+                    arguments: [vscode.Uri.file(subprojectPath)]
                 };
             }
         } else if (itemType === 'project') {

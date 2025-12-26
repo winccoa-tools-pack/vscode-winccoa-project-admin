@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-26
+
+### Added
+- Context menu for projects: Set as Active Project
+- Context menu for projects: Add Project to Workspace
+- Context menu for projects: Open in Explorer
+- Context menu for subprojects: Add Subproject to Workspace
+- Context menu for subprojects: Open in Explorer
+
+### Fixed
+- Subproject navigation now opens correct folder instead of parent directory
+- Test workspace path in Makefile (DevEnv.code-workspace)
+
 ## [0.2.2] - 2025-12-25
 
 ### Fixed

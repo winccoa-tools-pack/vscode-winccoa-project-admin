@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Control",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "winccoa-tools-pack",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
   "icon": "resources/wincc_oa_core_512.png",
@@ -146,6 +146,31 @@
         "title": "Refresh",
         "category": "WinCC OA",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "winccoa.project.setActive",
+        "title": "Set as Active Project",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.addToWorkspace",
+        "title": "Add Project to Workspace",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.openInExplorer",
+        "title": "Open in Explorer",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.subproject.addToWorkspace",
+        "title": "Add Subproject to Workspace",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.subproject.openInExplorer",
+        "title": "Open in Explorer",
+        "category": "WinCC OA"
       }
     ],
     "menus": {
@@ -201,6 +226,31 @@
           "command": "winccoa.project.stop",
           "when": "view == winccoa.systemView && viewItem == project",
           "group": "inline@2"
+        },
+        {
+          "command": "winccoa.project.setActive",
+          "when": "view == winccoa.systemView && viewItem == project",
+          "group": "1_project@1"
+        },
+        {
+          "command": "winccoa.project.addToWorkspace",
+          "when": "view == winccoa.systemView && viewItem == project",
+          "group": "1_project@2"
+        },
+        {
+          "command": "winccoa.project.openInExplorer",
+          "when": "view == winccoa.systemView && viewItem == project",
+          "group": "2_open@1"
+        },
+        {
+          "command": "winccoa.subproject.addToWorkspace",
+          "when": "view == winccoa.systemView && viewItem == subproject",
+          "group": "1_workspace@1"
+        },
+        {
+          "command": "winccoa.subproject.openInExplorer",
+          "when": "view == winccoa.systemView && viewItem == subproject",
+          "group": "2_open@1"
         }
       ]
     }
