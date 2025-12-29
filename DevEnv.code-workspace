@@ -14,10 +14,6 @@
 		{
 			"name": "SIMARIScontrol_EP",
 			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_EP"
-		},
-		{
-			"name": "TestProject",
-			"path": "../../wincc_proj/TestProject"
 		}
 	],
 	"settings": {

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-28
+
+### Fixed
+- **PMON Start/Stop Sequence**: Correct order for starting and stopping projects
+  - Start: Check PMON status → Start PMON if needed → Wait → Start all managers
+  - Stop: Stop all managers → Wait → Stop PMON
+  - Ensures reliable project startup and shutdown
+
 ## [0.3.0] - 2025-12-26
 
 ### Added

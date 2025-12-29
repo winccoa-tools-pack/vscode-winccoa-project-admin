@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ProjectManager } from '../projectManager';
 import { PmonComponent } from '@winccoa-tools-pack/core-utils';
+import { ProjEnvPmonStatus } from '@winccoa-tools-pack/core-utils';
 import type { ProjectInfo } from '../types';
 
 export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
@@ -172,6 +173,24 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         try {
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
             
+            // Step 1: Check if PMON is running
+            const pmonStatus = await this.pmon.getStatus(project.id);
+            
+            if (pmonStatus !== ProjEnvPmonStatus.Running) {
+                // Step 2: PMON not running - start it first
+                vscode.window.showInformationMessage(`⟳ Starting PMON for ${project.name}...`);
+                const pmonResult = await this.pmon.startPmonOnly(project.id);
+                
+                if (pmonResult !== 0) {
+                    vscode.window.showErrorMessage(`Failed to start PMON (error code: ${pmonResult})`);
+                    return;
+                }
+                
+                // Wait a moment for PMON to initialize
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            // Step 3: Now start all managers
             const result = await this.pmon.startProject(project.id, true);
             
             if (result === 0) {
@@ -179,7 +198,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 await this.projectManager.refreshProjects();
                 this.refresh();
             } else {
-                vscode.window.showErrorMessage(`Failed to start ${project.name} (error code: ${result})`);
+                vscode.window.showErrorMessage(`Failed to start managers (error code: ${result})`);
             }
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to start project: ${error}`);
@@ -202,14 +221,27 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             try {
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
                 
-                const result = await this.pmon.stopProject(project.id);
+                // Step 1: Stop all managers first
+                const stopResult = await this.pmon.stopProject(project.id);
                 
-                if (result === 0) {
+                if (stopResult !== 0) {
+                    vscode.window.showErrorMessage(`Failed to stop managers (error code: ${stopResult})`);
+                    return;
+                }
+                
+                // Wait for managers to stop
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Step 2: Now stop PMON
+                vscode.window.showInformationMessage(`⏹ Stopping PMON for ${project.name}...`);
+                const pmonResult = await this.pmon.stopProjectAndPmon(project.id);
+                
+                if (pmonResult === 0) {
                     vscode.window.showInformationMessage(`✓ ${project.name} stopped`);
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to stop ${project.name} (error code: ${result})`);
+                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${pmonResult})`);
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to stop project: ${error}`);
@@ -226,20 +258,38 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            vscode.window.showInformationMessage(`⟳ Starting PMON for ${currentProject.name}...`);
+            vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
             
-            const result = await this.pmon.startPmonOnly(currentProject.id);
+            // Step 1: Check if PMON is running
+            const pmonStatus = await this.pmon.getStatus(currentProject.id);
+            
+            if (pmonStatus !== ProjEnvPmonStatus.Running) {
+                // Step 2: PMON not running - start it first
+                vscode.window.showInformationMessage(`⟳ Starting PMON for ${currentProject.name}...`);
+                const pmonResult = await this.pmon.startPmonOnly(currentProject.id);
+                
+                if (pmonResult !== 0) {
+                    vscode.window.showErrorMessage(`Failed to start PMON (error code: ${pmonResult})`);
+                    return;
+                }
+                
+                // Wait for PMON to initialize
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            // Step 3: Start all managers
+            const result = await this.pmon.startProject(currentProject.id, true);
             
             if (result === 0) {
-                vscode.window.showInformationMessage(`✓ PMON started for ${currentProject.name}`);
+                vscode.window.showInformationMessage(`✓ System started for ${currentProject.name}`);
                 // Refresh to update status
                 await this.projectManager.refreshProjects();
                 this.refresh();
             } else {
-                vscode.window.showErrorMessage(`Failed to start PMON (error code: ${result})`);
+                vscode.window.showErrorMessage(`Failed to start managers (error code: ${result})`);
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to start PMON: ${error}`);
+            vscode.window.showErrorMessage(`Failed to start system: ${error}`);
         }
     }
 
@@ -252,27 +302,40 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         const answer = await vscode.window.showWarningMessage(
-            `Stop PMON and all managers for ${currentProject.name}?`,
+            `Stop system for ${currentProject.name}?`,
             'Yes',
             'No'
         );
         
         if (answer === 'Yes') {
             try {
+                vscode.window.showInformationMessage(`⏹ Stopping system for ${currentProject.name}...`);
+                
+                // Step 1: Stop all managers first
+                const stopResult = await this.pmon.stopProject(currentProject.id);
+                
+                if (stopResult !== 0) {
+                    vscode.window.showErrorMessage(`Failed to stop managers (error code: ${stopResult})`);
+                    return;
+                }
+                
+                // Wait for managers to stop
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Step 2: Stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${currentProject.name}...`);
+                const pmonResult = await this.pmon.stopProjectAndPmon(currentProject.id);
                 
-                const result = await this.pmon.stopProjectAndPmon(currentProject.id);
-                
-                if (result === 0) {
-                    vscode.window.showInformationMessage(`✓ PMON stopped for ${currentProject.name}`);
+                if (pmonResult === 0) {
+                    vscode.window.showInformationMessage(`✓ System stopped for ${currentProject.name}`);
                     // Refresh to update status
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${result})`);
+                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${pmonResult})`);
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to stop PMON: ${error}`);
+                vscode.window.showErrorMessage(`Failed to stop system: ${error}`);
             }
         }
     }
