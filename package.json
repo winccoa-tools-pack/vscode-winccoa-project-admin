@@ -1,15 +1,15 @@
 {
-  "name": "winccoa-core",
+  "name": "winccoa-control",
   "displayName": "WinCC OA Control",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-core"
+    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-control"
   },
   "engines": {
     "vscode": "^1.80.0"

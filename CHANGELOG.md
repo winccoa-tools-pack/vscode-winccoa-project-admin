@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-12-30
+
+### Fixed
+- **Package Name**: Changed from `winccoa-core` to `winccoa-control` for correct extension ID
+- **Extension ID**: Now `RichardJanisch.winccoa-control` (was `RichardJanisch.winccoa-core`)
+- **Repository URL**: Updated to match new package name
+
+**BREAKING**: Extensions depending on this must update their `extensionDependencies` from `RichardJanisch.winccoa-core` to `RichardJanisch.winccoa-control`
+
 ## [1.0.0] - 2025-12-30
 
 ### First Stable Release
