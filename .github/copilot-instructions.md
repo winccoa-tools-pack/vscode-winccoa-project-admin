@@ -16,9 +16,15 @@ Bevor ein Feature gemergt wird, tragen wir die Änderungen in den Changelog ein 
 
 Commit-Messages beginnen immer mit einem Präfix wie `feat:`, `fix:`, `perf:`, usw. und sind so knapp wie möglich.
 
-Erst wenn alles getestet ist und ich das "Go" gebe, soll Copilot committen und dann mit `git flow feature finish` mergen.
+**CRITICAL**: Erst wenn alles getestet ist und ich das "Go" gebe, soll Copilot committen und dann mit `git flow feature finish` mergen.
 
 Es wird nach jeder Änderung kompiliert (`npm run compile`).
+
+### Git Workflow Best Practices
+- **Working Tree sauber halten**: Vor `git flow feature finish` immer `git status` prüfen
+- **Runtime Changes stashen**: DB-Dateien, Build-Artefakte mit `git stash push -m "message"` entfernen
+- **Nie ohne User-Freigabe committen**: User muss explizit "Go", "okay", "commit" o.ä. sagen
+- **Feature finish blockiert**: Bei unstaged changes → stashen, dann retry
 
 ## Wichtige technische Details
 

@@ -5,7 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2025-12-30
+
+### First Stable Release
+
+**Core Features:**
+- Automatic WinCC OA project detection via `config/config` file
+- Project management with status bar UI and quick pick menu
+- Auto-selection of first project on startup
+- PMON manager control (start/stop projects)
+- Extension API for other WinCC OA extensions
+- Context menu actions for projects and subprojects
+
+**Current Limitations:**
+- Project switching may require VS Code reload in some cases
+- Limited support for multi-root workspaces with multiple WinCC OA projects
+- PMON control requires proper WinCC OA installation and configuration
+
+### Changed
+- Renamed from "WinCC OA Core" to "WinCC OA Control"
+- Updated icon to `wincc_oa_control_512.png`
+- Improved documentation with real-world usage examples
+- Added disclaimer about first stable release status
+
+---
 
 ## [0.2.3] - 2025-12-28
 
