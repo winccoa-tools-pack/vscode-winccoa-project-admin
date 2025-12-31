@@ -47,8 +47,11 @@ export class StatusBarManager {
         const runningCount = this.projectManager.getRunningProjects().length;
 
         if (currentProject) {
-            this.statusBarItem.text = `$(server-process) ${currentProject.name} (${currentProject.version})`;
-            this.statusBarItem.backgroundColor = undefined;
+            const icon = currentProject.isRunning ? '$(server-process)' : '$(server-environment)';
+            this.statusBarItem.text = `${icon} ${currentProject.name} (${currentProject.version})`;
+            this.statusBarItem.backgroundColor = currentProject.isRunning 
+                ? undefined 
+                : new vscode.ThemeColor('statusBarItem.warningBackground');
         } else if (runningCount > 0) {
             this.statusBarItem.text = `$(server) ${runningCount} WinCC OA project${runningCount > 1 ? 's' : ''}`;
             this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');

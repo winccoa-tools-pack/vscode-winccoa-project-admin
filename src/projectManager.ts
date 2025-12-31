@@ -71,12 +71,20 @@ export class ProjectManager {
     }
 
     /**
-     * Set current project by ID
+     * Set current project by ID (accepts both running and stopped projects)
      */
     async setCurrentProject(projectId: string): Promise<boolean> {
-        const project = this._runningProjects.find(p => p.id === projectId);
+        // First try to find in running projects
+        let project = this._runningProjects.find(p => p.id === projectId);
+        
+        // If not running, try to find in all runnable projects
         if (!project) {
-            vscode.window.showErrorMessage(`Project "${projectId}" not found or not running`);
+            const allProjects = await this.getAllRunnableProjects();
+            project = allProjects.find(p => p.id === projectId);
+        }
+        
+        if (!project) {
+            vscode.window.showErrorMessage(`Project "${projectId}" not found`);
             return false;
         }
 
@@ -84,7 +92,8 @@ export class ProjectManager {
         this.saveState();
         this._onDidChangeProject.fire(project);
         
-        vscode.window.showInformationMessage(`Switched to project: ${project.name}`);
+        const status = project.isRunning ? 'running' : 'stopped';
+        vscode.window.showInformationMessage(`✓ Set active project: ${project.name} (${status})`);
         return true;
     }
 
@@ -107,15 +116,21 @@ export class ProjectManager {
             // All projects in 'running' are actually running (we just checked)
             this._runningProjects = running.map(p => toProjectInfo(p, true));
 
-            // If current project is not running anymore, clear it
+            // Update current project's running status (but keep it selected even if stopped)
             if (this._currentProject) {
                 const stillRunning = this._runningProjects.find(
                     p => p.id === this._currentProject!.id
                 );
-                if (!stillRunning) {
-                    this._currentProject = undefined;
+                if (stillRunning) {
+                    // Update to running version
+                    this._currentProject = stillRunning;
                     this.saveState();
-                    this._onDidChangeProject.fire(undefined);
+                    this._onDidChangeProject.fire(this._currentProject);
+                } else {
+                    // Project stopped - update isRunning flag but keep it selected
+                    this._currentProject.isRunning = false;
+                    this.saveState();
+                    this._onDidChangeProject.fire(this._currentProject);
                 }
             }
 

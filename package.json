@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Control",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -261,7 +261,13 @@
     "properties": {
       "winccoaCore.logLevel": {
         "type": "string",
-        "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+        "enum": [
+          "ERROR",
+          "WARN",
+          "INFO",
+          "DEBUG",
+          "TRACE"
+        ],
         "default": "INFO",
         "description": "Logging level for extension output",
         "enumDescriptions": [
