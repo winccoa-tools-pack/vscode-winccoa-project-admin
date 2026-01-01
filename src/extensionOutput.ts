@@ -40,7 +40,7 @@ export class ExtensionOutputChannel {
     }
 
     public static updateLogLevel(): void {
-        const config = vscode.workspace.getConfiguration('winccoaCore');
+        const config = vscode.workspace.getConfiguration('winccoaProjectAdmin');
         const levelString = config.get<string>('logLevel', 'INFO');
         ExtensionOutputChannel.currentLogLevel = LogLevel[levelString as keyof typeof LogLevel] || LogLevel.INFO;
         

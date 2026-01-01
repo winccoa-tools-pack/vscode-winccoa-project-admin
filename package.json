@@ -258,7 +258,7 @@
     "configuration": {
       "title": "WinCC OA Project Admin",
       "properties": {
-        "winccoaCore.logLevel": {
+        "winccoaProjectAdmin.logLevel": {
           "type": "string",
           "enum": [
             "ERROR",
