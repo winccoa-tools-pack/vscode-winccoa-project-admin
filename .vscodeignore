@@ -16,3 +16,4 @@ USAGE_EXAMPLE.ts
 node_modules/**
 webpack.config.js
 !resources/**/*.gif
+!images/**/*.gif
