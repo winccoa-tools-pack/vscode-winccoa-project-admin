@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent } from '@winccoa-tools-pack/core-utils';
-import { ProjEnvPmonStatus } from '@winccoa-tools-pack/core-utils';
+import { PmonComponent } from '@winccoa-tools-pack/npm-winccoa-core';
+import { ProjEnvPmonStatus } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from '../types';
+import { ExtensionOutputChannel } from '../extensionOutput';
 
 export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<SystemItem | undefined | null | void> = new vscode.EventEmitter<SystemItem | undefined | null | void>();
@@ -31,6 +32,11 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         if (!element) {
             // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
+            
+            // Set version if we have a current project
+            if (currentProject) {
+                this.pmon.setVersion(currentProject.version);
+            }
             
             // If no projects loaded yet, show loading state
             if (!currentProject && this.projectManager.getRunningProjects().length === 0) {
@@ -171,14 +177,21 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
+            // Set WinCC OA version for pmon component
+            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${project.version}`);
+            this.pmon.setVersion(project.version);
+            
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
             
             // Step 1: Check if PMON is running
+            ExtensionOutputChannel.debug('SystemTreeProvider', `Checking PMON status for project: ${project.id}`);
             const pmonStatus = await this.pmon.getStatus(project.id);
+            ExtensionOutputChannel.debug('SystemTreeProvider', `PMON status: ${pmonStatus}`);
             
             if (pmonStatus !== ProjEnvPmonStatus.Running) {
                 // Step 2: PMON not running - start it first
                 vscode.window.showInformationMessage(`⟳ Starting PMON for ${project.name}...`);
+                ExtensionOutputChannel.info('SystemTreeProvider', `Starting PMON for project: ${project.id}`);
                 const pmonResult = await this.pmon.startPmonOnly(project.id);
                 
                 if (pmonResult !== 0) {
@@ -191,6 +204,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
             
             // Step 3: Now start all managers
+            ExtensionOutputChannel.info('SystemTreeProvider', `Starting all managers for project: ${project.id}`);
             const result = await this.pmon.startProject(project.id, true);
             
             if (result === 0) {
@@ -219,9 +233,14 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${project.version}`);
+                this.pmon.setVersion(project.version);
+                
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
                 
                 // Step 1: Stop all managers first
+                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping all managers for project: ${project.id}`);
                 const stopResult = await this.pmon.stopProject(project.id);
                 
                 if (stopResult !== 0) {
@@ -234,6 +253,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 
                 // Step 2: Now stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${project.name}...`);
+                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${project.id}`);
                 const pmonResult = await this.pmon.stopProjectAndPmon(project.id);
                 
                 if (pmonResult === 0) {
@@ -258,14 +278,21 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
+            // Set WinCC OA version for pmon component
+            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
+            this.pmon.setVersion(currentProject.version);
+            
             vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
             
             // Step 1: Check if PMON is running
+            ExtensionOutputChannel.debug('SystemTreeProvider', `Checking PMON status for project: ${currentProject.id}`);
             const pmonStatus = await this.pmon.getStatus(currentProject.id);
+            ExtensionOutputChannel.debug('SystemTreeProvider', `PMON status: ${pmonStatus}`);
             
             if (pmonStatus !== ProjEnvPmonStatus.Running) {
                 // Step 2: PMON not running - start it first
                 vscode.window.showInformationMessage(`⟳ Starting PMON for ${currentProject.name}...`);
+                ExtensionOutputChannel.info('SystemTreeProvider', `Starting PMON for project: ${currentProject.id}`);
                 const pmonResult = await this.pmon.startPmonOnly(currentProject.id);
                 
                 if (pmonResult !== 0) {
@@ -278,6 +305,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
             
             // Step 3: Start all managers
+            ExtensionOutputChannel.info('SystemTreeProvider', `Starting all managers for project: ${currentProject.id}`);
             const result = await this.pmon.startProject(currentProject.id, true);
             
             if (result === 0) {
@@ -309,9 +337,14 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
+                this.pmon.setVersion(currentProject.version);
+                
                 vscode.window.showInformationMessage(`⏹ Stopping system for ${currentProject.name}...`);
                 
                 // Step 1: Stop all managers first
+                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping all managers for project: ${currentProject.id}`);
                 const stopResult = await this.pmon.stopProject(currentProject.id);
                 
                 if (stopResult !== 0) {
@@ -324,6 +357,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 
                 // Step 2: Stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${currentProject.name}...`);
+                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${currentProject.id}`);
                 const pmonResult = await this.pmon.stopProjectAndPmon(currentProject.id);
                 
                 if (pmonResult === 0) {
@@ -459,6 +493,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                this.pmon.setVersion(currentProject.version);
+                
                 vscode.window.showInformationMessage(`⟳ Restarting PMON for ${currentProject.name}...`);
                 
                 // Stop PMON first

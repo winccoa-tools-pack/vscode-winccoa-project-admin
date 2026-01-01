@@ -1,5 +1,5 @@
-import type { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
-import { getWinCCOAInstallationPathByVersion } from '@winccoa-tools-pack/core-utils';
+import type { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
+import { getWinCCOAInstallationPathByVersion } from '@winccoa-tools-pack/npm-winccoa-core';
 
 /**
  * Simplified project info for extension API

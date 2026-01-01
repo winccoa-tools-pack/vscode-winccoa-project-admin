@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-01-01
+
+### Changed
+- **Extension Rename**: Renamed from `winccoa-control` to `winccoa-project-admin`
+- **Extension ID**: Now `RichardJanisch.winccoa-project-admin` (was `RichardJanisch.winccoa-control`)
+- **Repository URL**: Updated to reflect new name
+
+**BREAKING**: Other extensions must update their dependencies from `RichardJanisch.winccoa-control` to `RichardJanisch.winccoa-project-admin`
+
+## [1.0.3] - 2026-01-01
+
+### Changed
+- **Core Library**: Updated to @winccoa-tools-pack/npm-winccoa-core v0.1.3 with multi-version support
+- **Dependencies**: Switched to local file dependency for development workflow
+
+### Fixed
+- **Multi-Version Support**: Manager operations now use correct WinCC OA version when multiple versions installed
+- **Type Exports**: Fixed module resolution errors with core library types
+
 ## [1.0.2] - 2025-12-31
 
 ### Added

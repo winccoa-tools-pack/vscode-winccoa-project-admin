@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { getRunnableProjects } from '@winccoa-tools-pack/core-utils';
-import type { ProjEnvProject } from '@winccoa-tools-pack/core-utils';
+import { getRunnableProjects } from '@winccoa-tools-pack/npm-winccoa-core';
+import type { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ProjectInfo, toProjectInfo } from './types';
 import { ExtensionOutputChannel } from './extensionOutput';
 
