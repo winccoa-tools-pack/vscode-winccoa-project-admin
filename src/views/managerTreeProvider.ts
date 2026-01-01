@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/core-utils';
+import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
 interface ManagerDisplayData {
@@ -58,6 +58,9 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
 
         try {
             this.currentProjectId = currentProject.id;
+
+            // Set WinCC OA version for pmon component
+            this.pmon.setVersion(currentProject.version);
 
             // Get project status with manager info
             const projectStatus = await this.pmon.getProjectStatus(currentProject.id);

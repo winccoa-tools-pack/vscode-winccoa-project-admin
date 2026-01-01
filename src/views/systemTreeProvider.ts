@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent } from '@winccoa-tools-pack/core-utils';
-import { ProjEnvPmonStatus } from '@winccoa-tools-pack/core-utils';
+import { PmonComponent } from '@winccoa-tools-pack/npm-winccoa-core';
+import { ProjEnvPmonStatus } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from '../types';
 
 export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
@@ -31,6 +31,11 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         if (!element) {
             // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
+            
+            // Set version if we have a current project
+            if (currentProject) {
+                this.pmon.setVersion(currentProject.version);
+            }
             
             // If no projects loaded yet, show loading state
             if (!currentProject && this.projectManager.getRunningProjects().length === 0) {
@@ -171,6 +176,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
+            // Set WinCC OA version for pmon component
+            this.pmon.setVersion(project.version);
+            
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
             
             // Step 1: Check if PMON is running
@@ -219,6 +227,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                this.pmon.setVersion(project.version);
+                
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
                 
                 // Step 1: Stop all managers first
@@ -258,6 +269,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
+            // Set WinCC OA version for pmon component
+            this.pmon.setVersion(currentProject.version);
+            
             vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
             
             // Step 1: Check if PMON is running
@@ -309,6 +323,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                this.pmon.setVersion(currentProject.version);
+                
                 vscode.window.showInformationMessage(`⏹ Stopping system for ${currentProject.name}...`);
                 
                 // Step 1: Stop all managers first
@@ -459,6 +476,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
+                // Set WinCC OA version for pmon component
+                this.pmon.setVersion(currentProject.version);
+                
                 vscode.window.showInformationMessage(`⟳ Restarting PMON for ${currentProject.name}...`);
                 
                 // Stop PMON first

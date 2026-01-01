@@ -1,18 +1,18 @@
 {
-  "name": "winccoa-control",
-  "displayName": "WinCC OA Control",
+  "name": "winccoa-project-admin",
+  "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-control"
+    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.107.1"
   },
   "categories": [
     "Other",
@@ -36,14 +36,14 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "winccoa-control",
-          "title": "WinCC OA Control",
+          "id": "winccoa-project-admin",
+          "title": "WinCC OA Project Admin",
           "icon": "resources/winccoa-icon.svg"
         }
       ]
     },
     "views": {
-      "winccoa-control": [
+      "winccoa-project-admin": [
         {
           "id": "winccoa.systemView",
           "name": "System Status"
@@ -319,6 +319,6 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@winccoa-tools-pack/core-utils": "file:../npm-shared-library-core"
+    "@winccoa-tools-pack/npm-winccoa-core": "file:../npm-winccoa-core"
   }
 }
