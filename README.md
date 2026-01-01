@@ -21,7 +21,7 @@
 
 ## 🎬 See It In Action
 
-![WinCC OA Project Admin Demo](images/Animation.gif)
+![WinCC OA Project Admin Demo](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/blob/develop/images/Animation.gif?raw=true)
 
 ---
 
