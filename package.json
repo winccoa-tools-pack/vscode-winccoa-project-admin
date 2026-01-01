@@ -257,7 +257,7 @@
     }
   },
   "configuration": {
-    "title": "WinCC OA Core",
+    "title": "WinCC OA Project Admin",
     "properties": {
       "winccoaCore.logLevel": {
         "type": "string",
