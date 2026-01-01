@@ -21,7 +21,7 @@
 
 ## 🎬 See It In Action
 
-![WinCC OA Project Admin Demo](resources/Animation.gif)
+![WinCC OA Project Admin Demo](./resources/Animation.gif)
 
 ---
 

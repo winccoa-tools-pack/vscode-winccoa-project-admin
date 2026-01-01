@@ -254,29 +254,29 @@
           "group": "2_open@1"
         }
       ]
-    }
-  },
-  "configuration": {
-    "title": "WinCC OA Project Admin",
-    "properties": {
-      "winccoaCore.logLevel": {
-        "type": "string",
-        "enum": [
-          "ERROR",
-          "WARN",
-          "INFO",
-          "DEBUG",
-          "TRACE"
-        ],
-        "default": "INFO",
-        "description": "Logging level for extension output",
-        "enumDescriptions": [
-          "Only critical errors",
-          "Errors and warnings",
-          "General information, errors and warnings (recommended)",
-          "Detailed debugging information",
-          "Very verbose trace information (for troubleshooting)"
-        ]
+    },
+    "configuration": {
+      "title": "WinCC OA Project Admin",
+      "properties": {
+        "winccoaCore.logLevel": {
+          "type": "string",
+          "enum": [
+            "ERROR",
+            "WARN",
+            "INFO",
+            "DEBUG",
+            "TRACE"
+          ],
+          "default": "INFO",
+          "description": "Logging level for extension output",
+          "enumDescriptions": [
+            "Only critical errors",
+            "Errors and warnings",
+            "General information, errors and warnings (recommended)",
+            "Detailed debugging information",
+            "Very verbose trace information (for troubleshooting)"
+          ]
+        }
       }
     }
   },
