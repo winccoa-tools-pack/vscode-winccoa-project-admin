@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -15,7 +15,7 @@
 ---
 
 > **Disclaimer:**
-> This is the first stable release (v1.0.5) of the WinCC OA Project Admin extension. Not all features are fully implemented and some functions may not work perfectly yet. Please report any issues you encounter.
+> This is the first stable release (v1.0.6) of the WinCC OA Project Admin extension. Not all features are fully implemented and some functions may not work perfectly yet. Please report any issues you encounter.
 
 ---
 

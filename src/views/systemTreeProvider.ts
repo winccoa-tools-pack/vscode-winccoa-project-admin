@@ -608,14 +608,7 @@ class SystemItem extends vscode.TreeItem {
             this.contextValue = 'subproject';
             this.tooltip = tooltipText;
             this.description = description;
-            // FIX: Use subprojectPath instead of projectPath for correct folder navigation
-            if (subprojectPath) {
-                this.command = {
-                    command: 'revealFileInOS',
-                    title: 'Open in Explorer',
-                    arguments: [vscode.Uri.file(subprojectPath)]
-                };
-            }
+            // Click does nothing - use context menu instead
         } else if (itemType === 'project') {
             if (isRunning) {
                 this.iconPath = new vscode.ThemeIcon('server-process', new vscode.ThemeColor('testing.iconPassed'));
@@ -625,13 +618,7 @@ class SystemItem extends vscode.TreeItem {
             this.contextValue = 'project';
             this.tooltip = tooltipText;
             this.description = description;
-            if (projectPath) {
-                this.command = {
-                    command: 'revealFileInOS',
-                    title: 'Open in Explorer',
-                    arguments: [vscode.Uri.file(projectPath)]
-                };
-            }
+            // Click does nothing - use context menu instead
         } else if (itemType === 'info') {
             this.iconPath = new vscode.ThemeIcon('symbol-property');
             this.contextValue = 'infoItem';
