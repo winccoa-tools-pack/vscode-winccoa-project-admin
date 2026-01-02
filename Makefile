@@ -1,12 +1,12 @@
 .PHONY: help install build clean watch package test test-local
 
 # Variables
-EXTENSION_NAME := winccoa-core
+EXTENSION_NAME := winccoa-project-admin
 VERSION := $(shell node -p "require('./package.json').version")
 BIN_DIR := bin
 DIST_DIR := dist
-EXT_PUBLISHER := winccoa-tools-pack
-EXT_NAME := winccoa-core
+EXT_PUBLISHER := RichardJanisch
+EXT_NAME := winccoa-project-admin
 EXT_ID := $(EXT_PUBLISHER).$(EXT_NAME)
 NPM := npm
 VSCE := npx vsce
@@ -84,7 +84,11 @@ watch:
 # Package extension
 package: build
 	@echo "Packaging extension..."
+ifeq ($(DETECTED_OS),Windows)
+	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+else
 	@$(MKDIR) $(BIN_DIR)
+endif
 	$(VSCE) package --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
 	@echo "Package created: $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
 

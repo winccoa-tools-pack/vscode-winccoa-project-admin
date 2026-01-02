@@ -121,16 +121,24 @@ export class ProjectManager {
                 const stillRunning = this._runningProjects.find(
                     p => p.id === this._currentProject!.id
                 );
+                const wasRunning = this._currentProject.isRunning;
+                
                 if (stillRunning) {
-                    // Update to running version
+                    // Update to running version - only fire if status changed
                     this._currentProject = stillRunning;
                     this.saveState();
-                    this._onDidChangeProject.fire(this._currentProject);
+                    if (!wasRunning) {
+                        this._onDidChangeProject.fire(this._currentProject);
+                        ExtensionOutputChannel.debug('ProjectManager', `Project ${this._currentProject.name} status changed: stopped → running`);
+                    }
                 } else {
-                    // Project stopped - update isRunning flag but keep it selected
+                    // Project stopped - only fire if status changed
                     this._currentProject.isRunning = false;
                     this.saveState();
-                    this._onDidChangeProject.fire(this._currentProject);
+                    if (wasRunning) {
+                        this._onDidChangeProject.fire(this._currentProject);
+                        ExtensionOutputChannel.debug('ProjectManager', `Project ${this._currentProject.name} status changed: running → stopped`);
+                    }
                 }
             }
 
