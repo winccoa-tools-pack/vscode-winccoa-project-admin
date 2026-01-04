@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -14,8 +14,8 @@
 
 ---
 
-> **Disclaimer:**
-> This is the first stable release (v1.0.6) of the WinCC OA Project Admin extension. Not all features are fully implemented and some functions may not work perfectly yet. Please report any issues you encounter.
+> **Disclaimer:** This is one of the first releases of the WinCC OA Project Admin extension. Some edge cases may not be fully covered yet. Please check the [Known Issues](#-known-issues) section for workarounds if you encounter problems.  
+> **Tip:** If the extension doesn't work as expected, try `Ctrl+Shift+P` → `Reload Window` to refresh.
 
 ---
 
@@ -101,6 +101,31 @@ Access via `Ctrl+Shift+P`:
 | `WinCC OA: Refresh Projects` | Re-scan workspace for projects |
 | `WinCC OA: Start Project (PMON)` | Start WinCC OA project |
 | `WinCC OA: Stop Project (PMON)` | Stop WinCC OA project |
+
+---
+
+## 🐛 Known Issues
+
+### Performance
+
+**Windows Performance:**  
+The extension may run slower on Windows with longer loading times. Linux performs significantly better.
+
+**Large Projects:**  
+Very large projects (many subprojects, managers) may experience slower detection and startup times.
+
+### General
+
+**Extension Not Responding:**  
+If the extension doesn't work as expected (project not detected, PMON commands fail), reload VS Code:  
+1. Press `Ctrl+Shift+P`
+2. Type and select `Reload Window`
+3. This refreshes the extension
+
+### Current Limitations
+
+- **Add Manager**: Feature currently disabled (not yet implemented)
+- **Version Detection**: Legacy projects without version in registry may show warnings
 
 ---
 

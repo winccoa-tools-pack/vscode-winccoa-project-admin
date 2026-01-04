@@ -59,8 +59,22 @@ export class ProjectManager {
             const projects: ProjectInfo[] = [];
             
             for (const project of runnable) {
-                const isRunning = await project.isPmonRunning();
-                projects.push(toProjectInfo(project, isRunning));
+                try {
+                    const version = project.getVersion();
+                    if (!version) {
+                        ExtensionOutputChannel.warn('ProjectManager', `Project ${project.getId()} has no version - skipping PMON status check`);
+                        projects.push(toProjectInfo(project, false));
+                        continue;
+                    }
+                    
+                    const isRunning = await project.isPmonRunning();
+                    projects.push(toProjectInfo(project, isRunning));
+                } catch (projectError) {
+                    const error = projectError instanceof Error ? projectError : new Error(String(projectError));
+                    ExtensionOutputChannel.warn('ProjectManager', `Failed to check PMON status for project ${project.getId()}: ${error.message}`);
+                    // Include project anyway, but mark as not running
+                    projects.push(toProjectInfo(project, false));
+                }
             }
             
             return projects;

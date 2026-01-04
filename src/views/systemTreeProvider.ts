@@ -254,7 +254,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 // Step 2: Now stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${project.name}...`);
                 ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${project.id}`);
-                const pmonResult = await this.pmon.stopProjectAndPmon(project.id);
+                const pmonResult = await this.pmon.stopProjectAndPmon(project.id, undefined);
                 
                 if (pmonResult === 0) {
                     vscode.window.showInformationMessage(`✓ ${project.name} stopped`);
@@ -358,7 +358,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 // Step 2: Stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${currentProject.name}...`);
                 ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${currentProject.id}`);
-                const pmonResult = await this.pmon.stopProjectAndPmon(currentProject.id);
+                const pmonResult = await this.pmon.stopProjectAndPmon(currentProject.id, undefined);
                 
                 if (pmonResult === 0) {
                     vscode.window.showInformationMessage(`✓ System stopped for ${currentProject.name}`);
@@ -499,7 +499,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showInformationMessage(`⟳ Restarting PMON for ${currentProject.name}...`);
                 
                 // Stop PMON first
-                await this.pmon.stopProjectAndPmon(currentProject.id);
+                await this.pmon.stopProjectAndPmon(currentProject.id, undefined);
                 
                 // Wait a moment
                 await new Promise(resolve => setTimeout(resolve, 1000));
