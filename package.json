@@ -12,7 +12,7 @@
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin"
   },
   "engines": {
-    "vscode": "^1.107.1"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other",
