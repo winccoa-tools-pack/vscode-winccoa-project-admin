@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-01-04
+
+### Fixed
+- **Version Handling**: Projects without version in registry now gracefully handled
+  - Added error handling for missing project versions before PMON status check
+  - Prevents "WinCC OA version must be specified" errors for legacy projects
+  - Projects without version are shown but PMON status check is skipped
+- **PMON Timeout**: Added explicit timeout parameter to all `stopProjectAndPmon()` calls
+  - Prevents TypeScript signature mismatch errors
+
+### Removed
+- **Add Manager Button**: Removed non-functional Add Manager feature from Manager View
+  - Button and command removed until proper implementation available
+  - Marked as TODO in copilot-instructions.md
+
 ## [1.0.6] - 2026-01-02
 
 ### Changed

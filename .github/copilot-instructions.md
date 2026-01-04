@@ -53,7 +53,7 @@ Es wird nach jeder Änderung kompiliert (`npm run compile`).
 
 Der LogViewer zeigt aktuell nicht immer die neueste Änderung an, es gibt ein Parsing-Problem.
 
-~~Im TestExplorer sollen Tests auch einzeln erkennbar sein~~ ✅ ERLEDIGT (v0.2.1)
+~~Im TestExplorer sollen Tests auch einzelerkennbar sein~~ ✅ ERLEDIGT (v0.2.1)
 
 ~~Der File-Watcher muss so angepasst werden, dass nur die geänderten Dateien neu geparst werden~~ ✅ ERLEDIGT (v0.2.2)
 
@@ -61,9 +61,39 @@ Für die CTL-Language-Extension soll das Go-to-Feature für Variablen integriert
 
 Ein Bug im File-Watcher-Menü sorgt dafür, dass aktuell alle Einträge verschwinden, wenn man versucht, Dateien auszuwählen, die ignoriert werden sollen.
 
+### Project Admin TODOs
+- **Add Manager Feature**: Aktuell nicht funktionsfähig - Command `winccoa.manager.add` wurde aus package.json entfernt (2026-01-04)
+  - Button im Manager View wurde deaktiviert
+  - Feature muss implementiert werden bevor es wieder aktiviert wird
+  - Implementierung muss Manager-Konfiguration in config-Datei schreiben können
+
 ### Known Issues
 **WinCC OA Limitation**: Beim Ausführen einzelner Testfälle generiert WinCC OA aktuell keinen vollständigen Test-Report. Die Infrastruktur in den Extensions ist vorbereitet, aber die volle Funktionalität hängt von zukünftigen WinCC OA Verbesserungen ab.
 
-## Versionsstände (Stand: 2025-12-25)
-- Script Actions: v0.3.1 - executeScriptWithArgs mit plain arguments
-- Test Explorer: v0.2.2 - Single test execution + Performance-Optimierungen
+## Makefile Automation
+
+### Version Badge Auto-Update (seit 2026-01-04)
+Alle Extensions haben automatische Version Badge Updates:
+
+```makefile
+package: build
+	@echo "Packaging production release..."
+	@-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
+	@echo "Updating version badge in README.md..."
+	@node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\\[Version\\]\\(https:\\/\\/img\\.shields\\.io\\/badge\\/version-[^)]*\\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
+	@$(VSCE) package -o $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+	@echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
+```
+
+**Best Practice:**
+- Version nur in package.json pflegen
+- README.md Badge wird automatisch bei `make package` aktualisiert
+- Cross-platform (Windows + Linux) via Node.js
+
+## Versionsstände (Stand: 2026-01-04)
+- **Project Admin**: Latest - Version badge automation
+- **CTL Language**: v1.2.0 - Scope-aware rename + keywords + version badge automation
+- **LogViewer**: v1.0.3 - Backend file watching + version badge automation
+- **Script Actions**: v0.4.0 - Default commands + version badge automation
+- **Test Explorer**: v0.2.4 - Cancel/Stop + version badge automation
+- **Core Extension**: v0.2.3 - PMON start/stop sequence fix
