@@ -21,14 +21,19 @@ export interface ProjectInfo {
     configPath: string;
     /** Is project currently running */
     isRunning: boolean;
+    /** Error message if project failed to load/check status */
+    error?: string;
+    /** Flag indicating project has an error */
+    hasError?: boolean;
 }
 
 /**
  * Convert ProjEnvProject to simplified ProjectInfo
  * @param project - The project to convert
  * @param isRunning - Override running status (use when already checked via isPmonRunning)
+ * @param error - Optional error message if project failed to load
  */
-export function toProjectInfo(project: ProjEnvProject, isRunning = true): ProjectInfo {
+export function toProjectInfo(project: ProjEnvProject, isRunning = true, error?: string): ProjectInfo {
     const version = project.getVersion() || 'unknown';
     const oaInstallPath = version !== 'unknown' 
         ? getWinCCOAInstallationPathByVersion(version) || ''
@@ -49,7 +54,9 @@ export function toProjectInfo(project: ProjEnvProject, isRunning = true): Projec
         version: version,
         oaInstallPath: oaInstallPath,
         configPath: project.getConfigPath(),
-        isRunning: isRunning  // Use passed parameter, not broken isRunning()
+        isRunning: isRunning,  // Use passed parameter, not broken isRunning()
+        error: error,
+        hasError: !!error
     };
 }
 

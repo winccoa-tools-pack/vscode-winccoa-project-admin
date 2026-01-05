@@ -111,6 +111,8 @@ export class ProjectManager {
         return true;
     }
 
+    private _failedProjects: Set<string> = new Set(); // Cache for projects with errors
+
     /**
      * Refresh list of running projects from shared library
      */
@@ -120,15 +122,49 @@ export class ProjectManager {
             // Use getRunnableProjects() + isPmonRunning() instead
             const runnable: ProjEnvProject[] = await getRunnableProjects();
             const running: ProjEnvProject[] = [];
+            const stopped: ProjEnvProject[] = [];
+            const failed: ProjectInfo[] = [];
             
             for (const project of runnable) {
-                if (await project.isPmonRunning()) {
-                    running.push(project);
+                const projectId = project.getId();
+                
+                // Skip projects that previously failed (cached errors)
+                if (this._failedProjects.has(projectId)) {
+                    ExtensionOutputChannel.debug('ProjectManager', 
+                        `Skipping cached failed project: ${projectId}`);
+                    // Get error from previous failed list
+                    const cachedError = this._runningProjects.find(p => p.id === projectId);
+                    if (cachedError && cachedError.hasError) {
+                        failed.push(cachedError);
+                    }
+                    continue;
+                }
+                
+                try {
+                    if (await project.isPmonRunning()) {
+                        running.push(project);
+                    } else {
+                        stopped.push(project);
+                    }
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    ExtensionOutputChannel.warn('ProjectManager', 
+                        `Failed to check PMON status for ${projectId}: ${errorMsg}`);
+                    
+                    // Cache this project as failed
+                    this._failedProjects.add(projectId);
+                    
+                    // Add project with error status (will be visible but marked as broken)
+                    failed.push(toProjectInfo(project, false, errorMsg));
                 }
             }
             
-            // All projects in 'running' are actually running (we just checked)
-            this._runningProjects = running.map(p => toProjectInfo(p, true));
+            // Store all projects (running, stopped, and failed)
+            this._runningProjects = [
+                ...running.map(p => toProjectInfo(p, true)),
+                ...stopped.map(p => toProjectInfo(p, false)),
+                ...failed
+            ];
 
             // Update current project's running status (but keep it selected even if stopped)
             if (this._currentProject) {
