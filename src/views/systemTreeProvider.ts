@@ -179,7 +179,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     case 'stopped':
                         description = '○ Stopped';
                         tooltip = `Project: ${project.name}\nStatus: Stopped`;
-                        iconPath = new vscode.ThemeIcon('circle-outline', new vscode.ThemeColor('descriptionForeground'));
+                        iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
                         break;
                     case 'transitioning':
                         description = '⏸ Transitioning...';
