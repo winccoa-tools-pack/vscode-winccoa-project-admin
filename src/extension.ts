@@ -98,8 +98,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register view refresh commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.systemView.refresh', () => {
-                systemTreeProvider.refresh();
+            vscode.commands.registerCommand('winccoa.systemView.refresh', async () => {
+                ExtensionOutputChannel.info('Extension', '[REFRESH BUTTON] Triggered force refresh for all projects');
+                // Force full refresh of all projects
+                await projectManager.forceRefreshAll();
+                // TreeView will auto-update via onDidChangeProjects event
             })
         );
         

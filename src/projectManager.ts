@@ -140,6 +140,7 @@ export class ProjectManager {
      */
     private async loadProjectStatusProgressive(): Promise<void> {
         const runnable: ProjEnvProject[] = await getRunnableProjects();
+        ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] Checking status for ${runnable.length} project(s)`);
         
         for (const project of runnable) {
             const projectId = project.getId();
@@ -148,18 +149,20 @@ export class ProjectManager {
             if (this._failedProjects.has(projectId)) {
                 const cachedError = this._runningProjects.find(p => p.id === projectId);
                 if (cachedError) {
-                    ExtensionOutputChannel.debug('ProjectManager', `Using cached error for ${projectId}`);
+                    ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] Skipping ${projectId} (cached error)`);
                 }
                 continue;
             }
             
+            ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] Polling PMON for project: ${projectId}`);
             try {
                 const isRunning = await project.isPmonRunning();
+                const statusText = isRunning ? 'running' : 'stopped';
+                ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] ${projectId} → ${statusText.toUpperCase()}`);
                 this.updateProjectStatus(projectId, isRunning ? 'running' : 'stopped');
-                ExtensionOutputChannel.debug('ProjectManager', `${projectId}: ${isRunning ? 'running' : 'stopped'}`);
             } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : String(error);
-                ExtensionOutputChannel.warn('ProjectManager', `Failed to check PMON status for ${projectId}: ${errorMsg}`);
+                ExtensionOutputChannel.warn('ProjectManager', `[PROGRESSIVE LOAD] ${projectId} → ERROR: ${errorMsg}`);
                 
                 // Cache this project as failed
                 this._failedProjects.add(projectId);
@@ -176,9 +179,13 @@ export class ProjectManager {
      */
     private updateProjectStatus(projectId: string, status: ProjectStatus, error?: string): void {
         const index = this._runningProjects.findIndex(p => p.id === projectId);
-        if (index === -1) return;
+        if (index === -1) {
+            ExtensionOutputChannel.warn('ProjectManager', `[UPDATE] Project ${projectId} not found in cache`);
+            return;
+        }
         
         const project = this._runningProjects[index];
+        ExtensionOutputChannel.debug('ProjectManager', `[UPDATE] ${projectId} → ${status.toUpperCase()}${error ? ` (${error})` : ''}`);
         this._runningProjects[index] = {
             ...project,
             status: status,
@@ -197,35 +204,51 @@ export class ProjectManager {
     }
 
     /**
-     * Phase 3: Smart polling - only running/transitioning projects
+     * Phase 3: Smart polling - only running/transitioning projects (stopped are ignored)
      */
     private async refreshSmartPolling(): Promise<void> {
         try {
-            for (const project of this._runningProjects) {
-                // Skip stopped, error, and unknown projects (they don't need polling)
-                if (project.status !== 'running' && project.status !== 'transitioning') {
-                    continue;
-                }
-                
+            // Only poll running and transitioning projects
+            const projectsToCheck = this._runningProjects.filter(p => 
+                p.status === 'running' || p.status === 'transitioning'
+            );
+            const stoppedCount = this._runningProjects.filter(p => p.status === 'stopped').length;
+            const errorCount = this._runningProjects.filter(p => p.status === 'error').length;
+            
+            ExtensionOutputChannel.info('ProjectManager', `[SMART POLL] Checking ${projectsToCheck.length} active project(s) (${stoppedCount} stopped, ${errorCount} error - skipped)`);
+            
+            if (projectsToCheck.length === 0) {
+                ExtensionOutputChannel.debug('ProjectManager', '[SMART POLL] No active projects to check');
+                return;
+            }
+            
+            for (const project of projectsToCheck) {
                 const projectId = project.id;
+                
+                ExtensionOutputChannel.debug('ProjectManager', `[SMART POLL] Polling project: ${projectId} (current: ${project.status})`);
                 
                 try {
                     // Re-fetch project instance (we only have ProjectInfo, not ProjEnvProject)
                     const runnable = await getRunnableProjects();
                     const projEnv = runnable.find(p => p.getId() === projectId);
-                    if (!projEnv) continue;
+                    if (!projEnv) {
+                        ExtensionOutputChannel.warn('ProjectManager', `[SMART POLL] ${projectId} not found in runnable projects`);
+                        continue;
+                    }
                     
                     const isRunning = await projEnv.isPmonRunning();
                     const newStatus: ProjectStatus = isRunning ? 'running' : 'stopped';
                     
                     // Only update if status changed
                     if (project.status !== newStatus) {
+                        ExtensionOutputChannel.info('ProjectManager', `[SMART POLL] ${projectId} status changed: ${project.status.toUpperCase()} → ${newStatus.toUpperCase()}`);
                         this.updateProjectStatus(projectId, newStatus);
-                        ExtensionOutputChannel.debug('ProjectManager', `${projectId} status changed: ${project.status} → ${newStatus}`);
+                    } else {
+                        ExtensionOutputChannel.debug('ProjectManager', `[SMART POLL] ${projectId} status unchanged: ${newStatus}`);
                     }
                 } catch (error) {
                     const errorMsg = error instanceof Error ? error.message : String(error);
-                    ExtensionOutputChannel.warn('ProjectManager', `Smart polling failed for ${projectId}: ${errorMsg}`);
+                    ExtensionOutputChannel.warn('ProjectManager', `[SMART POLL] ${projectId} → ERROR: ${errorMsg}`);
                     
                     // Mark as error if previously running
                     if (project.status === 'running') {
@@ -240,17 +263,26 @@ export class ProjectManager {
     }
 
     /**
+     * Force full refresh of ALL projects (for manual refresh button)
+     */
+    async forceRefreshAll(): Promise<void> {
+        ExtensionOutputChannel.info('ProjectManager', 'Force refreshing all projects...');
+        
+        // Clear error cache to retry failed projects
+        this._failedProjects.clear();
+        
+        // Re-run progressive loading
+        await this.loadProjectsInitial();
+        await this.loadProjectStatusProgressive();
+    }
+
+    /**
      * Refresh list of running projects from shared library (LEGACY - for manual refresh button)
      * TODO: Remove after TreeView uses onDidChangeProjects event
      */
     async refreshProjects(): Promise<void> {
-        if (this._isInitialLoad) {
-            // During initial load, use progressive loading
-            await this.loadProjectStatusProgressive();
-        } else {
-            // After initial load, use smart polling
-            await this.refreshSmartPolling();
-        }
+        // Always do full refresh when user clicks button
+        await this.forceRefreshAll();
     }
 
     /**
