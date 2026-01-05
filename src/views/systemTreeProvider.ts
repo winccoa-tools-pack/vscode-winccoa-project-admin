@@ -153,19 +153,35 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 ];
             }
             
-            return allProjects.map(project => 
-                new SystemItem(
+            return allProjects.map(project => {
+                // Determine icon and description based on error status
+                let description: string;
+                let tooltip: string;
+                let iconPath: vscode.ThemeIcon | undefined;
+                
+                if (project.hasError) {
+                    description = '⚠ Error';
+                    tooltip = `Project: ${project.name}\nError: ${project.error}`;
+                    iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
+                } else {
+                    description = project.isRunning ? '● Running' : '○ Stopped';
+                    tooltip = `Project: ${project.name}`;
+                    iconPath = undefined;
+                }
+                
+                return new SystemItem(
                     project.name,
                     vscode.TreeItemCollapsibleState.None,
                     'project',
-                    project.isRunning ? '● Running' : '○ Stopped',
-                    `Project: ${project.name}`,
+                    description,
+                    tooltip,
                     project.isRunning,
                     project.projectDir,
                     project,
-                    undefined // subprojectPath not needed for projects
-                )
-            );
+                    undefined, // subprojectPath not needed for projects
+                    iconPath
+                );
+            });
         }
         return [];
     }
@@ -577,7 +593,8 @@ class SystemItem extends vscode.TreeItem {
         public readonly isRunning?: boolean,
         public readonly projectPath?: string,
         public readonly projectData?: any,
-        public readonly subprojectPath?: string
+        public readonly subprojectPath?: string,
+        public readonly customIconPath?: vscode.ThemeIcon
     ) {
         super(label, collapsibleState);
         
@@ -610,7 +627,10 @@ class SystemItem extends vscode.TreeItem {
             this.description = description;
             // Click does nothing - use context menu instead
         } else if (itemType === 'project') {
-            if (isRunning) {
+            // Use custom icon if provided (e.g., error icon)
+            if (customIconPath) {
+                this.iconPath = customIconPath;
+            } else if (isRunning) {
                 this.iconPath = new vscode.ThemeIcon('server-process', new vscode.ThemeColor('testing.iconPassed'));
             } else {
                 this.iconPath = new vscode.ThemeIcon('server', new vscode.ThemeColor('testing.iconFailed'));

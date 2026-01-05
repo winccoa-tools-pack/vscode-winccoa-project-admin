@@ -120,15 +120,29 @@ export class ProjectManager {
             // Use getRunnableProjects() + isPmonRunning() instead
             const runnable: ProjEnvProject[] = await getRunnableProjects();
             const running: ProjEnvProject[] = [];
+            const failed: ProjectInfo[] = [];
             
             for (const project of runnable) {
-                if (await project.isPmonRunning()) {
-                    running.push(project);
+                try {
+                    if (await project.isPmonRunning()) {
+                        running.push(project);
+                    }
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    ExtensionOutputChannel.warn('ProjectManager', 
+                        `Failed to check PMON status for ${project.getId()}: ${errorMsg}`);
+                    
+                    // Add project with error status (will be visible but marked as broken)
+                    failed.push(toProjectInfo(project, false, errorMsg));
                 }
             }
             
             // All projects in 'running' are actually running (we just checked)
-            this._runningProjects = running.map(p => toProjectInfo(p, true));
+            // Include failed projects to show them with error status
+            this._runningProjects = [
+                ...running.map(p => toProjectInfo(p, true)),
+                ...failed
+            ];
 
             // Update current project's running status (but keep it selected even if stopped)
             if (this._currentProject) {
