@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getRunnableProjects } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
-import { ProjectInfo, toProjectInfo } from './types';
+import { ProjectInfo, toProjectInfo, ProjectStatus } from './types';
 import { ExtensionOutputChannel } from './extensionOutput';
 
 /**
@@ -10,30 +10,37 @@ import { ExtensionOutputChannel } from './extensionOutput';
 export class ProjectManager {
     private _currentProject: ProjectInfo | undefined;
     private _runningProjects: ProjectInfo[] = [];
+    private _failedProjects: Set<string> = new Set(); // Cache for projects with errors
     private _onDidChangeProject = new vscode.EventEmitter<ProjectInfo | undefined>();
+    private _onDidChangeProjects = new vscode.EventEmitter<void>(); // NEW: For TreeView refresh
     private _refreshInterval: NodeJS.Timeout | undefined;
+    private _isInitialLoad = true; // Track if this is the first load
 
     public readonly onDidChangeProject = this._onDidChangeProject.event;
+    public readonly onDidChangeProjects = this._onDidChangeProjects.event; // NEW
 
     constructor(private context: vscode.ExtensionContext) {
         // Don't load old state - always start fresh
     }
 
     /**
-     * Initialize - load running projects and start auto-refresh
+     * Initialize - load projects progressively and start smart polling
      */
     async initialize(): Promise<void> {
-        // Wait for initial refresh to complete before continuing
-        await this.refreshProjects();
+        // Phase 1: Show all projects immediately with "Unknown" status
+        await this.loadProjectsInitial();
         
-        // Auto-refresh every 15 seconds to detect project start/stop
+        // Phase 2: Load status sequentially (progressive UX)
+        await this.loadProjectStatusProgressive();
+        
+        // Phase 3: Smart polling - only running/transitioning projects
         this._refreshInterval = setInterval(() => {
-            this.refreshProjects().catch(err => {
+            this.refreshSmartPolling().catch(err => {
                 ExtensionOutputChannel.error('ProjectManager', 'Refresh failed', err instanceof Error ? err : new Error(String(err)));
             });
         }, 15000);
         
-        ExtensionOutputChannel.info('ProjectManager', 'Auto-refresh enabled (every 15 seconds)');
+        ExtensionOutputChannel.info('ProjectManager', 'Progressive loading enabled with smart polling (every 15 seconds)');
     }
 
     /**
@@ -63,17 +70,17 @@ export class ProjectManager {
                     const version = project.getVersion();
                     if (!version) {
                         ExtensionOutputChannel.warn('ProjectManager', `Project ${project.getId()} has no version - skipping PMON status check`);
-                        projects.push(toProjectInfo(project, false));
+                        projects.push(toProjectInfo(project, 'stopped'));
                         continue;
                     }
                     
                     const isRunning = await project.isPmonRunning();
-                    projects.push(toProjectInfo(project, isRunning));
+                    projects.push(toProjectInfo(project, isRunning ? 'running' : 'stopped'));
                 } catch (projectError) {
                     const error = projectError instanceof Error ? projectError : new Error(String(projectError));
                     ExtensionOutputChannel.warn('ProjectManager', `Failed to check PMON status for project ${project.getId()}: ${error.message}`);
-                    // Include project anyway, but mark as not running
-                    projects.push(toProjectInfo(project, false));
+                    // Include project anyway, but mark as error
+                    projects.push(toProjectInfo(project, 'error', error.message));
                 }
             }
             
@@ -106,105 +113,143 @@ export class ProjectManager {
         this.saveState();
         this._onDidChangeProject.fire(project);
         
-        const status = project.isRunning ? 'running' : 'stopped';
+        const status = project.status === 'running' ? 'running' : 'stopped';
         vscode.window.showInformationMessage(`✓ Set active project: ${project.name} (${status})`);
         return true;
     }
 
-    private _failedProjects: Set<string> = new Set(); // Cache for projects with errors
+    /**
+     * Phase 1: Load all projects immediately with "Unknown" status
+     */
+    private async loadProjectsInitial(): Promise<void> {
+        try {
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            
+            // Show all projects immediately with "Unknown" status
+            this._runningProjects = runnable.map(p => toProjectInfo(p, 'unknown'));
+            this._onDidChangeProjects.fire(); // Trigger TreeView refresh
+            
+            ExtensionOutputChannel.info('ProjectManager', `Loaded ${runnable.length} projects with unknown status`);
+        } catch (error) {
+            ExtensionOutputChannel.error('ProjectManager', 'Failed to load projects', error instanceof Error ? error : new Error(String(error)));
+        }
+    }
 
     /**
-     * Refresh list of running projects from shared library
+     * Phase 2: Load project status sequentially (progressive UX)
      */
-    async refreshProjects(): Promise<void> {
-        try {
-            // WORKAROUND: getRunningProjects() is broken (uses sync isRunning() stub)
-            // Use getRunnableProjects() + isPmonRunning() instead
-            const runnable: ProjEnvProject[] = await getRunnableProjects();
-            const running: ProjEnvProject[] = [];
-            const stopped: ProjEnvProject[] = [];
-            const failed: ProjectInfo[] = [];
+    private async loadProjectStatusProgressive(): Promise<void> {
+        const runnable: ProjEnvProject[] = await getRunnableProjects();
+        
+        for (const project of runnable) {
+            const projectId = project.getId();
             
-            for (const project of runnable) {
-                const projectId = project.getId();
+            // Skip projects that previously failed (cached errors)
+            if (this._failedProjects.has(projectId)) {
+                const cachedError = this._runningProjects.find(p => p.id === projectId);
+                if (cachedError) {
+                    ExtensionOutputChannel.debug('ProjectManager', `Using cached error for ${projectId}`);
+                }
+                continue;
+            }
+            
+            try {
+                const isRunning = await project.isPmonRunning();
+                this.updateProjectStatus(projectId, isRunning ? 'running' : 'stopped');
+                ExtensionOutputChannel.debug('ProjectManager', `${projectId}: ${isRunning ? 'running' : 'stopped'}`);
+            } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                ExtensionOutputChannel.warn('ProjectManager', `Failed to check PMON status for ${projectId}: ${errorMsg}`);
                 
-                // Skip projects that previously failed (cached errors)
-                if (this._failedProjects.has(projectId)) {
-                    ExtensionOutputChannel.debug('ProjectManager', 
-                        `Skipping cached failed project: ${projectId}`);
-                    // Get error from previous failed list
-                    const cachedError = this._runningProjects.find(p => p.id === projectId);
-                    if (cachedError && cachedError.hasError) {
-                        failed.push(cachedError);
-                    }
+                // Cache this project as failed
+                this._failedProjects.add(projectId);
+                this.updateProjectStatus(projectId, 'error', errorMsg);
+            }
+        }
+        
+        this._isInitialLoad = false;
+        ExtensionOutputChannel.info('ProjectManager', 'Progressive status loading completed');
+    }
+
+    /**
+     * Update single project status and refresh TreeView
+     */
+    private updateProjectStatus(projectId: string, status: ProjectStatus, error?: string): void {
+        const index = this._runningProjects.findIndex(p => p.id === projectId);
+        if (index === -1) return;
+        
+        const project = this._runningProjects[index];
+        this._runningProjects[index] = {
+            ...project,
+            status: status,
+            isRunning: status === 'running',
+            error: error,
+            hasError: status === 'error'
+        };
+        
+        // Update current project if it's the same
+        if (this._currentProject && this._currentProject.id === projectId) {
+            this._currentProject = this._runningProjects[index];
+            this.saveState();
+        }
+        
+        this._onDidChangeProjects.fire(); // Trigger TreeView refresh
+    }
+
+    /**
+     * Phase 3: Smart polling - only running/transitioning projects
+     */
+    private async refreshSmartPolling(): Promise<void> {
+        try {
+            for (const project of this._runningProjects) {
+                // Skip stopped, error, and unknown projects (they don't need polling)
+                if (project.status !== 'running' && project.status !== 'transitioning') {
                     continue;
                 }
                 
+                const projectId = project.id;
+                
                 try {
-                    if (await project.isPmonRunning()) {
-                        running.push(project);
-                    } else {
-                        stopped.push(project);
+                    // Re-fetch project instance (we only have ProjectInfo, not ProjEnvProject)
+                    const runnable = await getRunnableProjects();
+                    const projEnv = runnable.find(p => p.getId() === projectId);
+                    if (!projEnv) continue;
+                    
+                    const isRunning = await projEnv.isPmonRunning();
+                    const newStatus: ProjectStatus = isRunning ? 'running' : 'stopped';
+                    
+                    // Only update if status changed
+                    if (project.status !== newStatus) {
+                        this.updateProjectStatus(projectId, newStatus);
+                        ExtensionOutputChannel.debug('ProjectManager', `${projectId} status changed: ${project.status} → ${newStatus}`);
                     }
                 } catch (error) {
                     const errorMsg = error instanceof Error ? error.message : String(error);
-                    ExtensionOutputChannel.warn('ProjectManager', 
-                        `Failed to check PMON status for ${projectId}: ${errorMsg}`);
+                    ExtensionOutputChannel.warn('ProjectManager', `Smart polling failed for ${projectId}: ${errorMsg}`);
                     
-                    // Cache this project as failed
-                    this._failedProjects.add(projectId);
-                    
-                    // Add project with error status (will be visible but marked as broken)
-                    failed.push(toProjectInfo(project, false, errorMsg));
-                }
-            }
-            
-            // Store all projects (running, stopped, and failed)
-            this._runningProjects = [
-                ...running.map(p => toProjectInfo(p, true)),
-                ...stopped.map(p => toProjectInfo(p, false)),
-                ...failed
-            ];
-
-            // Update current project's running status (but keep it selected even if stopped)
-            if (this._currentProject) {
-                const stillRunning = this._runningProjects.find(
-                    p => p.id === this._currentProject!.id
-                );
-                const wasRunning = this._currentProject.isRunning;
-                
-                if (stillRunning) {
-                    // Update to running version - only fire if status changed
-                    this._currentProject = stillRunning;
-                    this.saveState();
-                    if (!wasRunning) {
-                        this._onDidChangeProject.fire(this._currentProject);
-                        ExtensionOutputChannel.debug('ProjectManager', `Project ${this._currentProject.name} status changed: stopped → running`);
-                    }
-                } else {
-                    // Project stopped - only fire if status changed
-                    this._currentProject.isRunning = false;
-                    this.saveState();
-                    if (wasRunning) {
-                        this._onDidChangeProject.fire(this._currentProject);
-                        ExtensionOutputChannel.debug('ProjectManager', `Project ${this._currentProject.name} status changed: running → stopped`);
+                    // Mark as error if previously running
+                    if (project.status === 'running') {
+                        this._failedProjects.add(projectId);
+                        this.updateProjectStatus(projectId, 'error', errorMsg);
                     }
                 }
-            }
-
-            // Auto-select first project if none selected and at least one running
-            if (!this._currentProject && this._runningProjects.length > 0) {
-                this._currentProject = this._runningProjects[0];
-                this.saveState();
-                this._onDidChangeProject.fire(this._currentProject);
-                ExtensionOutputChannel.info(
-                    'ProjectManager',
-                    `Auto-selected first available project: ${this._currentProject.name}`
-                );
             }
         } catch (error) {
-            ExtensionOutputChannel.error('ProjectManager', 'Failed to refresh projects', error instanceof Error ? error : new Error(String(error)));
-            vscode.window.showErrorMessage('Failed to load WinCC OA projects');
+            ExtensionOutputChannel.error('ProjectManager', 'Smart polling failed', error instanceof Error ? error : new Error(String(error)));
+        }
+    }
+
+    /**
+     * Refresh list of running projects from shared library (LEGACY - for manual refresh button)
+     * TODO: Remove after TreeView uses onDidChangeProjects event
+     */
+    async refreshProjects(): Promise<void> {
+        if (this._isInitialLoad) {
+            // During initial load, use progressive loading
+            await this.loadProjectStatusProgressive();
+        } else {
+            // After initial load, use smart polling
+            await this.refreshSmartPolling();
         }
     }
 
@@ -230,5 +275,6 @@ export class ProjectManager {
             clearInterval(this._refreshInterval);
         }
         this._onDidChangeProject.dispose();
+        this._onDidChangeProjects.dispose();
     }
 }
