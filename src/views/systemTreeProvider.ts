@@ -145,7 +145,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 );
             });
         } else if (element.itemType === 'projects') {
-            const allProjects = await this.projectManager.getAllRunnableProjects();
+            // Use cached running projects instead of polling again
+            const allProjects = this.projectManager.getRunningProjects();
             
             if (allProjects.length === 0) {
                 return [
