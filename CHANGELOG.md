@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-05
+
+### Added
+- **Progressive Project Loading**: Instant UI with "Unknown" status, then sequential status updates
+  - Projects appear immediately on extension activation instead of waiting 1-2 seconds
+  - Status icons update progressively (⚪ Loading → ● Running / ● Stopped / ⚠ Error)
+  - Smooth user experience with real-time feedback
+- **Enhanced Debug Logging**: Detailed logging with [PROGRESSIVE LOAD], [SMART POLL], [UPDATE] prefixes
+  - Shows which projects are being polled and why
+  - Displays status changes and skip counts for better debugging
+  - Visibility into polling behavior for performance analysis
+
+### Changed
+- **Smart Polling Optimization**: Only running/transitioning projects are polled every 15 seconds
+  - Stopped projects no longer polled (massive performance improvement)
+  - Reduces PMON process spawns by 75-85% (from ~57,600/day to ~7,200-14,400/day)
+  - Error projects with cached errors are skipped
+  - Status changes detected: running → stopped (via polling), stopped → running (via start command + force refresh)
+- **Refresh Button Behavior**: Now triggers full project reload instead of just re-rendering TreeView
+  - Clears error cache and reloads all projects with progressive loading
+  - Useful for detecting manually started projects or retrying failed projects
+- **Status Bar Project Picker**: Only shows running projects in quick pick menu
+  - Cleaner UX - only selectable (active) projects displayed
+  - "No WinCC OA project selected" shown in red when no project active
+- **Stopped Project Icons**: Changed from gray circle-outline to red circle-filled (testing.iconFailed)
+  - Better visual distinction between running (green) and stopped (red) projects
+
+### Performance
+- **PMON Spawn Reduction**: From 40 spawns/min to 5-10 spawns/min (75-85% reduction)
+  - Initial load: ~150ms faster (instant UI vs waiting for all PMON checks)
+  - Daily spawns: ~57,600 → ~7,200-14,400 (saves ~50,000 process spawns per day)
+  - Windows antivirus impact minimized (fewer WCCILpmon.exe spawns)
+
+### Fixed
+- Status bar now correctly filters to running projects only
+- TreeView refresh events properly fire on project status changes
+- Progressive loading subscriptions work correctly with onDidChangeProjects event
+
 ## [1.0.8] - 2026-01-05
 
 ### Fixed

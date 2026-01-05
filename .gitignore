@@ -35,3 +35,4 @@ coverage/
 # VSIX packages (local builds)
 bin/*.vsix
 bin/.local_build_counter
+DevEnv.code-workspace

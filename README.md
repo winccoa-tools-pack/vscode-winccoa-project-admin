@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -14,8 +14,15 @@
 
 ---
 
-> **Disclaimer:** This is one of the first releases of the WinCC OA Project Admin extension. Some edge cases may not be fully covered yet. Please check the [Known Issues](#-known-issues) section for workarounds if you encounter problems.  
-> **Tip:** If the extension doesn't work as expected, try `Ctrl+Shift+P` → `Reload Window` to refresh.
+> **⚠️ Early Access Notice**  
+> This extension is in active development. While core features are stable, you may encounter:
+> - **Performance issues on Windows** (especially with many projects) - We're actively optimizing!
+> - **Edge cases** not yet fully covered
+> 
+> **🐛 Found a bug?** Please report it on our [GitHub Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues)!  
+> Your feedback helps us make this extension better for everyone. 🙏
+>
+> **Quick Fix:** If something doesn't work, try `Ctrl+Shift+P` → `Reload Window`
 
 ---
 

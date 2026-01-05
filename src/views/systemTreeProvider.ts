@@ -14,8 +14,13 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     private pmon: PmonComponent = new PmonComponent();
 
     constructor(private projectManager: ProjectManager) {
-        // Subscribe to project changes
+        // Subscribe to current project changes
         this.projectManager.onDidChangeProject(() => {
+            this.refresh();
+        });
+        
+        // Subscribe to project list changes (for progressive loading)
+        this.projectManager.onDidChangeProjects(() => {
             this.refresh();
         });
     }
@@ -155,19 +160,41 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
             
             return allProjects.map(project => {
-                // Determine icon and description based on error status
+                // Determine icon and description based on project status
                 let description: string;
                 let tooltip: string;
                 let iconPath: vscode.ThemeIcon | undefined;
                 
-                if (project.hasError) {
-                    description = '⚠ Error';
-                    tooltip = `Project: ${project.name}\nError: ${project.error}`;
-                    iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
-                } else {
-                    description = project.isRunning ? '● Running' : '○ Stopped';
-                    tooltip = `Project: ${project.name}`;
-                    iconPath = undefined;
+                switch (project.status) {
+                    case 'unknown':
+                        description = '⚪ Loading...';
+                        tooltip = `Project: ${project.name}\nStatus: Loading...`;
+                        iconPath = new vscode.ThemeIcon('circle-outline', new vscode.ThemeColor('descriptionForeground'));
+                        break;
+                    case 'running':
+                        description = '● Running';
+                        tooltip = `Project: ${project.name}\nStatus: Running`;
+                        iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+                        break;
+                    case 'stopped':
+                        description = '○ Stopped';
+                        tooltip = `Project: ${project.name}\nStatus: Stopped`;
+                        iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+                        break;
+                    case 'transitioning':
+                        description = '⏸ Transitioning...';
+                        tooltip = `Project: ${project.name}\nStatus: Transitioning`;
+                        iconPath = new vscode.ThemeIcon('sync~spin', new vscode.ThemeColor('charts.yellow'));
+                        break;
+                    case 'error':
+                        description = '⚠ Error';
+                        tooltip = `Project: ${project.name}\nError: ${project.error}`;
+                        iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
+                        break;
+                    default:
+                        description = project.isRunning ? '● Running' : '○ Stopped';
+                        tooltip = `Project: ${project.name}`;
+                        iconPath = undefined;
                 }
                 
                 return new SystemItem(

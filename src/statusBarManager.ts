@@ -44,7 +44,6 @@ export class StatusBarManager {
      */
     private updateStatusBar(): void {
         const currentProject = this.projectManager.getCurrentProject();
-        const runningCount = this.projectManager.getRunningProjects().length;
 
         if (currentProject) {
             const icon = currentProject.isRunning ? '$(server-process)' : '$(server-environment)';
@@ -52,11 +51,9 @@ export class StatusBarManager {
             this.statusBarItem.backgroundColor = currentProject.isRunning 
                 ? undefined 
                 : new vscode.ThemeColor('statusBarItem.warningBackground');
-        } else if (runningCount > 0) {
-            this.statusBarItem.text = `$(server) ${runningCount} WinCC OA project${runningCount > 1 ? 's' : ''}`;
-            this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
         } else {
-            this.statusBarItem.text = '$(server-environment) No WinCC OA project';
+            // No project selected - show error state in red
+            this.statusBarItem.text = '$(server-environment) No WinCC OA project selected';
             this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
         }
     }
@@ -68,7 +65,9 @@ export class StatusBarManager {
         // Refresh project list first
         await this.projectManager.refreshProjects();
 
-        const projects = this.projectManager.getRunningProjects();
+        const allProjects = this.projectManager.getRunningProjects();
+        // Filter to only show running projects in picker
+        const projects = allProjects.filter(p => p.status === 'running');
         const currentProject = this.projectManager.getCurrentProject();
 
         if (projects.length === 0) {

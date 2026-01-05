@@ -54,16 +54,32 @@ Es wird nach jeder Änderung kompiliert (`npm run compile`).
 ### CRITICAL BUGS (Stand: 2026-01-05)
 
 #### 1. Zyklisches PMON Polling (Performance-Killer!)
+**Status**: 🔧 IN PROGRESS (v1.1.0 - feature/progressive-project-loading-1.1.0)
 **Problem**: Extension pollt PMON zyklisch, extrem ressourcen-intensiv
 **Symptome**:
 - Hohe CPU-Last durch ständige PMON-Abfragen
-- Möglicherweise werden bei jedem Poll neue Instanzen erzeugt
-- Caching der shared library könnte zerstört werden
+- Sequenzielles Polling: 10 Projekte × 100ms = 1 Sekunde Wartezeit beim Init
+- Alle 15 Sekunden werden ALLE Projekte gepollt (auch stopped)
 
-**Root Cause zu prüfen**:
-- Wie wird in npm-shared-library-core (WinCC OA Core Lib) gecacht?
-- Erzeugen wir bei jedem Poll neue Instanzen statt Singleton zu nutzen?
-- Läuft ein Interval ohne Cleanup?
+**Root Cause Analyse (COMPLETED)**:
+- ✅ npm-winccoa-core: **KEIN Caching** - jeder `isPmonRunning()` Call spawnt neuen Prozess
+- ✅ Jedes `ProjEnvProject` hat eigene `PmonComponent` (kein Singleton)
+- ✅ `setInterval(refreshProjects, 15000)` in projectManager.initialize()
+- ✅ Jeder Spawn: 30-170ms (Windows + Antivirus Scan)
+- ✅ 10 Projekte × 40 Spawns/min = 2400/h = 57600/Tag
+
+**Implementierte Lösung (v1.1.0)**:
+- ✅ **Progressive Loading**: Init zeigt sofort alle Projekte mit Status "Unknown"
+- ✅ **Sequenzielles Status-Loading**: Nacheinander laden für smooth UX (progressive Feedback)
+- ✅ **Smart Polling**: Nur running/transitioning projects pollen, stopped projects ignorieren
+- ✅ **Drastisch reduzierte Spawns**: ~5-10 pro Minute statt 40
+
+**Future Optimization (TODO v1.2.0+)**:
+- 🔧 **Batched Loading**: Setting für parallele Status-Checks (3-5 gleichzeitig)
+- 🔧 **Configurable Strategy**: `winccoa.projectAdmin.statusLoadingStrategy`
+  - `"sequential"` (default) - Smooth progressive UX, 1 Projekt nach dem anderen
+  - `"batched"` - Kompromiss, 3-5 Projekte parallel (~400ms für 10 Projekte)
+  - `"parallel"` - Fastest, alle gleichzeitig (~150ms, aber hohe System-Last)
 
 #### 2. Fehlendes Error Handling beim Polling
 **Problem**: Extension ignoriert Fehler und pollt fröhlich weiter
