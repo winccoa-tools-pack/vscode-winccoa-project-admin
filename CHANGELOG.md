@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-01-05
+
+### Added
+- **Enhanced Project Discovery Debug Logging**: Added comprehensive debug output to trace why projects might not appear
+  - `[PVSS REGISTRY]` logs show all projects parsed from pvssInst.conf with `notRunnable` field values
+  - `[PROJECT DISCOVERY]` logs show filtering chain: registered → runnable → final list
+  - Logs explicitly list projects that are filtered out and why
+  - Helps diagnose why custom projects might not appear for some users
+
+### Fixed
+- **Project Discovery Documentation**: Added detailed Known Issues section for "Custom Projects Not Appearing"
+  - Root cause explanation: `notRunnable` field in pvssInst.conf
+  - Step-by-step troubleshooting guide with debug log examples
+  - How to fix: change `notRunnable=1` to `notRunnable=0` in pvssInst.conf
+
 ## [1.1.0] - 2026-01-05
 
 ### Added

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -120,6 +120,40 @@ The extension may run slower on Windows with longer loading times. Linux perform
 
 **Large Projects:**  
 Very large projects (many subprojects, managers) may experience slower detection and startup times.
+
+### Custom Projects Not Appearing
+
+**Symptom:** Some users see basic WinCC OA projects but not custom projects they've added.
+
+**Root Cause:** Projects are loaded from `pvssInst.conf` (Windows: `C:\ProgramData\Siemens\WinCC_OA\pvssInst.conf`). Each project has a `notRunnable` field that controls visibility:
+- `notRunnable=0` → Project appears in list (runnable)
+- `notRunnable=1` → Project is filtered out (not runnable)
+
+**Troubleshooting:**
+1. Enable Debug Logging:
+   - Open VS Code Output Panel (`Ctrl+Shift+U`)
+   - Select "WinCC OA Project Admin" from dropdown
+   - Look for `[PROJECT DISCOVERY]` and `[PVSS REGISTRY]` log messages
+   - Check which projects are being filtered out and why
+
+2. Check pvssInst.conf:
+   - Open `C:\ProgramData\Siemens\WinCC_OA\pvssInst.conf` (Windows) or equivalent on Linux
+   - Find your custom project section: `[Software\<Company>\<Product>\Configs\<ProjectID>]`
+   - Verify `notRunnable=0` (not `notRunnable=1`)
+
+3. Example Debug Output:
+   ```
+   [PVSS REGISTRY] Parsed pvssInst.conf:
+   [PVSS REGISTRY]   Total projects: 5
+   [PVSS REGISTRY]   Project: MyProject - notRunnable=true (FILTERED OUT)  ← Problem!
+   [PVSS REGISTRY]   Project: DevEnv - notRunnable=false (WILL SHOW)
+   ```
+
+4. Fix:
+   - Edit pvssInst.conf and change `notRunnable=1` to `notRunnable=0` for your project
+   - Reload VS Code or wait 15 seconds for auto-refresh
+
+**Note:** The `notRunnable` field is set when projects are registered in WinCC OA. If your project is marked as a sub-project or template, it may be automatically set to `notRunnable=1`.
 
 ### General
 

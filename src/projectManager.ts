@@ -123,7 +123,30 @@ export class ProjectManager {
      */
     private async loadProjectsInitial(): Promise<void> {
         try {
+            // Import getRegisteredProjects for debug logging
+            const { getRegisteredProjects } = await import('@winccoa-tools-pack/npm-winccoa-core');
+            const allRegistered = await getRegisteredProjects();
             const runnable: ProjEnvProject[] = await getRunnableProjects();
+            
+            // Debug logging
+            ExtensionOutputChannel.debug('ProjectManager', `[PROJECT DISCOVERY] Total registered projects: ${allRegistered.length}`);
+            ExtensionOutputChannel.debug('ProjectManager', `[PROJECT DISCOVERY] Runnable projects: ${runnable.length}`);
+            
+            // Log all registered projects with their runnable status
+            allRegistered.forEach(p => {
+                const isRunnable = p.isRunnable();
+                const status = isRunnable ? 'WILL SHOW' : 'FILTERED OUT';
+                ExtensionOutputChannel.debug('ProjectManager', `[PROJECT DISCOVERY]   ${p.getName()} (ID: ${p.getId()}) - runnable=${isRunnable} (${status})`);
+            });
+            
+            // Log filtered out projects
+            const notRunnable = allRegistered.filter(p => !p.isRunnable());
+            if (notRunnable.length > 0) {
+                ExtensionOutputChannel.warn('ProjectManager', `[PROJECT DISCOVERY] Filtered out ${notRunnable.length} non-runnable project(s):`);
+                notRunnable.forEach(p => {
+                    ExtensionOutputChannel.warn('ProjectManager', `[PROJECT DISCOVERY]   - ${p.getName()} (ID: ${p.getId()})`);
+                });
+            }
             
             // Show all projects immediately with "Unknown" status
             this._runningProjects = runnable.map(p => toProjectInfo(p, 'unknown'));
