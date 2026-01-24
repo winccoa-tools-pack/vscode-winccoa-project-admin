@@ -37,46 +37,66 @@ export class LanguageModelToolsService {
             vscode.lm.registerTool('winccoa_list_projects', new ListProjectsTool(this.projectManager))
         );
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_get_project_info...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_get_project_info', new GetProjectInfoTool(this.projectManager))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_get_project_info');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_set_active_project...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_set_active_project', new SetActiveProjectTool(this.projectManager))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_set_active_project');
 
         // PMON Control Tools
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_start_project...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_start_project', new StartProjectTool(this.projectManager, this.systemTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_start_project');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_stop_project...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_stop_project', new StopProjectTool(this.projectManager, this.systemTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_stop_project');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_get_pmon_status...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_get_pmon_status', new GetPmonStatusTool(this.projectManager))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_get_pmon_status');
 
         // Manager Control Tools
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_project_managers...');
         this.disposables.push(
-            vscode.lm.registerTool('winccoa_list_managers', new ListManagersTool(this.projectManager, this.managerTreeProvider))
+            vscode.lm.registerTool('winccoa_project_managers', new ListManagersTool(this.projectManager, this.managerTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_project_managers');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_start_manager...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_start_manager', new StartManagerTool(this.projectManager, this.managerTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_start_manager');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_stop_manager...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_stop_manager', new StopManagerTool(this.projectManager, this.managerTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_stop_manager');
         
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_restart_manager...');
         this.disposables.push(
             vscode.lm.registerTool('winccoa_restart_manager', new RestartManagerTool(this.projectManager, this.managerTreeProvider))
         );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_restart_manager');
 
         // Add to context subscriptions
         context.subscriptions.push(...this.disposables);
+        
+        ExtensionOutputChannel.success('LanguageModelTools', `🎉 Successfully registered ${this.disposables.length} Language Model Tools!`);
 
         console.log('[LanguageModelTools] ✅ Registered 10 WinCC OA Project Admin Tools');
     }
@@ -605,46 +625,41 @@ class ListManagersTool implements vscode.LanguageModelTool<ListManagersInput> {
                 }
             }
 
-            // Get managers from PMON
-            // Use PMON directly to query manager status
-            const PmonComponent = require('@winccoa-tools-pack/npm-winccoa-core').PmonComponent;
-            const pmon = new PmonComponent();
-            pmon.setVersion(project.version);
+            // Get managers from ManagerTreeProvider
+            const managerData = this.managerTreeProvider.getManagers();
+            const currentProjectId = this.managerTreeProvider.getCurrentProjectId();
             
-            ExtensionOutputChannel.debug('LanguageModelTool', `Getting project status for: ${project.id}`);
-            const projectStatus = await pmon.getProjectStatus(project.id);
-            
-            ExtensionOutputChannel.debug('LanguageModelTool', `Getting manager options list for: ${project.id}`);
-            const managerOptions = await pmon.getManagerOptionsList(project.id);
-            
-            if (!projectStatus || !projectStatus.managers) {
+            if (currentProjectId !== project.id) {
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(
                         JSON.stringify({
                             success: false,
-                            error: 'Failed to retrieve manager status from PMON'
+                            error: `Manager data is for different project. Expected '${project.id}', got '${currentProjectId || 'none'}'`,
+                            note: 'Set the project as active first or wait for manager data to load'
                         }, null, 2)
                     )
                 ]);
             }
             
-            // Build manager list (skip pmon itself at idx 0)
-            const allManagers = projectStatus.managers
-                .map((info: any, idx: number) => ({
-                    num: idx,
-                    name: managerOptions[idx]?.componentName || `Manager_${idx}`,
-                    state: info.state,
-                    mode: managerOptions[idx]?.startMode || 'unknown',
-                    secKill: managerOptions[idx]?.secKill || 0,
-                    restartCount: info.restartCount || 0
-                }))
-                .filter((m: any) => m.num > 0); // Skip PMON itself
+            // Build manager list from ManagerTreeProvider data
+            const allManagers = managerData.map(m => ({
+                num: m.idx,
+                name: m.options?.component || `Manager_${m.idx}`,
+                state: m.info.state,
+                mode: m.info.startMode,
+                secKill: m.options?.secondToKill || 0,
+                pid: m.info.pid,
+                startTime: m.info.startTime
+            }));
             
             // Apply status filter
             let managers = allManagers;
             if (input.statusFilter && input.statusFilter !== 'all') {
-                const targetState = input.statusFilter === 'running' ? 'RUNNING' : 'STOPPED';
-                managers = allManagers.filter((m: any) => m.state === targetState);
+                const { ProjEnvManagerState } = require('@winccoa-tools-pack/npm-winccoa-core');
+                const targetState = input.statusFilter === 'running' 
+                    ? ProjEnvManagerState.Running 
+                    : ProjEnvManagerState.NotRunning;
+                managers = allManagers.filter(m => m.state === targetState);
             }
             
             return new vscode.LanguageModelToolResult([

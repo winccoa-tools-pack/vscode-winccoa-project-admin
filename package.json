@@ -402,11 +402,11 @@
         }
       },
       {
-        "name": "winccoa_list_managers",
+        "name": "winccoa_project_managers",
         "displayName": "List WinCC OA Managers",
         "modelDescription": "List all managers (processes/components) running in a WinCC OA project. Managers include Event, Dist, DB, UI, etc. Use when the user asks about running components or processes.",
         "canBeReferencedInPrompt": true,
-        "toolReferenceName": "winccoa_managers",
+        "toolReferenceName": "winccoa_project_managers",
         "icon": "$(server-process)",
         "userDescription": "List all managers in a WinCC OA project",
         "inputSchema": {
@@ -421,7 +421,8 @@
               "enum": ["all", "running", "stopped"],
               "description": "Filter managers by status (default: all)"
             }
-          }
+          },
+          "required": []
         }
       },
       {
