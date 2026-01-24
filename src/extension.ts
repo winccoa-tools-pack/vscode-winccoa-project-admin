@@ -212,7 +212,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             })
         );
         ExtensionOutputChannel.info('Extension', 'Registered project control commands');
-        
+        // Register project unregister command
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.unregister', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.unregisterProject(item.projectData);
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered project unregister command');
+
+        // Register project from explorer context menu
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.explorer.registerProject', async (uri: vscode.Uri) => {
+                if (uri) {
+                    await systemTreeProvider.registerProjectFromExplorer(uri);
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered explorer register project command');        
         // Register subproject commands
         context.subscriptions.push(
             vscode.commands.registerCommand('winccoa.subproject.addToWorkspace', async (item: any) => {

@@ -612,6 +612,14 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     }
 
     /**
+     * Register a WinCC OA project from Explorer context menu
+     */
+    async registerProjectFromExplorer(uri: vscode.Uri): Promise<void> {
+        const projectPath = uri.fsPath;
+        await this.registerProject(projectPath);
+    }
+
+    /**
      * Register a new WinCC OA project
      */
     async registerNewProject(): Promise<void> {
@@ -633,6 +641,19 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
 
             const projectPath = projectFolder[0].fsPath;
+            await this.registerProject(projectPath);
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Error during registration: ${errorMsg}`);
+            ExtensionOutputChannel.error('SystemTreeProvider', `Registration error: ${errorMsg}`);
+        }
+    }
+
+    /**
+     * Common registration logic for both UI and Explorer
+     */
+    private async registerProject(projectPath: string): Promise<void> {
+        try {
             const projectId = path.basename(projectPath);
             
             ExtensionOutputChannel.info('SystemTreeProvider', `Selected project: ${projectPath}`);
@@ -744,6 +765,88 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Error during registration: ${errorMsg}`);
             ExtensionOutputChannel.error('SystemTreeProvider', `Registration error: ${errorMsg}`);
+        }
+    }
+
+    /**
+     */
+    async unregisterProject(projectData: any): Promise<void> {
+        const projectId = projectData.id;
+        const projectPath = projectData.path;
+
+        ExtensionOutputChannel.info('SystemTreeProvider', `Starting unregister flow for project: ${projectId}`);
+
+        // Confirmation dialog with explanation
+        const confirm = await vscode.window.showWarningMessage(
+            `⚠️ Unregister Project "${projectId}"?\n\nThis will remove the project from WinCC OA's registry (pvssInst.conf).\nThe project files will NOT be deleted.`,
+            { modal: true },
+            'Yes, Unregister',
+            'Cancel'
+        );
+
+        if (confirm !== 'Yes, Unregister') {
+            ExtensionOutputChannel.info('SystemTreeProvider', 'Unregister cancelled by user');
+            return;
+        }
+
+        // Execute unregister
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Unregistering project ${projectId}...`,
+                cancellable: false
+            }, async (progress) => {
+                progress.report({ message: 'Creating project instance...' });
+
+                const project = new ProjEnvProject();
+                project.setId(projectId);
+
+                // Check if project is currently running
+                if (projectData.status === 'running') {
+                    const stopFirst = await vscode.window.showWarningMessage(
+                        `Project "${projectId}" is currently running. Stop it first?`,
+                        { modal: true },
+                        'Stop and Unregister',
+                        'Cancel'
+                    );
+
+                    if (stopFirst !== 'Stop and Unregister') {
+                        ExtensionOutputChannel.info('SystemTreeProvider', 'Unregister cancelled - project is running');
+                        return;
+                    }
+
+                    progress.report({ message: 'Stopping project...' });
+                    ExtensionOutputChannel.info('SystemTreeProvider', 'Stopping PMON before unregister...');
+
+                    project.setDir(projectPath);
+                    project.setVersion(projectData.version);
+                    await project.stopPmon(10);
+
+                    ExtensionOutputChannel.info('SystemTreeProvider', 'PMON stopped successfully');
+                }
+
+                // Unregister project
+                progress.report({ message: 'Unregistering from WinCC OA...' });
+                ExtensionOutputChannel.info('SystemTreeProvider', 'Calling unregisterProj()...');
+
+                const result = await project.unregisterProj();
+
+                if (result === 0) {
+                    vscode.window.showInformationMessage(`✓ Project "${projectId}" unregistered successfully!`);
+                    ExtensionOutputChannel.info('SystemTreeProvider', `Project ${projectId} unregistered successfully`);
+
+                    // Refresh project list
+                    progress.report({ message: 'Refreshing project list...' });
+                    await this.projectManager.refreshProjects();
+                    this.refresh();
+                } else {
+                    throw new Error(`Unregister failed with code: ${result}`);
+                }
+            });
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to unregister project: ${errorMsg}`);
+            ExtensionOutputChannel.error('SystemTreeProvider', `Unregister error: ${errorMsg}`);
         }
     }
 }

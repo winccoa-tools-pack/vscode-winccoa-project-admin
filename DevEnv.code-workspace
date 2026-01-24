@@ -3,6 +3,9 @@
 		{
 			"name": "DevEnv",
 			"path": "../../WinCCOA_Proj/DevEnv"
+		},
+		{
+			"path": "../../tmp/ProjectToRegister"
 		}
 	],
 	"settings": {

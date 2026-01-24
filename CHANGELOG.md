@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-24
+
+### Added
+- **Project Unregister UI**: Context menu option to unregister WinCC OA projects
+  - Single confirmation dialog with clear explanation
+  - Automatic PMON stop if project is running before unregister
+  - Clear warning that files will NOT be deleted (only registry entry removed)
+  - Progress indicator during unregister process
+  - Automatic refresh of project list after successful unregister
+  - Context menu entry in "danger" group (separated from other actions)
+- **Explorer Context Menu Registration**: Register projects directly from VS Code Explorer
+  - Right-click on any folder in Explorer
+  - "Register as WinCC OA Project" option
+  - Same validation and auto-detection as UI registration
+  - Seamless integration with existing registration workflow
+
 ## [1.2.0] - 2026-01-24
 
 ### Added
