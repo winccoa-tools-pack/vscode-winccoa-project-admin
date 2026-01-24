@@ -95,6 +95,20 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         this.loadManagers();
     }
 
+    /**
+     * Get current manager list for Language Model Tools
+     */
+    getManagers(): ManagerDisplayData[] {
+        return this.managers;
+    }
+
+    /**
+     * Get current project ID
+     */
+    getCurrentProjectId(): string | undefined {
+        return this.currentProjectId;
+    }
+
     getTreeItem(element: ManagerItem): vscode.TreeItem {
         return element;
     }

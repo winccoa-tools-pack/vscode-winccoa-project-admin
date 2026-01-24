@@ -3,6 +3,7 @@ import { ProjectManager } from './projectManager';
 import { StatusBarManager } from './statusBarManager';
 import { SystemTreeProvider } from './views/systemTreeProvider';
 import { ManagerTreeProvider } from './views/managerTreeProvider';
+import { LanguageModelToolsService } from './languageModelTools';
 import { WinCCOACoreAPI } from './types';
 import { ExtensionOutputChannel } from './extensionOutput';
 
@@ -10,6 +11,7 @@ let projectManager: ProjectManager;
 let statusBarManager: StatusBarManager;
 let systemTreeProvider: SystemTreeProvider;
 let managerTreeProvider: ManagerTreeProvider;
+let languageModelToolsService: LanguageModelToolsService;
 
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
     // Initialize logger first
@@ -40,6 +42,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             vscode.window.registerTreeDataProvider('winccoa.managerView', managerTreeProvider)
         );
         ExtensionOutputChannel.info('Extension', 'TreeView providers registered');
+        
+        // Register Language Model Tools for GitHub Copilot
+        ExtensionOutputChannel.info('Extension', 'Registering Language Model Tools...');
+        languageModelToolsService = new LanguageModelToolsService(
+            projectManager,
+            systemTreeProvider,
+            managerTreeProvider
+        );
+        languageModelToolsService.register(context);
+        ExtensionOutputChannel.info('Extension', 'Language Model Tools registered');
         
         // Start background initialization (don't block activation)
         projectManager.initialize().then(() => {

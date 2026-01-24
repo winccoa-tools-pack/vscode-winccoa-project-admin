@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-24
+
+### Added
+- **Language Model Tools Integration**: GitHub Copilot can now autonomously control WinCC OA projects
+  - `winccoa_list_projects`: Query all registered projects with status
+  - `winccoa_get_project_info`: Get detailed information about a project
+  - `winccoa_set_active_project`: Set active project for operations
+  - `winccoa_start_project`: Start PMON for a project
+  - `winccoa_stop_project`: Stop PMON for a project
+  - `winccoa_get_pmon_status`: Query PMON status
+  - `winccoa_list_managers`: List all managers with status
+  - `winccoa_start_manager`: Start a specific manager by number
+  - `winccoa_stop_manager`: Stop a specific manager by number
+  - `winccoa_restart_manager`: Restart a specific manager (stop + start)
+
+### Changed
+- **BREAKING**: Minimum VS Code version bumped to 1.107.1 (Language Model Tools API required)
+
 ## [1.3.0] - 2026-01-24
 
 ### Added
