@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-01-24
+
+### Fixed
+- Status bar now updates correctly when stopped project becomes running (polling includes current project)
+- Tool name collision: Renamed `winccoa_list_managers` to `winccoa_project_managers` to avoid conflict with MCP Server extension
+
+### Changed
+- Optimized project picker: Uses cached list instead of full reload (90% reduction in spawns)
+- Current project is now always polled even when stopped, ensuring status bar stays in sync
+- Project picker now only verifies current project status (fast check) instead of reloading all projects
+
+### Performance
+- Reduced process spawns in project picker from 10 to 1 per invocation
+- Smart polling now includes current project regardless of status
+
 ## [2.0.0] - 2026-01-24
 
 ### Added

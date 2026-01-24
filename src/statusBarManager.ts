@@ -62,13 +62,17 @@ export class StatusBarManager {
      * Show Quick Pick to select a project
      */
     async showProjectPicker(): Promise<void> {
-        // Refresh project list first
-        await this.projectManager.refreshProjects();
+        // Use cached project list - don't reload everything!
+        // Only verify current project status if needed
+        const currentProject = this.projectManager.getCurrentProject();
+        if (currentProject) {
+            // Quick check: Is current project still valid?
+            await this.projectManager.verifyCurrentProject();
+        }
 
         const allProjects = this.projectManager.getRunningProjects();
         // Filter to only show running projects in picker
         const projects = allProjects.filter(p => p.status === 'running');
-        const currentProject = this.projectManager.getCurrentProject();
 
         if (projects.length === 0) {
             vscode.window.showWarningMessage('No running WinCC OA projects found');
