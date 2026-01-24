@@ -1,19 +1,8 @@
 {
 	"folders": [
 		{
-			"path": "../../wincc_proj/DevEnv"
-		},
-		{
-			"name": "SIMARIScontrol_RTP",
-			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_RTP"
-		},
-		{
-			"name": "SIMARIScontrol_UnitTest",
-			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_UnitTest"
-		},
-		{
-			"name": "SIMARIScontrol_EP",
-			"path": "../../repos/simaris-control/Src/Code/SIMARIScontrol_EP"
+			"name": "DevEnv",
+			"path": "../../WinCCOA_Proj/DevEnv"
 		}
 	],
 	"settings": {

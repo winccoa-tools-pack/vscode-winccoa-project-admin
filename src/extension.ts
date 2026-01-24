@@ -205,6 +205,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 }
             })
         );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.register', async () => {
+                await systemTreeProvider.registerNewProject();
+            })
+        );
         ExtensionOutputChannel.info('Extension', 'Registered project control commands');
         
         // Register subproject commands

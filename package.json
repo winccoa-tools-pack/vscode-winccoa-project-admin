@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -166,6 +166,12 @@
         "command": "winccoa.subproject.openInExplorer",
         "title": "Open in Explorer",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.register",
+        "title": "Register New Project",
+        "category": "WinCC OA",
+        "icon": "$(add)"
       }
     ],
     "menus": {
@@ -184,6 +190,11 @@
           "command": "winccoa.openLogViewer",
           "when": "view == winccoa.systemView",
           "group": "navigation@3"
+        },
+        {
+          "command": "winccoa.project.register",
+          "when": "view == winccoa.systemView",
+          "group": "navigation@4"
         },
         {
           "command": "winccoa.managerView.refresh",

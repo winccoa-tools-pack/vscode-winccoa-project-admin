@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-24
+
+### Added
+- **Project Registration UI**: New "+" button in System View to register WinCC OA projects
+  - User-friendly folder picker dialog to select project directory
+  - Automatic version detection from config file (pvss_path)
+  - Validation of project structure (checks for config/config file)
+  - Confirmation dialog before registration
+  - Progress indicator during registration process
+  - Automatic handling of already-registered projects (unregister + re-register)
+  - Automatic refresh of project list after successful registration
+
+### Changed
+- **npm-winccoa-core**: Updated to latest version with improved error handling in `ProjEnvProjectRegistry`
+  - Better error handling for pvssInst.conf file changes
+  - File watcher error handling to prevent crashes
+  - Enhanced debug logging for project discovery
+
 ## [1.1.1] - 2026-01-05
 
 ### Added

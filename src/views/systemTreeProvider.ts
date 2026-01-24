@@ -4,6 +4,7 @@ import * as path from 'path';
 import { ProjectManager } from '../projectManager';
 import { PmonComponent } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ProjEnvPmonStatus } from '@winccoa-tools-pack/npm-winccoa-core';
+import { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from '../types';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
@@ -607,6 +608,142 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         } catch (error) {
             console.error('[SystemTreeProvider] Failed to parse subprojects:', error);
             return [];
+        }
+    }
+
+    /**
+     * Register a new WinCC OA project
+     */
+    async registerNewProject(): Promise<void> {
+        try {
+            ExtensionOutputChannel.info('SystemTreeProvider', 'Starting project registration wizard');
+            
+            // Step 1: Ask user to select project folder
+            const projectFolder = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                openLabel: 'Select Project Folder',
+                title: 'Select WinCC OA Project to Register'
+            });
+
+            if (!projectFolder || projectFolder.length === 0) {
+                ExtensionOutputChannel.info('SystemTreeProvider', 'Project registration cancelled by user');
+                return;
+            }
+
+            const projectPath = projectFolder[0].fsPath;
+            const projectId = path.basename(projectPath);
+            
+            ExtensionOutputChannel.info('SystemTreeProvider', `Selected project: ${projectPath}`);
+
+            // Step 2: Validate project structure
+            const configPath = path.join(projectPath, 'config', 'config');
+            if (!fs.existsSync(configPath)) {
+                vscode.window.showErrorMessage(`Invalid project: config file not found at ${configPath}`);
+                ExtensionOutputChannel.error('SystemTreeProvider', `Config file not found: ${configPath}`);
+                return;
+            }
+
+            ExtensionOutputChannel.info('SystemTreeProvider', `Valid project detected: ${projectId}`);
+
+            // Step 3: Detect version from config file
+            let projectVersion = '3.19'; // Default fallback
+            try {
+                const configContent = fs.readFileSync(configPath, 'utf-8');
+                const versionMatch = configContent.match(/pvss_path\s*=\s*"([^"]+)"/);
+                if (versionMatch) {
+                    const pvssPath = versionMatch[1];
+                    const pathVersionMatch = pvssPath.match(/(\d+\.\d+)/);
+                    if (pathVersionMatch) {
+                        projectVersion = pathVersionMatch[1];
+                        ExtensionOutputChannel.info('SystemTreeProvider', `Detected version from config: ${projectVersion}`);
+                    }
+                }
+            } catch (error) {
+                ExtensionOutputChannel.warn('SystemTreeProvider', `Could not read version from config, using default: ${projectVersion}`);
+            }
+
+            // Step 4: Confirm with user
+            const confirmation = await vscode.window.showInformationMessage(
+                `Register project "${projectId}" (Version ${projectVersion})?`,
+                { modal: true },
+                'Yes',
+                'No'
+            );
+
+            if (confirmation !== 'Yes') {
+                ExtensionOutputChannel.info('SystemTreeProvider', 'Registration cancelled by user');
+                return;
+            }
+
+            // Step 5: Register project
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Registering project ${projectId}...`,
+                cancellable: false
+            }, async (progress) => {
+                try {
+                    progress.report({ message: 'Creating project instance...' });
+                    
+                    const project = new ProjEnvProject();
+                    project.setDir(projectPath);
+                    project.setVersion(projectVersion);
+                    project.setRunnable(true);
+                    
+                    ExtensionOutputChannel.info('SystemTreeProvider', `Project setup: ID=${project.getId()}, Version=${project.getVersion()}`);
+
+                    // Check if already registered
+                    if (project.isRegistered()) {
+                        const overwrite = await vscode.window.showWarningMessage(
+                            `Project "${projectId}" is already registered. Unregister and re-register?`,
+                            { modal: true },
+                            'Yes',
+                            'No'
+                        );
+
+                        if (overwrite !== 'Yes') {
+                            ExtensionOutputChannel.info('SystemTreeProvider', 'Registration cancelled - already registered');
+                            return;
+                        }
+
+                        progress.report({ message: 'Unregistering existing project...' });
+                        const unregResult = await project.unregisterProj();
+                        
+                        if (unregResult !== 0) {
+                            throw new Error(`Failed to unregister project (code: ${unregResult})`);
+                        }
+                        
+                        ExtensionOutputChannel.info('SystemTreeProvider', 'Project unregistered successfully');
+                    }
+
+                    progress.report({ message: 'Registering with WinCC OA...' });
+                    ExtensionOutputChannel.info('SystemTreeProvider', 'Calling registerProj()...');
+                    
+                    const result = await project.registerProj();
+
+                    if (result === 0) {
+                        vscode.window.showInformationMessage(`✓ Project "${projectId}" registered successfully!`);
+                        ExtensionOutputChannel.info('SystemTreeProvider', `Project registered: ${projectId}`);
+                        
+                        // Refresh project list
+                        await this.projectManager.refreshProjects();
+                        this.refresh();
+                    } else if (result === -1) {
+                        throw new Error('Config file not found or invalid');
+                    } else {
+                        throw new Error(`Registration failed with code: ${result}`);
+                    }
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Failed to register project: ${errorMsg}`);
+                    ExtensionOutputChannel.error('SystemTreeProvider', `Registration failed: ${errorMsg}`);
+                }
+            });
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Error during registration: ${errorMsg}`);
+            ExtensionOutputChannel.error('SystemTreeProvider', `Registration error: ${errorMsg}`);
         }
     }
 }
