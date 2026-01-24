@@ -221,27 +221,30 @@ export class ProjectManager {
         if (this._currentProject && this._currentProject.id === projectId) {
             this._currentProject = this._runningProjects[index];
             this.saveState();
+            this._onDidChangeProject.fire(this._currentProject); // Fire event for status bar update!
         }
         
         this._onDidChangeProjects.fire(); // Trigger TreeView refresh
     }
 
     /**
-     * Phase 3: Smart polling - only running/transitioning projects (stopped are ignored)
+     * Phase 3: Smart polling - only running/transitioning projects + current project (stopped are ignored)
      */
     private async refreshSmartPolling(): Promise<void> {
         try {
-            // Only poll running and transitioning projects
+            // Poll running/transitioning projects + ALWAYS poll current project (even if stopped)
             const projectsToCheck = this._runningProjects.filter(p => 
-                p.status === 'running' || p.status === 'transitioning'
+                p.status === 'running' || 
+                p.status === 'transitioning' ||
+                (this._currentProject && p.id === this._currentProject.id) // Always check current project
             );
             const stoppedCount = this._runningProjects.filter(p => p.status === 'stopped').length;
             const errorCount = this._runningProjects.filter(p => p.status === 'error').length;
             
-            ExtensionOutputChannel.info('ProjectManager', `[SMART POLL] Checking ${projectsToCheck.length} active project(s) (${stoppedCount} stopped, ${errorCount} error - skipped)`);
+            ExtensionOutputChannel.info('ProjectManager', `[SMART POLL] Checking ${projectsToCheck.length} project(s) (${stoppedCount} stopped, ${errorCount} error - skipped${this._currentProject ? ', +current' : ''})`);
             
             if (projectsToCheck.length === 0) {
-                ExtensionOutputChannel.debug('ProjectManager', '[SMART POLL] No active projects to check');
+                ExtensionOutputChannel.debug('ProjectManager', '[SMART POLL] No projects to check');
                 return;
             }
             
@@ -297,6 +300,44 @@ export class ProjectManager {
         // Re-run progressive loading
         await this.loadProjectsInitial();
         await this.loadProjectStatusProgressive();
+    }
+
+    /**
+     * Quick verification: Only check if current project is still running
+     * Used by status bar picker - fast check without reloading entire list
+     */
+    async verifyCurrentProject(): Promise<void> {
+        if (!this._currentProject) {
+            return;
+        }
+
+        const projectId = this._currentProject.id;
+        ExtensionOutputChannel.debug('ProjectManager', `[VERIFY] Quick check for current project: ${projectId}`);
+
+        try {
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const project = runnable.find(p => p.getId() === projectId);
+
+            if (!project) {
+                ExtensionOutputChannel.warn('ProjectManager', `[VERIFY] Current project ${projectId} no longer found`);
+                this.updateProjectStatus(projectId, 'error', 'Project not found');
+                return;
+            }
+
+            const isRunning = await project.isPmonRunning();
+            const newStatus = isRunning ? 'running' : 'stopped';
+            
+            if (this._currentProject.status !== newStatus) {
+                ExtensionOutputChannel.info('ProjectManager', `[VERIFY] Current project status changed: ${this._currentProject.status} → ${newStatus}`);
+                this.updateProjectStatus(projectId, newStatus);
+            } else {
+                ExtensionOutputChannel.debug('ProjectManager', `[VERIFY] Current project status unchanged: ${newStatus}`);
+            }
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            ExtensionOutputChannel.warn('ProjectManager', `[VERIFY] Failed to verify current project: ${errorMsg}`);
+            this.updateProjectStatus(projectId, 'error', errorMsg);
+        }
     }
 
     /**
