@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `winccoa_stop_project`: Stop PMON for a project
   - `winccoa_get_pmon_status`: Query PMON status
   - `winccoa_list_managers`: List all managers with status
+  - `winccoa_start_manager`: Start a specific manager by number
+  - `winccoa_stop_manager`: Stop a specific manager by number
+  - `winccoa_restart_manager`: Restart a specific manager (stop + start)
 
 ### Changed
 - **BREAKING**: Minimum VS Code version bumped to 1.107.1 (Language Model Tools API required)

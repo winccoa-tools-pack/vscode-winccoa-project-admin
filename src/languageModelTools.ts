@@ -62,11 +62,23 @@ export class LanguageModelToolsService {
         this.disposables.push(
             vscode.lm.registerTool('winccoa_list_managers', new ListManagersTool(this.projectManager, this.managerTreeProvider))
         );
+        
+        this.disposables.push(
+            vscode.lm.registerTool('winccoa_start_manager', new StartManagerTool(this.projectManager, this.managerTreeProvider))
+        );
+        
+        this.disposables.push(
+            vscode.lm.registerTool('winccoa_stop_manager', new StopManagerTool(this.projectManager, this.managerTreeProvider))
+        );
+        
+        this.disposables.push(
+            vscode.lm.registerTool('winccoa_restart_manager', new RestartManagerTool(this.projectManager, this.managerTreeProvider))
+        );
 
         // Add to context subscriptions
         context.subscriptions.push(...this.disposables);
 
-        console.log('[LanguageModelTools] ✅ Registered 7 WinCC OA Project Admin Tools');
+        console.log('[LanguageModelTools] ✅ Registered 10 WinCC OA Project Admin Tools');
     }
 
     /**
@@ -610,6 +622,282 @@ class ListManagersTool implements vscode.LanguageModelTool<ListManagersInput> {
             ]);
         } catch (error: any) {
             ExtensionOutputChannel.error('LanguageModelTool', 'List managers failed', error);
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: false,
+                        error: error.message || String(error)
+                    }, null, 2)
+                )
+            ]);
+        }
+    }
+}
+
+// ============================================================================
+// Tool 8: Start Manager
+// ============================================================================
+
+interface StartManagerInput {
+    managerNum: number;
+    projectId?: string;
+}
+
+class StartManagerTool implements vscode.LanguageModelTool<StartManagerInput> {
+    constructor(
+        private projectManager: ProjectManager,
+        private managerTreeProvider: ManagerTreeProvider
+    ) {}
+
+    async invoke(
+        options: vscode.LanguageModelToolInvocationOptions<StartManagerInput>,
+        _token: vscode.CancellationToken
+    ): Promise<vscode.LanguageModelToolResult> {
+        try {
+            const input = options.input;
+            console.log('[StartManagerTool] Starting manager:', input.managerNum);
+            ExtensionOutputChannel.debug('LanguageModelTool', `Start manager: ${input.managerNum}`);
+
+            if (!input.managerNum) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify({
+                            success: false,
+                            error: 'managerNum is required'
+                        }, null, 2)
+                    )
+                ]);
+            }
+
+            // Determine which project to use
+            let project: ProjectInfo | undefined;
+            if (input.projectId) {
+                const allProjects = await this.projectManager.getAllRunnableProjects();
+                project = allProjects.find(p => p.id === input.projectId);
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: `Project '${input.projectId}' not found`
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            } else {
+                project = this.projectManager.getCurrentProject();
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: 'No project specified and no active project set'
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            }
+
+            // Start manager via ManagerTreeProvider
+            await this.managerTreeProvider.startManager({ idx: input.managerNum, info: {} as any });
+
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: true,
+                        message: `Manager ${input.managerNum} started successfully`,
+                        projectId: project.id
+                    }, null, 2)
+                )
+            ]);
+        } catch (error: any) {
+            ExtensionOutputChannel.error('LanguageModelTool', 'Start manager failed', error);
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: false,
+                        error: error.message || String(error)
+                    }, null, 2)
+                )
+            ]);
+        }
+    }
+}
+
+// ============================================================================
+// Tool 9: Stop Manager
+// ============================================================================
+
+interface StopManagerInput {
+    managerNum: number;
+    projectId?: string;
+}
+
+class StopManagerTool implements vscode.LanguageModelTool<StopManagerInput> {
+    constructor(
+        private projectManager: ProjectManager,
+        private managerTreeProvider: ManagerTreeProvider
+    ) {}
+
+    async invoke(
+        options: vscode.LanguageModelToolInvocationOptions<StopManagerInput>,
+        _token: vscode.CancellationToken
+    ): Promise<vscode.LanguageModelToolResult> {
+        try {
+            const input = options.input;
+            console.log('[StopManagerTool] Stopping manager:', input.managerNum);
+            ExtensionOutputChannel.debug('LanguageModelTool', `Stop manager: ${input.managerNum}`);
+
+            if (!input.managerNum) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify({
+                            success: false,
+                            error: 'managerNum is required'
+                        }, null, 2)
+                    )
+                ]);
+            }
+
+            // Determine which project to use
+            let project: ProjectInfo | undefined;
+            if (input.projectId) {
+                const allProjects = await this.projectManager.getAllRunnableProjects();
+                project = allProjects.find(p => p.id === input.projectId);
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: `Project '${input.projectId}' not found`
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            } else {
+                project = this.projectManager.getCurrentProject();
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: 'No project specified and no active project set'
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            }
+
+            // Stop manager via ManagerTreeProvider
+            await this.managerTreeProvider.stopManager({ idx: input.managerNum, info: {} as any });
+
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: true,
+                        message: `Manager ${input.managerNum} stopped successfully`,
+                        projectId: project.id
+                    }, null, 2)
+                )
+            ]);
+        } catch (error: any) {
+            ExtensionOutputChannel.error('LanguageModelTool', 'Stop manager failed', error);
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: false,
+                        error: error.message || String(error)
+                    }, null, 2)
+                )
+            ]);
+        }
+    }
+}
+
+// ============================================================================
+// Tool 10: Restart Manager
+// ============================================================================
+
+interface RestartManagerInput {
+    managerNum: number;
+    projectId?: string;
+}
+
+class RestartManagerTool implements vscode.LanguageModelTool<RestartManagerInput> {
+    constructor(
+        private projectManager: ProjectManager,
+        private managerTreeProvider: ManagerTreeProvider
+    ) {}
+
+    async invoke(
+        options: vscode.LanguageModelToolInvocationOptions<RestartManagerInput>,
+        _token: vscode.CancellationToken
+    ): Promise<vscode.LanguageModelToolResult> {
+        try {
+            const input = options.input;
+            console.log('[RestartManagerTool] Restarting manager:', input.managerNum);
+            ExtensionOutputChannel.debug('LanguageModelTool', `Restart manager: ${input.managerNum}`);
+
+            if (!input.managerNum) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify({
+                            success: false,
+                            error: 'managerNum is required'
+                        }, null, 2)
+                    )
+                ]);
+            }
+
+            // Determine which project to use
+            let project: ProjectInfo | undefined;
+            if (input.projectId) {
+                const allProjects = await this.projectManager.getAllRunnableProjects();
+                project = allProjects.find(p => p.id === input.projectId);
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: `Project '${input.projectId}' not found`
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            } else {
+                project = this.projectManager.getCurrentProject();
+                
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify({
+                                success: false,
+                                error: 'No project specified and no active project set'
+                            }, null, 2)
+                        )
+                    ]);
+                }
+            }
+
+            // Restart manager via ManagerTreeProvider
+            await this.managerTreeProvider.restartManager({ idx: input.managerNum, info: {} as any });
+
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify({
+                        success: true,
+                        message: `Manager ${input.managerNum} restarted successfully`,
+                        projectId: project.id
+                    }, null, 2)
+                )
+            ]);
+        } catch (error: any) {
+            ExtensionOutputChannel.error('LanguageModelTool', 'Restart manager failed', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({

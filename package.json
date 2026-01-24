@@ -423,6 +423,75 @@
             }
           }
         }
+      },
+      {
+        "name": "winccoa_start_manager",
+        "displayName": "Start WinCC OA Manager",
+        "modelDescription": "Start a specific manager (process/component) in a WinCC OA project. Managers are identified by their number (e.g., 1 for DIST_1, 2 for EVENT_1). Use when the user wants to start a specific manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_start",
+        "icon": "$(play)",
+        "userDescription": "Start a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to start (e.g., 1 for DIST_1)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": ["managerNum"]
+        }
+      },
+      {
+        "name": "winccoa_stop_manager",
+        "displayName": "Stop WinCC OA Manager",
+        "modelDescription": "Stop a specific manager (process/component) in a WinCC OA project. Use when the user wants to stop a specific manager or troubleshoot a manager issue.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_stop",
+        "icon": "$(stop)",
+        "userDescription": "Stop a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to stop (e.g., 2 for EVENT_1)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": ["managerNum"]
+        }
+      },
+      {
+        "name": "winccoa_restart_manager",
+        "displayName": "Restart WinCC OA Manager",
+        "modelDescription": "Restart a specific manager (stop then start). Use when the user wants to restart a manager to apply changes or troubleshoot.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_restart",
+        "icon": "$(debug-restart)",
+        "userDescription": "Restart a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to restart"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": ["managerNum"]
+        }
       }
     ],
     "configuration": {
