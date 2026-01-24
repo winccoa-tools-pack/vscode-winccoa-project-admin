@@ -605,18 +605,55 @@ class ListManagersTool implements vscode.LanguageModelTool<ListManagersInput> {
                 }
             }
 
-            // Get managers (this calls managerTreeProvider internally)
-            // Note: We need to get managers from the current project
-            // For now, return a basic response indicating managers would be listed
-            // The actual manager listing logic is in ManagerTreeProvider
+            // Get managers from PMON
+            // Use PMON directly to query manager status
+            const PmonComponent = require('@winccoa-tools-pack/npm-winccoa-core').PmonComponent;
+            const pmon = new PmonComponent();
+            pmon.setVersion(project.version);
+            
+            ExtensionOutputChannel.debug('LanguageModelTool', `Getting project status for: ${project.id}`);
+            const projectStatus = await pmon.getProjectStatus(project.id);
+            
+            ExtensionOutputChannel.debug('LanguageModelTool', `Getting manager options list for: ${project.id}`);
+            const managerOptions = await pmon.getManagerOptionsList(project.id);
+            
+            if (!projectStatus || !projectStatus.managers) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify({
+                            success: false,
+                            error: 'Failed to retrieve manager status from PMON'
+                        }, null, 2)
+                    )
+                ]);
+            }
+            
+            // Build manager list (skip pmon itself at idx 0)
+            const allManagers = projectStatus.managers
+                .map((info: any, idx: number) => ({
+                    num: idx,
+                    name: managerOptions[idx]?.componentName || `Manager_${idx}`,
+                    state: info.state,
+                    mode: managerOptions[idx]?.startMode || 'unknown',
+                    secKill: managerOptions[idx]?.secKill || 0,
+                    restartCount: info.restartCount || 0
+                }))
+                .filter((m: any) => m.num > 0); // Skip PMON itself
+            
+            // Apply status filter
+            let managers = allManagers;
+            if (input.statusFilter && input.statusFilter !== 'all') {
+                const targetState = input.statusFilter === 'running' ? 'RUNNING' : 'STOPPED';
+                managers = allManagers.filter((m: any) => m.state === targetState);
+            }
             
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: true,
                         projectId: project.id,
-                        message: 'Manager list functionality available via UI',
-                        note: 'Full manager control API coming soon'
+                        count: managers.length,
+                        managers: managers
                     }, null, 2)
                 )
             ]);
