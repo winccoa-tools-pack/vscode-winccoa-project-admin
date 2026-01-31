@@ -11,6 +11,7 @@ export class ProjectManager {
     private _currentProject: ProjectInfo | undefined;
     private _runningProjects: ProjectInfo[] = [];
     private _failedProjects: Set<string> = new Set(); // Cache for projects with errors
+    private _favoriteProjects: Set<string> = new Set(); // Favorite project IDs
     private _onDidChangeProject = new vscode.EventEmitter<ProjectInfo | undefined>();
     private _onDidChangeProjects = new vscode.EventEmitter<void>(); // NEW: For TreeView refresh
     private _refreshInterval: NodeJS.Timeout | undefined;
@@ -21,6 +22,7 @@ export class ProjectManager {
 
     constructor(private context: vscode.ExtensionContext) {
         // Don't load old state - always start fresh
+        this.loadFavorites();
     }
 
     /**
@@ -160,32 +162,53 @@ export class ProjectManager {
 
     /**
      * Phase 2: Load project status sequentially (progressive UX)
+     * Favorites are loaded first for better UX
      */
     private async loadProjectStatusProgressive(): Promise<void> {
         const runnable: ProjEnvProject[] = await getRunnableProjects();
-        ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] Checking status for ${runnable.length} project(s)`);
+        
+        // Separate favorites and non-favorites
+        const favorites: ProjEnvProject[] = [];
+        const others: ProjEnvProject[] = [];
         
         for (const project of runnable) {
+            if (this._favoriteProjects.has(project.getId())) {
+                favorites.push(project);
+            } else {
+                others.push(project);
+            }
+        }
+        
+        const total = runnable.length;
+        const favCount = favorites.length;
+        ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] Checking status for ${total} project(s) (${favCount} favorites first)`);
+        
+        // Load favorites FIRST, then others
+        const orderedProjects = [...favorites, ...others];
+        
+        for (const project of orderedProjects) {
             const projectId = project.getId();
+            const isFav = this._favoriteProjects.has(projectId);
+            const prefix = isFav ? '⭐' : '○';
             
             // Skip projects that previously failed (cached errors)
             if (this._failedProjects.has(projectId)) {
                 const cachedError = this._runningProjects.find(p => p.id === projectId);
                 if (cachedError) {
-                    ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] Skipping ${projectId} (cached error)`);
+                    ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] ${prefix} Skipping ${projectId} (cached error)`);
                 }
                 continue;
             }
             
-            ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] Polling PMON for project: ${projectId}`);
+            ExtensionOutputChannel.debug('ProjectManager', `[PROGRESSIVE LOAD] ${prefix} Polling PMON for project: ${projectId}`);
             try {
                 const isRunning = await project.isPmonRunning();
                 const statusText = isRunning ? 'running' : 'stopped';
-                ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] ${projectId} → ${statusText.toUpperCase()}`);
+                ExtensionOutputChannel.info('ProjectManager', `[PROGRESSIVE LOAD] ${prefix} ${projectId} → ${statusText.toUpperCase()}`);
                 this.updateProjectStatus(projectId, isRunning ? 'running' : 'stopped');
             } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : String(error);
-                ExtensionOutputChannel.warn('ProjectManager', `[PROGRESSIVE LOAD] ${projectId} → ERROR: ${errorMsg}`);
+                ExtensionOutputChannel.warn('ProjectManager', `[PROGRESSIVE LOAD] ${prefix} ${projectId} → ERROR: ${errorMsg}`);
                 
                 // Cache this project as failed
                 this._failedProjects.add(projectId);
@@ -364,6 +387,51 @@ export class ProjectManager {
      */
     private saveState(): void {
         this.context.workspaceState.update('currentProject', this._currentProject);
+    }
+
+    /**
+     * Load favorite projects from workspace storage
+     */
+    private loadFavorites(): void {
+        const saved = this.context.workspaceState.get<string[]>('favoriteProjects', []);
+        this._favoriteProjects = new Set(saved);
+        ExtensionOutputChannel.info('ProjectManager', `Loaded ${saved.length} favorite project(s)`);
+    }
+
+    /**
+     * Save favorite projects to workspace storage
+     */
+    private saveFavorites(): void {
+        this.context.workspaceState.update('favoriteProjects', Array.from(this._favoriteProjects));
+    }
+
+    /**
+     * Toggle favorite status for a project
+     */
+    public toggleFavorite(projectId: string): void {
+        if (this._favoriteProjects.has(projectId)) {
+            this._favoriteProjects.delete(projectId);
+            ExtensionOutputChannel.info('ProjectManager', `Removed favorite: ${projectId}`);
+        } else {
+            this._favoriteProjects.add(projectId);
+            ExtensionOutputChannel.info('ProjectManager', `Added favorite: ${projectId}`);
+        }
+        this.saveFavorites();
+        this._onDidChangeProjects.fire();
+    }
+
+    /**
+     * Check if project is a favorite
+     */
+    public isFavorite(projectId: string): boolean {
+        return this._favoriteProjects.has(projectId);
+    }
+
+    /**
+     * Get all favorite project IDs
+     */
+    public getFavorites(): string[] {
+        return Array.from(this._favoriteProjects);
     }
 
     dispose(): void {

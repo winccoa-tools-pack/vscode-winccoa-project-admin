@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -183,6 +183,16 @@
         "command": "winccoa.explorer.registerProject",
         "title": "Register as WinCC OA Project",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.addToFavorites",
+        "title": "Add to Favorites",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.removeFromFavorites",
+        "title": "Remove from Favorites",
+        "category": "WinCC OA"
       }
     ],
     "menus": {
@@ -241,22 +251,32 @@
         },
         {
           "command": "winccoa.project.setActive",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "1_project@1"
         },
         {
-          "command": "winccoa.project.addToWorkspace",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "command": "winccoa.project.addToFavorites",
+          "when": "view == winccoa.systemView && viewItem == project-nonfavorite",
           "group": "1_project@2"
         },
         {
+          "command": "winccoa.project.removeFromFavorites",
+          "when": "view == winccoa.systemView && viewItem == project-favorite",
+          "group": "1_project@3"
+        },
+        {
+          "command": "winccoa.project.addToWorkspace",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "group": "1_project@4"
+        },
+        {
           "command": "winccoa.project.openInExplorer",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "2_open@1"
         },
         {
           "command": "winccoa.project.unregister",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "9_danger@1"
         },
         {
@@ -292,7 +312,12 @@
           "properties": {
             "statusFilter": {
               "type": "string",
-              "enum": ["all", "running", "stopped", "error"],
+              "enum": [
+                "all",
+                "running",
+                "stopped",
+                "error"
+              ],
               "description": "Filter projects by status (default: all)"
             }
           }
@@ -314,7 +339,9 @@
               "description": "The project ID/name to get information for"
             }
           },
-          "required": ["projectId"]
+          "required": [
+            "projectId"
+          ]
         }
       },
       {
@@ -333,7 +360,9 @@
               "description": "The project ID/name to set as active"
             }
           },
-          "required": ["projectId"]
+          "required": [
+            "projectId"
+          ]
         }
       },
       {
@@ -356,7 +385,9 @@
               "description": "Wait for project to fully start (default: false)"
             }
           },
-          "required": ["projectId"]
+          "required": [
+            "projectId"
+          ]
         }
       },
       {
@@ -379,7 +410,9 @@
               "description": "Timeout in seconds (default: 30)"
             }
           },
-          "required": ["projectId"]
+          "required": [
+            "projectId"
+          ]
         }
       },
       {
@@ -398,7 +431,9 @@
               "description": "The project ID/name to check PMON status for"
             }
           },
-          "required": ["projectId"]
+          "required": [
+            "projectId"
+          ]
         }
       },
       {
@@ -418,7 +453,11 @@
             },
             "statusFilter": {
               "type": "string",
-              "enum": ["all", "running", "stopped"],
+              "enum": [
+                "all",
+                "running",
+                "stopped"
+              ],
               "description": "Filter managers by status (default: all)"
             }
           },
@@ -445,7 +484,9 @@
               "description": "The project ID/name (optional - defaults to active project)"
             }
           },
-          "required": ["managerNum"]
+          "required": [
+            "managerNum"
+          ]
         }
       },
       {
@@ -468,7 +509,9 @@
               "description": "The project ID/name (optional - defaults to active project)"
             }
           },
-          "required": ["managerNum"]
+          "required": [
+            "managerNum"
+          ]
         }
       },
       {
@@ -491,7 +534,9 @@
               "description": "The project ID/name (optional - defaults to active project)"
             }
           },
-          "required": ["managerNum"]
+          "required": [
+            "managerNum"
+          ]
         }
       }
     ],
@@ -551,7 +596,7 @@
     "eslint": "^8.50.0",
     "glob": "^13.0.0",
     "markdownlint-cli": "^0.47.0",
-    "mocha": "^11.7.5",
+    "mocha": "^11.3.0",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
     "typescript": "^5.2.0",

@@ -231,6 +231,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                     await systemTreeProvider.unregisterProject(item.projectData);
                 }
             })
+        );        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.addToFavorites', async (item: any) => {
+                if (item && item.projectData) {
+                    const isFav = projectManager.isFavorite(item.projectData.id);
+                    if (!isFav) {
+                        projectManager.toggleFavorite(item.projectData.id);
+                        vscode.window.showInformationMessage(`⭐ Added ${item.projectData.name} to favorites`);
+                    }
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.removeFromFavorites', async (item: any) => {
+                if (item && item.projectData) {
+                    const isFav = projectManager.isFavorite(item.projectData.id);
+                    if (isFav) {
+                        projectManager.toggleFavorite(item.projectData.id);
+                        vscode.window.showInformationMessage(`Removed ${item.projectData.name} from favorites`);
+                    }
+                }
+            })
         );
         ExtensionOutputChannel.info('Extension', 'Registered project unregister command');
 

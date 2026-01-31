@@ -160,45 +160,64 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 ];
             }
             
-            return allProjects.map(project => {
+            // Sort projects: favorites first (by name), then non-favorites (by name)
+            const sorted = allProjects.sort((a, b) => {
+                const aFav = this.projectManager.isFavorite(a.id);
+                const bFav = this.projectManager.isFavorite(b.id);
+                
+                // Favorites always come first
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+                
+                // Within same group, sort alphabetically
+                return a.name.localeCompare(b.name);
+            });
+            
+            return sorted.map(project => {
+                const isFavorite = this.projectManager.isFavorite(project.id);
                 // Determine icon and description based on project status
                 let description: string;
                 let tooltip: string;
                 let iconPath: vscode.ThemeIcon | undefined;
                 
+                // Favorite prefix for description
+                const favPrefix = isFavorite ? '⭐ ' : '';
+                
                 switch (project.status) {
                     case 'unknown':
-                        description = '⚪ Loading...';
-                        tooltip = `Project: ${project.name}\nStatus: Loading...`;
+                        description = `${favPrefix}Loading...`;
+                        tooltip = `Project: ${project.name}\nStatus: Loading...${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = new vscode.ThemeIcon('circle-outline', new vscode.ThemeColor('descriptionForeground'));
                         break;
                     case 'running':
-                        description = '● Running';
-                        tooltip = `Project: ${project.name}\nStatus: Running`;
+                        description = `${favPrefix}Running`;
+                        tooltip = `Project: ${project.name}\nStatus: Running${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
                         break;
                     case 'stopped':
-                        description = '○ Stopped';
-                        tooltip = `Project: ${project.name}\nStatus: Stopped`;
+                        description = `${favPrefix}Stopped`;
+                        tooltip = `Project: ${project.name}\nStatus: Stopped${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
                         break;
                     case 'transitioning':
-                        description = '⏸ Transitioning...';
-                        tooltip = `Project: ${project.name}\nStatus: Transitioning`;
+                        description = `${favPrefix}Transitioning...`;
+                        tooltip = `Project: ${project.name}\nStatus: Transitioning${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = new vscode.ThemeIcon('sync~spin', new vscode.ThemeColor('charts.yellow'));
                         break;
                     case 'error':
-                        description = '⚠ Error';
-                        tooltip = `Project: ${project.name}\nError: ${project.error}`;
+                        description = `${favPrefix}Error`;
+                        tooltip = `Project: ${project.name}\nError: ${project.error}${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
                         break;
                     default:
-                        description = project.isRunning ? '● Running' : '○ Stopped';
-                        tooltip = `Project: ${project.name}`;
-                        iconPath = undefined;
+                        description = favPrefix + (project.isRunning ? 'Running' : 'Stopped');
+                        tooltip = `Project: ${project.name}${isFavorite ? '\n⭐ Favorite' : ''}`;
+                        iconPath = project.isRunning
+                            ? new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'))
+                            : new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
                 }
                 
-                return new SystemItem(
+                const item = new SystemItem(
                     project.name,
                     vscode.TreeItemCollapsibleState.None,
                     'project',
@@ -210,6 +229,11 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     undefined, // subprojectPath not needed for projects
                     iconPath
                 );
+                
+                // Override contextValue to distinguish favorites
+                item.contextValue = isFavorite ? 'project-favorite' : 'project-nonfavorite';
+                
+                return item;
             });
         }
         return [];
