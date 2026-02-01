@@ -86,6 +86,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             systemTreeProvider,
             managerTreeProvider,
         );
+        languageModelToolsService.setDevWatcherService(devWatcherService);
         languageModelToolsService.register(context);
         ExtensionOutputChannel.info('Extension', 'Language Model Tools registered');
 

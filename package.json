@@ -713,6 +713,54 @@
             "managerNum"
           ]
         }
+      },
+      {
+        "name": "winccoa_toggle_watcher",
+        "displayName": "Toggle File Watcher",
+        "modelDescription": "Toggle the file watcher for a specific WinCC OA manager. When active, the watcher monitors files and automatically restarts the manager when changes are detected. Use when the user wants to enable/disable auto-restart on file changes.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_watcher",
+        "icon": "$(eye)",
+        "userDescription": "Toggle file watcher for automatic manager restart",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to toggle watcher for"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            },
+            "action": {
+              "type": "string",
+              "enum": ["start", "stop", "toggle"],
+              "description": "Action to perform: start, stop, or toggle (default: toggle)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_watcher_status",
+        "displayName": "Get File Watcher Status",
+        "modelDescription": "Get the status of all active file watchers. Shows which managers have active watchers and their current state. Use when the user asks about watcher status or wants to see which managers are being watched.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_watcher_status",
+        "icon": "$(list-unordered)",
+        "userDescription": "Get status of all active file watchers",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "Filter by project ID (optional - shows all if not specified)"
+            }
+          }
+        }
       }
     ],
     "configuration": {
