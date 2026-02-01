@@ -709,6 +709,49 @@
             "Detailed debugging information",
             "Very verbose trace information (for troubleshooting)"
           ]
+        },
+        "winccoaProjectAdmin.devWatcher.defaultPatterns": {
+          "type": "object",
+          "default": {
+            "node": ["javascript/**/*.ts", "javascript/**/*.js"],
+            "WCCOAnode": ["javascript/**/*.ts", "javascript/**/*.js"],
+            "CTRL": ["scripts/**/*.ctl", "scripts/libs/**/*.ctl"],
+            "UI": ["panels/**/*.xml", "panels/**/*.pnl"]
+          },
+          "description": "Default watch patterns by manager type. Keys are manager type prefixes (e.g., 'node', 'CTRL'), values are arrays of glob patterns relative to project root.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "winccoaProjectAdmin.devWatcher.debounceMs": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Debounce delay in milliseconds before triggering manager restart after file changes"
+        },
+        "winccoaProjectAdmin.devWatcher.ignoredPatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/*.d.ts",
+            "**/.git/**"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Glob patterns to ignore when watching files"
+        },
+        "winccoaProjectAdmin.devWatcher.maxRetries": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum number of restart retries on failure"
         }
       }
     }
