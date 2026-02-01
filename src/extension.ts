@@ -8,6 +8,7 @@ import { ManagerTreeProvider } from './views/managerTreeProvider';
 import type { ProjectInfo, WinCCOACoreAPI } from './types';
 import type { ManagerDisplayData } from './views/managerTreeProvider';
 import { LanguageModelToolsService } from './languageModelTools';
+import { DevWatcherService } from './services/devWatcherService';
 
 // Type guard to check if projectData is ProjectInfo
 function isProjectInfo(projectData: ProjectInfo | string[]): projectData is ProjectInfo {
@@ -20,6 +21,7 @@ let statusBarManager: StatusBarManager;
 let systemTreeProvider: SystemTreeProvider;
 let managerTreeProvider: ManagerTreeProvider;
 let languageModelToolsService: LanguageModelToolsService;
+let devWatcherService: DevWatcherService;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -63,6 +65,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         systemTreeProvider = new SystemTreeProvider(projectManager);
         managerTreeProvider = new ManagerTreeProvider(projectManager);
 
+        // Initialize Dev Watcher Service
+        ExtensionOutputChannel.info('Extension', 'Creating DevWatcherService...');
+        devWatcherService = new DevWatcherService(context, managerTreeProvider.getPmon());
+        managerTreeProvider.setDevWatcherService(devWatcherService);
+
         // Register tree views immediately
         context.subscriptions.push(
             vscode.window.registerTreeDataProvider('winccoa.systemView', systemTreeProvider),
@@ -85,10 +92,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         // Start background initialization (don't block activation)
         projectManager
             .initialize()
-            .then(() => {
+            .then(async () => {
                 ExtensionOutputChannel.info('Extension', 'Background initialization complete');
                 // Update status bar after initialization
                 statusBarManager.forceUpdate();
+
+                // Restore dev watchers after project manager is ready
+                try {
+                    await devWatcherService.restoreWatchers(
+                        (projectId) => {
+                            const projects = projectManager.getRunningProjects();
+                            const project = projects.find(p => p.id === projectId);
+                            if (project) {
+                                return { projectDir: project.projectDir, version: project.version };
+                            }
+                            return undefined;
+                        },
+                        (projectId, managerIndex) => {
+                            const managers = managerTreeProvider.getManagers();
+                            const manager = managers.find(m => m.idx === managerIndex);
+                            return manager?.options?.component;
+                        }
+                    );
+                } catch (err) {
+                    const restoreError = err instanceof Error ? err : new Error(String(err));
+                    ExtensionOutputChannel.error('Extension', 'Failed to restore dev watchers', restoreError);
+                }
             })
             .catch((err) => {
                 const error = err instanceof Error ? err : new Error(String(err));
@@ -212,6 +241,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             }),
         );
         ExtensionOutputChannel.info('Extension', 'Registered manager control commands');
+
+        // Register dev watcher commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.toggleWatcher', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.toggleWatcher(item.managerData);
+                }
+            })
+        );
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.configureWatcher', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.configureWatcher(item.managerData);
+                }
+            })
+        );
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.stopAllWatchers', async () => {
+                const watchers = devWatcherService.getAllActiveWatchers();
+                for (const watcher of watchers) {
+                    devWatcherService.stopWatcher(watcher.projectId, watcher.managerIndex);
+                }
+                vscode.window.showInformationMessage(`Stopped ${watchers.length} watcher(s)`);
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered dev watcher commands');
 
         // Register system control commands
         context.subscriptions.push(
@@ -422,7 +479,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         ExtensionOutputChannel.info('Extension', 'Registered utility commands');
 
         // Cleanup on dispose
-        context.subscriptions.push(projectManager, statusBarManager);
+        context.subscriptions.push(projectManager, statusBarManager, { dispose: () => devWatcherService.dispose() });
 
         ExtensionOutputChannel.success('Extension', 'Extension activated successfully');
 
