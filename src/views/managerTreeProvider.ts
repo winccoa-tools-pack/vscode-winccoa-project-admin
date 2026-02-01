@@ -1107,6 +1107,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                     currentProject.projectDir,
                     currentProject.version,
                     managerType,
+                    managerData.options?.startOptions,
                     savedConfig
                 );
                 vscode.window.showInformationMessage(`Started file watcher for ${managerType}`);
@@ -1220,6 +1221,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                 currentProject.projectDir,
                 currentProject.version,
                 managerType,
+                managerData.options?.startOptions,
                 { watchPaths }
             );
 

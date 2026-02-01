@@ -112,7 +112,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                         (projectId, managerIndex) => {
                             const managers = managerTreeProvider.getManagers();
                             const manager = managers.find(m => m.idx === managerIndex);
-                            return manager?.options?.component;
+                            if (manager?.options?.component) {
+                                return { type: manager.options.component, startOptions: manager.options.startOptions };
+                            }
+                            return undefined;
                         }
                     );
                 } catch (err) {

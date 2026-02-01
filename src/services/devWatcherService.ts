@@ -49,8 +49,16 @@ export class DevWatcherService {
     /**
      * Get default watch patterns for a manager type
      */
-    getDefaultPatternsForManager(managerType: string): string[] {
+    getDefaultPatternsForManager(managerType: string, startOptions?: string): string[] {
         const config = this.getConfig();
+
+        // For CTRL managers, extract the specific script file from start options
+        if (managerType.toLowerCase().startsWith('ctrl') && startOptions) {
+            const ctlFile = this.extractCtlFileFromOptions(startOptions);
+            if (ctlFile) {
+                return [ctlFile];
+            }
+        }
 
         // Check for exact match first, then prefix match
         for (const [key, patterns] of Object.entries(config.defaultPatterns)) {
@@ -63,17 +71,97 @@ export class DevWatcherService {
     }
 
     /**
-     * Resolve watch paths relative to project directory
+     * Extract .ctl file path from CTRL manager start options
+     */
+    private extractCtlFileFromOptions(startOptions: string): string | undefined {
+        // Match .ctl file paths in the start options
+        // Handle formats like: "NeueDatei.ctl", "scripts/test.ctl", "-f scripts/test.ctl", etc.
+        const ctlMatch = startOptions.match(/(?:^|\s)([^\s]+\.ctl)(?:\s|$)/i);
+        if (!ctlMatch) {
+            return undefined;
+        }
+
+        let ctlFile = ctlMatch[1];
+
+        // If the file doesn't have a path (no / or \), prepend scripts/
+        if (!ctlFile.includes('/') && !ctlFile.includes('\\')) {
+            ctlFile = `scripts/${ctlFile}`;
+        }
+
+        return ctlFile;
+    }
+
+    /**
+     * Resolve watch paths relative to project directory and subprojects
      */
     private resolveWatchPaths(watchPaths: string[], projectDir: string): string[] {
-        return watchPaths.map(p => {
-            // If absolute path (Windows drive letter or UNC path), use as-is
-            if (/^[A-Z]:\\/i.test(p) || p.startsWith('\\\\')) {
-                return p;
+        // Get all project paths (main + subprojects)
+        const allProjectPaths = [projectDir, ...this.parseSubProjects(projectDir)];
+
+        const resolvedPaths: string[] = [];
+
+        for (const pattern of watchPaths) {
+            if (/^[A-Z]:\\/i.test(pattern) || pattern.startsWith('\\\\')) {
+                // Absolute path, use as-is
+                resolvedPaths.push(pattern);
+            } else {
+                // Relative path - resolve against all project paths
+                for (const projPath of allProjectPaths) {
+                    resolvedPaths.push(path.join(projPath, pattern));
+                }
             }
-            // Resolve relative to project root
-            return path.join(projectDir, p);
-        });
+        }
+
+        return resolvedPaths;
+    }
+
+    /**
+     * Parse subprojects from config file
+     * Returns array of proj_path entries (excluding the project itself)
+     */
+    private parseSubProjects(projectDir: string): string[] {
+        try {
+            const configPath = path.join(projectDir, 'config', 'config');
+            if (!fs.existsSync(configPath)) {
+                return [];
+            }
+
+            const content = fs.readFileSync(configPath, 'utf-8');
+            const lines = content.split('\n');
+            const projPaths: string[] = [];
+            let inGeneralSection = false;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                // Check for section headers
+                if (trimmed.startsWith('[')) {
+                    inGeneralSection = trimmed === '[general]';
+                    continue;
+                }
+
+                // Only process proj_path in [general] section
+                if (inGeneralSection && trimmed.startsWith('proj_path')) {
+                    const match = trimmed.match(/proj_path\s*=\s*"([^"]+)"/);
+                    if (match && match[1]) {
+                        const projPath = match[1];
+                        // Exclude the project itself
+                        if (projPath !== projectDir && !projPath.endsWith(path.basename(projectDir))) {
+                            projPaths.push(projPath);
+                        }
+                    }
+                }
+            }
+
+            if (projPaths.length > 0) {
+                ExtensionOutputChannel.debug(SOURCE, `Found ${projPaths.length} subproject(s): ${projPaths.join(', ')}`);
+            }
+
+            return projPaths;
+        } catch (error) {
+            ExtensionOutputChannel.warn(SOURCE, `Failed to parse subprojects: ${error}`);
+            return [];
+        }
     }
 
     /**
@@ -103,6 +191,7 @@ export class DevWatcherService {
         projectDir: string,
         version: string,
         managerType: string,
+        startOptions?: string,
         watchConfig?: Partial<ManagerWatchConfig>
     ): Promise<void> {
         const key = this.getWatcherKey(projectId, managerIndex);
@@ -120,7 +209,7 @@ export class DevWatcherService {
             projectId,
             managerIndex,
             enabled: true,
-            watchPaths: watchConfig?.watchPaths || this.getDefaultPatternsForManager(managerType),
+            watchPaths: watchConfig?.watchPaths || this.getDefaultPatternsForManager(managerType, startOptions),
             customIgnorePatterns: watchConfig?.customIgnorePatterns,
             waitForTsc: watchConfig?.waitForTsc ?? this.isTypeScriptManager(managerType, projectDir)
         };
@@ -138,9 +227,6 @@ export class DevWatcherService {
         ExtensionOutputChannel.debug(SOURCE, `Watch paths: ${resolvedPaths.join(', ')}`);
         ExtensionOutputChannel.debug(SOURCE, `Ignored patterns: ${ignoredPatterns.join(', ')}`);
         ExtensionOutputChannel.debug(SOURCE, `Wait for TSC: ${config.waitForTsc}`);
-
-        // Set version for pmon
-        this.pmon.setVersion(version);
 
         // Initialize state
         const state: WatcherState = {
@@ -428,7 +514,7 @@ export class DevWatcherService {
      */
     async restoreWatchers(
         getProjectInfo: (projectId: string) => { projectDir: string; version: string } | undefined,
-        getManagerType: (projectId: string, managerIndex: number) => string | undefined
+        getManagerInfo: (projectId: string, managerIndex: number) => { type: string; startOptions?: string } | undefined
     ): Promise<void> {
         const savedWatchers = this.context.globalState.get<PersistedWatcherState[]>('devWatcher.activeWatchers', []);
 
@@ -446,8 +532,8 @@ export class DevWatcherService {
                     continue;
                 }
 
-                const managerType = getManagerType(saved.projectId, saved.managerIndex);
-                if (!managerType) {
+                const managerInfo = getManagerInfo(saved.projectId, saved.managerIndex);
+                if (!managerInfo) {
                     ExtensionOutputChannel.warn(SOURCE, `Manager ${saved.managerIndex} not found in ${saved.projectId}, skipping`);
                     continue;
                 }
@@ -457,7 +543,8 @@ export class DevWatcherService {
                     saved.managerIndex,
                     projectInfo.projectDir,
                     projectInfo.version,
-                    managerType,
+                    managerInfo.type,
+                    managerInfo.startOptions,
                     saved.config
                 );
 

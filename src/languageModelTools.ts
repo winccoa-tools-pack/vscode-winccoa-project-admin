@@ -1962,6 +1962,7 @@ class ToggleWatcherTool implements vscode.LanguageModelTool<ToggleWatcherInput> 
                     project.projectDir,
                     project.version,
                     managerType,
+                    manager.options?.startOptions,
                     savedConfig
                 );
 
