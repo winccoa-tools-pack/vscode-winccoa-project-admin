@@ -211,6 +211,23 @@
         "command": "winccoa.project.removeFromFavorites",
         "title": "Remove from Favorites",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.manager.toggleWatcher",
+        "title": "Toggle File Watcher",
+        "category": "WinCC OA",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "winccoa.manager.configureWatcher",
+        "title": "Configure Watch Paths",
+        "category": "WinCC OA",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "winccoa.manager.stopAllWatchers",
+        "title": "Stop All File Watchers",
+        "category": "WinCC OA"
       }
     ],
     "menus": {
@@ -271,6 +288,16 @@
           "command": "winccoa.manager.edit",
           "when": "view == winccoa.managerView && viewItem == manager",
           "group": "manager@1"
+        },
+        {
+          "command": "winccoa.manager.toggleWatcher",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
+          "group": "inline"
+        },
+        {
+          "command": "winccoa.manager.configureWatcher",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
+          "group": "watcher@1"
         },
         {
           "command": "winccoa.project.start",
