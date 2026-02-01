@@ -629,8 +629,9 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                             component: componentName,
                             startMode: modeSelection.mode,
                             secondToKill: 30,
-                            resetMin: 1,
-                            resetStartCounter: 3,
+                            resetStartCounter: 1,
+                            resetMin: 0,
+                            restart: 0,
                             startOptions: startOptions || '',
                         };
 
