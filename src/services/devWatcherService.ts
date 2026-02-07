@@ -51,44 +51,52 @@ export class DevWatcherService {
      */
     getDefaultPatternsForManager(managerType: string, startOptions?: string): string[] {
         const config = this.getConfig();
+        const patterns: string[] = [];
 
-        // For CTRL managers, extract the specific script file from start options
-        if (managerType.toLowerCase().startsWith('ctrl') && startOptions) {
-            const ctlFile = this.extractCtlFileFromOptions(startOptions);
-            if (ctlFile) {
-                return [ctlFile];
+        // Extract specific file from start options for any manager type
+        if (startOptions) {
+            const file = this.extractFileFromOptions(startOptions);
+            if (file) {
+                patterns.push(file);
             }
         }
 
-        // Check for exact match first, then prefix match
-        for (const [key, patterns] of Object.entries(config.defaultPatterns)) {
+        // Add default patterns for the manager type
+        for (const [key, defaultPatterns] of Object.entries(config.defaultPatterns)) {
             if (managerType.toLowerCase().startsWith(key.toLowerCase())) {
-                return patterns;
+                patterns.push(...defaultPatterns);
+                break;
             }
         }
 
-        return [];
+        return [...new Set(patterns)];
     }
 
     /**
-     * Extract .ctl file path from CTRL manager start options
+     * Extract file path from manager start options.
+     * Supports common WinCC OA file extensions: .ctl, .ctc, .lst, .pnl, .xml, .js, .ts
      */
-    private extractCtlFileFromOptions(startOptions: string): string | undefined {
-        // Match .ctl file paths in the start options
-        // Handle formats like: "NeueDatei.ctl", "scripts/test.ctl", "-f scripts/test.ctl", etc.
-        const ctlMatch = startOptions.match(/(?:^|\s)([^\s]+\.ctl)(?:\s|$)/i);
-        if (!ctlMatch) {
+    private extractFileFromOptions(startOptions: string): string | undefined {
+        const fileMatch = startOptions.match(/(?:^|\s)([^\s]+\.(?:ctl|ctc|lst|pnl|xml|js|ts))(?:\s|$)/i);
+        if (!fileMatch) {
             return undefined;
         }
 
-        let ctlFile = ctlMatch[1];
+        let file = fileMatch[1];
 
-        // If the file doesn't have a path (no / or \), prepend scripts/
-        if (!ctlFile.includes('/') && !ctlFile.includes('\\')) {
-            ctlFile = `scripts/${ctlFile}`;
+        // If the file doesn't have a path (no / or \), prepend a default directory based on extension
+        if (!file.includes('/') && !file.includes('\\')) {
+            const ext = path.extname(file).toLowerCase();
+            if (ext === '.ctl' || ext === '.ctc' || ext === '.lst') {
+                file = `scripts/${file}`;
+            } else if (ext === '.js' || ext === '.ts') {
+                file = `javascript/${file}`;
+            } else if (ext === '.pnl' || ext === '.xml') {
+                file = `panels/${file}`;
+            }
         }
 
-        return ctlFile;
+        return file;
     }
 
     /**
