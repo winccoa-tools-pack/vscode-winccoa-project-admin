@@ -315,6 +315,6 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "^0.2.3"
+    "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d2a509c"
   }
 }
