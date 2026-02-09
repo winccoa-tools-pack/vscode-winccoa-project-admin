@@ -89,7 +89,7 @@ export class ExtensionOutputChannel {
         ExtensionOutputChannel.log(LogLevel.DEBUG, source, message);
     }
 
-    public static trace(source: string, message: string, data?: any): void {
+    public static trace(source: string, message: string, data?: unknown): void {
         let msg = message;
         if (data !== undefined) {
             msg += `\n    Data: ${JSON.stringify(data, null, 2)}`;

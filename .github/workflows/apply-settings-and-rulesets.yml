@@ -1,0 +1,185 @@
+name: Apply Repo Settings & Rulesets (YAML)
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - ".github/repository.settings.yml"
+      - ".github/rulesets/**"
+      - ".github/workflows/apply-settings-and-rulesets.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run prints payloads; apply updates repo/settings/rulesets"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set mode
+        id: mode
+        shell: bash
+        run: |
+          MODE="dry-run"
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            MODE="apply"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="${{ inputs.mode }}"
+          fi
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Mode: $MODE"
+
+      - name: Install Python tooling
+        shell: bash
+        run: |
+          python3 --version
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyyaml
+
+      - name: Prepare payloads from YAML
+        id: prep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/generate_settings_payloads.py
+
+          if [ -f .github/repository.settings.yml ]; then
+            echo "has_settings=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_settings=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if ls -1 ruleset_payloads/*.json >/dev/null 2>&1; then
+            echo "has_rulesets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_rulesets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dry-run summary
+        if: ${{ steps.mode.outputs.mode == 'dry-run' }}
+        shell: bash
+        run: |
+          echo "--- repo_patch.json ---"; cat repo_patch.json; echo
+          echo "--- topics.json ---"; cat topics.json; echo
+          echo "--- security.json ---"; cat security.json; echo
+          echo "--- rulesets ---"; ls -la ruleset_payloads || true
+
+      - name: Validate GitHub token (repo admin)
+        if: ${{ steps.mode.outputs.mode == 'apply' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN != '' && secrets.REPO_ADMIN_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::GH_TOKEN is empty. Ensure the repo secret REPO_ADMIN_TOKEN exists (recommended) or GITHUB_TOKEN is available."
+            exit 1
+          fi
+
+          gh --version
+
+          # Helpful debug: show classic PAT scopes (fine-grained tokens may show empty scopes)
+          OAUTH_SCOPES=$(gh api --include -H "Accept: application/vnd.github+json" user 2>/dev/null \
+            | tr -d '\r' \
+            | awk 'tolower($0) ~ /^x-oauth-scopes:/ {sub(/^[^:]*: /, ""); print; exit}')
+          if [ -n "${OAUTH_SCOPES:-}" ]; then
+            echo "Token OAuth scopes: ${OAUTH_SCOPES}"
+          else
+            echo "Token OAuth scopes: (not reported; likely fine-grained token)"
+          fi
+
+          REPO="${{ github.repository }}"
+          IFS='/' read -r OWNER NAME <<< "$REPO"
+
+          # Validate token can access this repository and has admin rights (required for PATCH repo settings and rulesets).
+          gh api -H "Accept: application/vnd.github+json" "repos/$OWNER/$NAME" --jq '.permissions' || true
+          HAS_ADMIN=$(gh api -H "Accept: application/vnd.github+json" "repos/$OWNER/$NAME" --jq '.permissions.admin // false' || echo "false")
+          if [ "$HAS_ADMIN" != "true" ]; then
+            echo "::error::Token does not have admin access to $REPO."
+            echo "::error::Fix: recreate REPO_ADMIN_TOKEN with classic scope 'repo' (and authorize SSO if your org enforces it), OR fine-grained PAT with repository access + Administration: Read and write."
+            exit 1
+          fi
+
+          # Extra validation: rulesets endpoint also requires admin access.
+          gh api -H "Accept: application/vnd.github+json" "repos/$OWNER/$NAME/rulesets" >/dev/null
+
+      - name: Apply repository settings
+        if: ${{ steps.mode.outputs.mode == 'apply' && steps.prep.outputs.has_settings == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN != '' && secrets.REPO_ADMIN_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          IFS='/' read -r OWNER NAME <<< "$REPO"
+
+          if [ "$(jq 'length' repo_patch.json)" -gt 0 ]; then
+            gh api --method PATCH -H "Accept: application/vnd.github+json" \
+              "repos/$OWNER/$NAME" --input repo_patch.json
+          fi
+
+          if jq -e 'type=="array"' topics.json >/dev/null; then
+            python3 -c "import json; t=json.load(open('topics.json','r',encoding='utf-8')); json.dump({'names': t}, open('topics_payload.json','w',encoding='utf-8'))"
+            gh api --method PUT -H "Accept: application/vnd.github+json" \
+              "repos/$OWNER/$NAME/topics" --input topics_payload.json
+          else
+            echo "Skipping topics update (not specified)."
+          fi
+
+          if jq -e '.enable_vulnerability_alerts==true' security.json >/dev/null; then
+            gh api --method PUT -H "Accept: application/vnd.github+json" \
+              "repos/$OWNER/$NAME/vulnerability-alerts" || true
+          fi
+          if jq -e '.enable_automated_security_fixes==true' security.json >/dev/null; then
+            gh api --method PUT -H "Accept: application/vnd.github+json" \
+              "repos/$OWNER/$NAME/automated-security-fixes" || true
+          fi
+
+      - name: Upsert repository rulesets
+        if: ${{ steps.mode.outputs.mode == 'apply' && steps.prep.outputs.has_rulesets == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN != '' && secrets.REPO_ADMIN_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          IFS='/' read -r OWNER NAME <<< "$REPO"
+
+          gh api -H "Accept: application/vnd.github+json" "repos/$OWNER/$NAME/rulesets" > existing_rulesets.json
+
+          for payload in ruleset_payloads/*.json; do
+            RS_NAME=$(jq -r '.name // empty' "$payload")
+            if [ -z "$RS_NAME" ]; then
+              echo "Skipping $payload (missing .name)"
+              continue
+            fi
+
+            RS_ID=$(jq -r --arg n "$RS_NAME" '.[] | select(.name==$n) | .id' existing_rulesets.json | head -n 1)
+            if [ -n "$RS_ID" ] && [ "$RS_ID" != "null" ]; then
+              echo "Updating ruleset: $RS_NAME (id=$RS_ID)"
+              gh api --method PUT -H "Accept: application/vnd.github+json" \
+                "repos/$OWNER/$NAME/rulesets/$RS_ID" --input "$payload"
+            else
+              echo "Creating ruleset: $RS_NAME"
+              gh api --method POST -H "Accept: application/vnd.github+json" \
+                "repos/$OWNER/$NAME/rulesets" --input "$payload"
+            fi
+          done

@@ -6,13 +6,5 @@
   "singleQuote": true,
   "trailingComma": "all",
   "bracketSpacing": true,
-  "arrowParens": "always",
-  "overrides": [
-    {
-      "files": "**/*.md",
-      "options": {
-        "tabWidth": 2
-      }
-    }
-  ]
+  "arrowParens": "always"
 }

@@ -1,0 +1,38 @@
+name: Sync template files to repositories
+
+on:
+  schedule:
+    - cron: "15 6 * * 1-5"
+  workflow_dispatch:
+
+# Top‑level permissions — required for modifying workflow files
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    # Correct reference and use a valid ref (main or a tag)
+    uses: winccoa-tools-pack/.github/.github/workflows/template-sync-reusable.yml@main
+    with:
+      template_repo: "winccoa-tools-pack/template-vscode-extension"
+      template_ref:  "main"
+      sync_mode:     "update"
+      paths: |
+        .github/ISSUE_TEMPLATE/**/*.yml
+        .github/PULL_REQUEST_TEMPLATE/**/*.md
+        .github/workflows/**/*.yml
+        .github/labeler.yml
+        .github/rulesets/**/*.yml
+        .github/dependabot.yml
+        .github/DISCUSSIONS.md
+#        .github/ISSUE_TEMPLATE/**/*.yaml
+      pr_title:  "chore(template): sync template files"
+      pr_body:   "Automated sync from template repository."
+      pr_labels: "sync, automated"
+   #   pr_reviewers: "REPLACE_WITH_REAL_USERS_OR_TEAMS"
+      branch_prefix: "chore/template-sync"
+
+    secrets:
+      token: ${{ secrets.TEMPLATE_SYNC_PAT }}

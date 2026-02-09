@@ -60,7 +60,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                             )
                         ];
                     }
-                } catch (err) {
+                } catch {
                     // Still loading
                 }
             }
@@ -134,7 +134,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
         } else if (element.itemType === 'subprojects') {
             // Display subprojects stored in projectData
-            const subProjects = element.projectData || [];
+            const subProjects = Array.isArray(element.projectData) ? element.projectData : [];
             return subProjects.map((subProj: string) => {
                 const baseName = path.basename(subProj);
                 return new SystemItem(
@@ -214,7 +214,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         return [];
     }
 
-    async startProject(project: any): Promise<void> {
+    async startProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -259,11 +259,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showErrorMessage(`Failed to start managers (error code: ${result})`);
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to start project: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to start project: ${errorMsg}`);
         }
     }
 
-    async stopProject(project: any): Promise<void> {
+    async stopProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -308,7 +309,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${pmonResult})`);
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to stop project: ${error}`);
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to stop project: ${errorMsg}`);
             }
         }
     }
@@ -418,7 +420,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
     }
 
-    async setActiveProject(project: any): Promise<void> {
+    async setActiveProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -429,11 +431,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             vscode.window.showInformationMessage(`✓ ${project.name} set as active project`);
             this.refresh();
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to set active project: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to set active project: ${errorMsg}`);
         }
     }
 
-    async addProjectToWorkspace(project: any): Promise<void> {
+    async addProjectToWorkspace(project: ProjectInfo): Promise<void> {
         if (!project || !project.projectDir) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -460,11 +463,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showErrorMessage('Failed to add project to workspace');
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to add project to workspace: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to add project to workspace: ${errorMsg}`);
         }
     }
 
-    async openProjectInExplorer(project: any): Promise<void> {
+    async openProjectInExplorer(project: ProjectInfo): Promise<void> {
         if (!project || !project.projectDir) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -473,7 +477,8 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         try {
             await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(project.projectDir));
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to open project in explorer: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to open project in explorer: ${errorMsg}`);
         }
     }
 
@@ -620,7 +625,7 @@ class SystemItem extends vscode.TreeItem {
         public readonly tooltipText?: string,
         public readonly isRunning?: boolean,
         public readonly projectPath?: string,
-        public readonly projectData?: any,
+        public readonly projectData?: ProjectInfo | string[],
         public readonly subprojectPath?: string,
         public readonly customIconPath?: vscode.ThemeIcon
     ) {

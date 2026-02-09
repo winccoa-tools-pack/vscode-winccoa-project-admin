@@ -1,0 +1,41 @@
+name: Pre-Release (Develop)
+
+on:
+  workflow_run:
+    workflows:
+      - "CI/CD Pipeline"
+    types:
+      - completed
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pre-release:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    uses: ./.github/workflows/prerelease-reusable.yml
+    with:
+      target_branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      validate_release_branch: false
+    secrets: inherit
+
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: [pre-release]
+    if: success()
+
+    steps:
+      - name: Success Notification
+        run: |
+          echo "🧪 Dev pre-release ${{ needs.pre-release.outputs.tag }} created successfully!"
+          echo "📦 VSIX attached to the GitHub pre-release"
+          echo "📝 Auto-generated from develop"
+          echo ""
+          echo "🔗 Pre-release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.pre-release.outputs.tag }}"

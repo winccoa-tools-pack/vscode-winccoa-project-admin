@@ -1,0 +1,186 @@
+name: Git Flow Validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+      - closed
+
+permissions: {}
+
+jobs:
+  validate-gitflow:
+    name: Validate Git Flow + Conventional Commits
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Validate branch + target + commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('This workflow only supports pull_request events.');
+              return;
+            }
+
+            const headRef = pr.head.ref;   // e.g. feature/foo
+            const baseRef = pr.base.ref;   // e.g. develop
+
+            const rules = [
+            // main to develop means merging main back into develop (git flow)
+              { type: 'main', prefixes: ['main'], expectedBase: 'develop' },
+              { type: 'feature', prefixes: ['feature/'], expectedBase: 'develop' },
+              { type: 'bugfix',  prefixes: ['bugfix/'],  expectedBase: 'develop' },
+              { type: 'chore',   prefixes: ['chore/'],   expectedBase: 'develop', botOnly: true },
+              { type: 'dependabot', prefixes: ['dependabot/'], expectedBase: 'develop', botOnly: true },
+              { type: 'hotfix',  prefixes: ['hotfix/'],  expectedBase: 'main' },
+              { type: 'release', prefixes: ['release/'], expectedBase: 'main' },
+            ];
+
+            const matchingRule = rules.find(r => r.prefixes.some(p => headRef.startsWith(p)));
+
+            const errors = [];
+            const warnings = [];
+
+            if (!matchingRule) {
+              errors.push(
+                `Branch "${headRef}" does not follow Git Flow naming convention. ` +
+                `Expected one of: ${rules.flatMap(r => r.prefixes).join(', ')}`
+              );
+            } else {
+              if (matchingRule.botOnly === true && pr.user && pr.user.type !== 'Bot') {
+                errors.push(
+                  `Branch \"${headRef}\" is reserved for bot PRs (rule: ${matchingRule.type}). ` +
+                  `PR author type is \"${pr.user.type}\".`
+                );
+              }
+
+              if (baseRef !== matchingRule.expectedBase) {
+                errors.push(
+                  `Invalid target branch: ${matchingRule.type} branches must target "${matchingRule.expectedBase}", ` +
+                  `but this PR targets "${baseRef}".`
+                );
+              }
+
+              if (matchingRule.type === 'feature' || matchingRule.type === 'bugfix') {
+                warnings.push('Reminder: feature/bugfix branches should be created from "develop" (cannot be validated reliably via GitHub API).');
+              }
+              if (matchingRule.type === 'release') {
+                warnings.push('Reminder: release branches should be created from "develop" and then merged into "main" (branch source cannot be validated reliably via GitHub API).');
+              }
+              if (matchingRule.type === 'hotfix') {
+                warnings.push('Reminder: hotfix branches should be created from "main" (branch source cannot be validated reliably via GitHub API).');
+              }
+            }
+
+            // Conventional Commits validation
+            // Squash merge uses the PR title as the final commit message.
+            // Validate the PR title instead of individual commits.
+            // Matches: type(scope)!: subject
+            // Example: feat(parser)!: support x
+            const conventionalRe = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^\r\n()]+\))?(!)?:\s.+/;
+
+            // Bot PRs (e.g. Dependabot) often use non-conventional commit messages.
+            // Allow them for dedicated bot-only branch prefixes.
+            const isBotPr = Boolean(pr.user && pr.user.type === 'Bot');
+            const skipConventionalForBot = isBotPr && matchingRule && matchingRule.botOnly === true;
+            if (skipConventionalForBot) {
+              core.notice(`Skipping Conventional Commits validation for bot PR on ${matchingRule.type} branch (${headRef}).`);
+              return;
+            }
+
+            const title = String(pr.title || '').trim();
+            if (!title) {
+              errors.push('PR title is empty; expected a Conventional Commits style title (used for squash merge).');
+            } else if (!conventionalRe.test(title)) {
+              errors.push(
+                `PR title does not follow Conventional Commits (used for squash merge). ` +
+                `Expected e.g. "feat(scope): subject" or "fix: subject". Got: "${title}".`
+              );
+            }
+
+            // Output warnings to log
+            for (const w of warnings) {
+              core.warning(w);
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join('\n\n'));
+            } else {
+              core.notice('Git Flow validation passed.');
+              core.notice('Reminder: delete the branch after merge (feature/bugfix/release/hotfix).');
+            }
+
+  required:
+    name: Git Flow Validation - Required
+    runs-on: ubuntu-latest
+    if: ${{ always() && github.event.action != 'closed' }}
+    needs:
+      - validate-gitflow
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate-gitflow: ${{ needs.validate-gitflow.result }}"
+          if [ "${{ needs.validate-gitflow.result }}" != "success" ]; then
+            echo "::error::Git Flow Validation failed"
+            exit 1
+          fi
+
+  remind-branch-deletion:
+    name: Remind to delete merged branch
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Comment if branch still exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+
+            // Only meaningful for branches within the same repo.
+            if (pr.head.repo.full_name !== pr.base.repo.full_name) {
+              core.notice('PR is from a fork; skipping branch deletion reminder.');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const headRef = pr.head.ref;
+
+            let branchExists = true;
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `heads/${headRef}` });
+            } catch (e) {
+              branchExists = false;
+            }
+
+            if (!branchExists) {
+              core.notice(`Branch ${headRef} is already deleted.`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pr.number,
+              body: [
+                '### 🔍 Git Flow Validation',
+                '',
+                '- [ ] Branch will be deleted after merge (for feature/hotfix/release branches)',
+                '',
+                `This PR was merged, but branch \`${headRef}\` still exists. Consider deleting it to keep the repo tidy.`,
+              ].join('\n'),
+            });

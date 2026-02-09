@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from './projectManager';
-import { ProjectInfo } from './types';
 
 /**
  * Manages status bar UI for project selection

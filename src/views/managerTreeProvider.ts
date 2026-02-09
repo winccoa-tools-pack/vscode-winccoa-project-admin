@@ -3,7 +3,7 @@ import { ProjectManager } from '../projectManager';
 import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
-interface ManagerDisplayData {
+export interface ManagerDisplayData {
     idx: number;
     info: ProjEnvManagerInfo;
     options?: ProjEnvManagerOptions;
@@ -366,12 +366,12 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                 cancellable: false
             }, async () => {
                 try {
-                    const options = {
+                    const options: ProjEnvManagerOptions = {
                         component: componentName,
                         startMode: modeSelection.mode,
                         secondToKill: 30,
                         resetStartCounter: 1,
-                        restart: 0,
+                        resetMin: 0,
                         startOptions: startOptions || ''
                     };
 
@@ -415,7 +415,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
     }
 
-    private getNextFreeNumber(managers: any[], managerType: string): number {
+    private getNextFreeNumber(managers: Array<{ component: string }>, managerType: string): number {
         const existingNumbers = managers
             .filter(m => m.component.startsWith(managerType + '_'))
             .map(m => {

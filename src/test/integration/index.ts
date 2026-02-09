@@ -1,0 +1,1 @@
+import './exampleIntegrationTest.test.js';

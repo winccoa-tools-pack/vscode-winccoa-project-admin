@@ -2,7 +2,7 @@
   "name": "winccoa-project-admin",
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
-  "publisher": "RichardJanisch",
+  "publisher": "winccoa-tools-pack",
   "version": "1.1.1",
   "author": "RichardJanisch",
   "license": "MIT",
@@ -31,7 +31,8 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "dist/extension.js",
+  "main": "./out/extension.js",
+  "private": false,
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -270,44 +271,50 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "npm run compile",
     "compile": "webpack",
+    "compile:tsc": "tsc -p ./ && npm run copy-fixtures",
+    "copy-fixtures": "copyfiles -u 1 \"src/test/fixtures/**/*\" out/",
+    "build": "npm run compile",
+    "start": "code --extensionDevelopmentPath=.",
+    "start:insiders": "code-insiders --extensionDevelopmentPath=.",
+    "dev": "npm run watch",
     "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "build": "tsc --build",
+    "pretest": "npm run compile:tsc && npm run lint",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
     "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "format:md": "prettier --write \"**/*.md\"",
-    "format:md:check": "prettier --check \"**/*.md\"",
-    "style-check": "npm run lint && npm run format:check && npm run lint:md && npm run format:md:check",
-    "style-fix": "npm run lint:fix && npm run format && npm run lint:md:fix && npm run format:md",
-    "test": "npm run style-check && npm run compile && node ./dist/test/runTest.js",
-    "test:integration": "npm run build && node ./dist/test/runTest.js",
-    "ci:integration": "npm ci && npm run test:integration"
+    "test": "vscode-test --label unitTests",
+    "test:unit": "vscode-test --label unitTests",
+    "test:integrationt": "vscode-test --label integrationTests",
+    "ci:integration": "npm ci && npm run compile && npm run test:integrationt",
+    "style-check": "npm run format:check && npm run lint"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "^24.10.1",
     "@types/vscode": "^1.80.0",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.3.9",
     "@vscode/vsce": "^3.7.1",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.50.0",
     "glob": "^13.0.0",
     "markdownlint-cli": "^0.47.0",
     "mocha": "^11.7.5",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
+    "typescript-eslint": "^8.51.0",
     "typescript": "^5.2.0",
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "file:../npm-winccoa-core"
+    "@winccoa-tools-pack/npm-winccoa-core": "^0.2.3"
   }
 }

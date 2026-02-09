@@ -1,15 +1,38 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { ProjectManager } from './projectManager';
 import { StatusBarManager } from './statusBarManager';
 import { SystemTreeProvider } from './views/systemTreeProvider';
 import { ManagerTreeProvider } from './views/managerTreeProvider';
-import { WinCCOACoreAPI } from './types';
+import type { ProjectInfo, WinCCOACoreAPI } from './types';
+import type { ManagerDisplayData } from './views/managerTreeProvider';
 import { ExtensionOutputChannel } from './extensionOutput';
 
 let projectManager: ProjectManager;
 let statusBarManager: StatusBarManager;
 let systemTreeProvider: SystemTreeProvider;
 let managerTreeProvider: ManagerTreeProvider;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function hasManagerData(value: unknown): value is { managerData: ManagerDisplayData } {
+    if (!isRecord(value)) return false;
+    const managerData = value.managerData;
+    return isRecord(managerData) && typeof managerData.idx === 'number';
+}
+
+function hasProjectData(value: unknown): value is { projectData: ProjectInfo } {
+    if (!isRecord(value)) return false;
+    const projectData = value.projectData;
+    return isRecord(projectData) && typeof projectData.id === 'string';
+}
+
+function hasSubprojectPath(value: unknown): value is { subprojectPath: string } {
+    if (!isRecord(value)) return false;
+    return typeof value.subprojectPath === 'string';
+}
 
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
     // Initialize logger first
@@ -47,7 +70,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             // Update status bar after initialization
             statusBarManager.forceUpdate();
         }).catch(err => {
-            ExtensionOutputChannel.error('Extension', 'Background initialization failed', err);
+            const error = err instanceof Error ? err : new Error(String(err));
+            ExtensionOutputChannel.error('Extension', 'Background initialization failed', error);
         });
 
         // Register command for project selection
@@ -115,24 +139,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register manager control commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.start', async (item: any) => {
-                if (item && item.managerData) {
+            vscode.commands.registerCommand('winccoa.manager.start', async (item: unknown) => {
+                if (hasManagerData(item)) {
                     await managerTreeProvider.startManager(item.managerData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.stop', async (item: any) => {
-                if (item && item.managerData) {
+            vscode.commands.registerCommand('winccoa.manager.stop', async (item: unknown) => {
+                if (hasManagerData(item)) {
                     await managerTreeProvider.stopManager(item.managerData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.restart', async (item: any) => {
-                if (item && item.managerData) {
+            vscode.commands.registerCommand('winccoa.manager.restart', async (item: unknown) => {
+                if (hasManagerData(item)) {
                     await managerTreeProvider.restartManager(item.managerData);
                 }
             })
@@ -167,40 +191,40 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register project control commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.start', async (item: any) => {
-                if (item && item.projectData) {
+            vscode.commands.registerCommand('winccoa.project.start', async (item: unknown) => {
+                if (hasProjectData(item)) {
                     await systemTreeProvider.startProject(item.projectData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.stop', async (item: any) => {
-                if (item && item.projectData) {
+            vscode.commands.registerCommand('winccoa.project.stop', async (item: unknown) => {
+                if (hasProjectData(item)) {
                     await systemTreeProvider.stopProject(item.projectData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.setActive', async (item: any) => {
-                if (item && item.projectData) {
+            vscode.commands.registerCommand('winccoa.project.setActive', async (item: unknown) => {
+                if (hasProjectData(item)) {
                     await systemTreeProvider.setActiveProject(item.projectData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.addToWorkspace', async (item: any) => {
-                if (item && item.projectData) {
+            vscode.commands.registerCommand('winccoa.project.addToWorkspace', async (item: unknown) => {
+                if (hasProjectData(item)) {
                     await systemTreeProvider.addProjectToWorkspace(item.projectData);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.openInExplorer', async (item: any) => {
-                if (item && item.projectData) {
+            vscode.commands.registerCommand('winccoa.project.openInExplorer', async (item: unknown) => {
+                if (hasProjectData(item)) {
                     await systemTreeProvider.openProjectInExplorer(item.projectData);
                 }
             })
@@ -209,16 +233,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         
         // Register subproject commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.subproject.addToWorkspace', async (item: any) => {
-                if (item && item.subprojectPath) {
+            vscode.commands.registerCommand('winccoa.subproject.addToWorkspace', async (item: unknown) => {
+                if (hasSubprojectPath(item)) {
                     await systemTreeProvider.addSubprojectToWorkspace(item.subprojectPath);
                 }
             })
         );
         
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.subproject.openInExplorer', async (item: any) => {
-                if (item && item.subprojectPath) {
+            vscode.commands.registerCommand('winccoa.subproject.openInExplorer', async (item: unknown) => {
+                if (hasSubprojectPath(item)) {
                     await systemTreeProvider.openSubprojectInExplorer(item.subprojectPath);
                 }
             })
@@ -234,7 +258,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                     return;
                 }
 
-                if (project.configPath && require('fs').existsSync(project.configPath)) {
+                if (project.configPath && fs.existsSync(project.configPath)) {
                     const configUri = vscode.Uri.file(project.configPath);
                     const document = await vscode.workspace.openTextDocument(configUri);
                     await vscode.window.showTextDocument(document);
