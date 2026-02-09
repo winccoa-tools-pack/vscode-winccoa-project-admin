@@ -30,7 +30,7 @@ export class ExtensionOutputChannel {
 
     public static initialize(): vscode.OutputChannel {
         if (!ExtensionOutputChannel.instance) {
-            ExtensionOutputChannel.instance = vscode.window.createOutputChannel('WinCC OA Core');
+            ExtensionOutputChannel.instance = vscode.window.createOutputChannel('WinCC OA Project Admin');
         }
         
         // Read log level from configuration
@@ -40,7 +40,7 @@ export class ExtensionOutputChannel {
     }
 
     public static updateLogLevel(): void {
-        const config = vscode.workspace.getConfiguration('winccoaCore');
+        const config = vscode.workspace.getConfiguration('winccoaProjectAdmin');
         const levelString = config.get<string>('logLevel', 'INFO');
         ExtensionOutputChannel.currentLogLevel = LogLevel[levelString as keyof typeof LogLevel] || LogLevel.INFO;
         

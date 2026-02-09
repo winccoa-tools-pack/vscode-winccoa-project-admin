@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/core-utils';
+import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
 interface ManagerDisplayData {
@@ -59,10 +59,16 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         try {
             this.currentProjectId = currentProject.id;
 
+            // Set WinCC OA version for pmon component
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
+            this.pmon.setVersion(currentProject.version);
+
             // Get project status with manager info
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Getting project status for: ${currentProject.id}`);
             const projectStatus = await this.pmon.getProjectStatus(currentProject.id);
             
             // Get manager options (component names, start modes, etc.)
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Getting manager options list for: ${currentProject.id}`);
             const managerOptions = await this.pmon.getManagerOptionsList(currentProject.id);
             
             if (projectStatus && projectStatus.managers) {
@@ -87,6 +93,20 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
 
     refresh(): void {
         this.loadManagers();
+    }
+
+    /**
+     * Get current manager list for Language Model Tools
+     */
+    getManagers(): ManagerDisplayData[] {
+        return this.managers;
+    }
+
+    /**
+     * Get current project ID
+     */
+    getCurrentProjectId(): string | undefined {
+        return this.currentProjectId;
     }
 
     getTreeItem(element: ManagerItem): vscode.TreeItem {
@@ -162,6 +182,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
 
         try {
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Starting manager ${managerData.idx} for project: ${this.currentProjectId}`);
             const result = await this.pmon.startManager(this.currentProjectId, managerData.idx);
             if (result === 0) {
                 vscode.window.showInformationMessage(`✓ Manager started successfully`);
@@ -181,6 +202,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
 
         try {
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Stopping manager ${managerData.idx} for project: ${this.currentProjectId}`);
             const result = await this.pmon.stopManager(this.currentProjectId, managerData.idx);
             if (result === 0) {
                 vscode.window.showInformationMessage(`✓ Manager stopped successfully`);
@@ -203,6 +225,8 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             vscode.window.showInformationMessage('⟳ Restarting manager...');
             
             // Stop then start
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Restarting manager ${managerData.idx} for project: ${this.currentProjectId}`);
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Stopping manager ${managerData.idx}`);
             const stopResult = await this.pmon.stopManager(this.currentProjectId, managerData.idx);
             if (stopResult !== 0) {
                 vscode.window.showErrorMessage(`Failed to stop manager (error code: ${stopResult})`);
@@ -212,6 +236,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             // Wait a bit before starting
             await new Promise(resolve => setTimeout(resolve, 1000));
             
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Starting manager ${managerData.idx}`);
             const startResult = await this.pmon.startManager(this.currentProjectId, managerData.idx);
             if (startResult === 0) {
                 vscode.window.showInformationMessage(`✓ Manager restarted successfully`);
@@ -233,6 +258,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
 
         try {
             // Get current managers to detect existing numbers
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Getting manager options list for project: ${this.currentProjectId}`);
             const managers = await this.pmon.getManagerOptionsList(this.currentProjectId);
 
             // Step 1: Select Manager Type

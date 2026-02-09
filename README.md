@@ -1,162 +1,185 @@
-# WinCC OA Core
+# WinCC OA Project Admin
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-^1.80.0-007ACC.svg)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
-**Shared core library for WinCC OA VS Code extensions**
+**Project management and control for WinCC OA in Visual Studio Code**
 
-⚠️ *Pre-Release Version - Core functionality for WinCC OA extension ecosystem*
+[Features](#-features) • [Installation](#-installation) • [Known Issues](#-known-issues)
 
 </div>
 
 ---
 
-## 📋 Overview
+> **⚠️ Early Access Notice**  
+> This extension is in active development. While core features are stable, you may encounter:
+> - **Performance issues on Windows** (especially with many projects) - We're actively optimizing!
+> - **Edge cases** not yet fully covered
+> 
+> **🐛 Found a bug?** Please report it on our [GitHub Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues)!  
+> Your feedback helps us make this extension better for everyone. 🙏
+>
+> **Quick Fix:** If something doesn't work, try `Ctrl+Shift+P` → `Reload Window`
 
-WinCC OA Core provides shared services and APIs for all WinCC OA VS Code extensions, including:
+---
 
-- **Project Management** - Automatic detection and configuration of WinCC OA projects
-- **Centralized Configuration** - Single source of truth for project paths and settings  
-- **Event System** - Real-time notifications for project changes across extensions
-- **Status Bar Integration** - Visual project selector UI
+## 🎬 See It In Action
 
-This extension is typically installed automatically as a dependency of other WinCC OA extensions.
+![WinCC OA Project Admin Demo](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/blob/develop/images/Animation.gif?raw=true)
 
 ---
 
 ## ✨ Features
 
 ### 🔍 Automatic Project Detection
-- Scans workspace for WinCC OA project structures (`config/config` file)
+- List all runnable Projects
 - Detects WinCC OA version from installation
 - Finds subprojects automatically
-- Resolves script paths and library paths
 
-### 🎯 Project Selection
-- **Status Bar UI** - Click to switch between projects
-- **Quick Pick** - Browse available projects
-- **Auto-detection** - Automatically selects project from workspace
-- **Manual Configuration** - Override with manual settings
 
-### 🔔 Extension API
-- `getCurrentProject()` - Get active project information
-- `setCurrentProject(path)` - Switch to different project
-- `onDidChangeProject` - Event fired when project changes
-- TypeScript interfaces for type-safe integration
+### 🎯 Project Management
+- **Status Bar UI**: Click to switch between projects
+- **Quick Pick Menu**: Browse all available WinCC OA projects in workspace
+- **Auto-Selection**: Automatically selects first project on startup
+- **Context Menu Actions**: Set active project, add to workspace, open in explorer
 
-### 🎨 UI Components
-- Status bar item showing current project and version
-- Quick Pick menu for project selection
-- Auto-detection notifications
+### ⚙️ Manager Control (PMON)
+- Start/stop WinCC OA projects via PMON
+- Automatic manager detection and control
+- Proper startup/shutdown sequence (PMON → Managers)
+- Real-time status updates
 
 ---
 
-## 🚀 Getting Started
+## ⚙️ Configuration
 
-### Installation
-
-**Automatic (Recommended):**
-This extension is automatically installed as a dependency when you install any WinCC OA extension (e.g., WinCC OA Script Actions, Test Explorer, etc.).
-
-**Manual:**
-1. Open VS Code
-2. Go to Extensions (`Ctrl+Shift+X`)
-3. Search for "WinCC OA Core"
-4. Click Install
-
-### Configuration
-
-The extension works automatically in most cases. Open a WinCC OA project folder and it will:
-1. Auto-detect the project structure
-2. Show project info in the status bar
-3. Provide project context to other extensions
-
----
-
-## ⚙️ Settings
+### Logging (for debugging)
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `winccoa.core.pathSource` | `workspace` | How to detect projects: `workspace` (auto) or `manual` (static config) |
-| `winccoa.core.autoSwitch` | `true` | Automatically switch project when workspace changes |
+| `winccoa.core.logLevel` | `INFO` | Log verbosity: `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
+
+💡 **Tip**: Set log level to `DEBUG` when reporting bugs for detailed diagnostics.
 
 ---
 
-## 📋 Usage
+## 🐛 Known Issues
 
-### For End Users
+### Current Limitations
 
-1. Open a WinCC OA project workspace in VS Code
-2. The extension automatically detects your project
-3. Click the status bar item to switch projects if needed
-4. Other WinCC OA extensions will use the selected project
+1. **Project Switching**:
+   - May require VS Code reload in some cases
+   - Especially when switching between projects with different WinCC OA versions
 
-### For Extension Developers
+2. **Multi-root Workspaces**:
+   - Limited support for multiple WinCC OA projects simultaneously
+   - Recommended: Use single project per workspace
 
-```typescript
-import * as vscode from 'vscode';
+3. **PMON Control**:
+   - Requires WinCC OA to be properly installed and configured
+   - PATH environment variable must include WinCC OA binaries
+   - Some manager types may not be detected automatically
 
-// Get the Core API
-const coreExt = vscode.extensions.getExtension('winccoa.core');
-await coreExt?.activate();
-const core = coreExt?.exports;
+4. **Add New Manager:**
+   - did not work correctly. 
 
-// Get current project
-const project = core.getCurrentProject();
-console.log(`Active project: ${project.name} (${project.version})`);
+### Reporting Bugs
 
-// Listen for project changes
-core.onDidChangeProject(project => {
-    console.log(`Project changed to: ${project.name}`);
-    // Update your extension's configuration
-});
-```
+Found an issue? Please report it with:
+- WinCC OA version
+- Extension version (`1.0.0`)
+- Steps to reproduce the issue
+- Enable `DEBUG` logging and attach log output
+
+[Report Issue on GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-control/issues)
 
 ---
 
-## 🏗️ API Reference
+## 📝 Commands
 
-### ProjectInfo Interface
+Access via `Ctrl+Shift+P`:
 
-```typescript
-export interface ProjectInfo {
-    path: string;              // Absolute path to project root
-    name: string;              // Project name
-    version: string;           // WinCC OA version (e.g., "3.19", "3.20")
-    installPath: string;       // WinCC OA installation directory
-    configPath: string;        // Path to config/config file
-    logPath: string;           // Path to log directory
-    subProjects: string[];     // Paths to subprojects
-    scriptsPaths: string[];    // All resolved scripts directories
-}
-```
+| Command | Description |
+|---------|-------------|
+| `WinCC OA: Select Project` | Choose active project from list |
+| `WinCC OA: Refresh Projects` | Re-scan workspace for projects |
+| `WinCC OA: Start Project (PMON)` | Start WinCC OA project |
+| `WinCC OA: Stop Project (PMON)` | Stop WinCC OA project |
 
-### WinCCOACoreAPI Interface
+---
 
-```typescript
-export interface WinCCOACoreAPI {
-    // State
-    getCurrentProject(): ProjectInfo | undefined;
-    getAvailableProjects(): ProjectInfo[];
-    
-    // Actions
-    setCurrentProject(projectPath: string): Promise<void>;
-    refreshProjects(): Promise<void>;
-    
-    // Events
-    onDidChangeProject: vscode.Event<ProjectInfo>;
-}
-```
+## 🐛 Known Issues
+
+### Performance
+
+**Windows Performance:**  
+The extension may run slower on Windows with longer loading times. Linux performs significantly better.
+
+**Large Projects:**  
+Very large projects (many subprojects, managers) may experience slower detection and startup times.
+
+### Custom Projects Not Appearing
+
+**Symptom:** Some users see basic WinCC OA projects but not custom projects they've added.
+
+**Root Cause:** Projects are loaded from `pvssInst.conf` (Windows: `C:\ProgramData\Siemens\WinCC_OA\pvssInst.conf`). Each project has a `notRunnable` field that controls visibility:
+- `notRunnable=0` → Project appears in list (runnable)
+- `notRunnable=1` → Project is filtered out (not runnable)
+
+**Troubleshooting:**
+1. Enable Debug Logging:
+   - Open VS Code Output Panel (`Ctrl+Shift+U`)
+   - Select "WinCC OA Project Admin" from dropdown
+   - Look for `[PROJECT DISCOVERY]` and `[PVSS REGISTRY]` log messages
+   - Check which projects are being filtered out and why
+
+2. Check pvssInst.conf:
+   - Open `C:\ProgramData\Siemens\WinCC_OA\pvssInst.conf` (Windows) or equivalent on Linux
+   - Find your custom project section: `[Software\<Company>\<Product>\Configs\<ProjectID>]`
+   - Verify `notRunnable=0` (not `notRunnable=1`)
+
+3. Example Debug Output:
+   ```
+   [PVSS REGISTRY] Parsed pvssInst.conf:
+   [PVSS REGISTRY]   Total projects: 5
+   [PVSS REGISTRY]   Project: MyProject - notRunnable=true (FILTERED OUT)  ← Problem!
+   [PVSS REGISTRY]   Project: DevEnv - notRunnable=false (WILL SHOW)
+   ```
+
+4. Fix:
+   - Edit pvssInst.conf and change `notRunnable=1` to `notRunnable=0` for your project
+   - Reload VS Code or wait 15 seconds for auto-refresh
+
+**Note:** The `notRunnable` field is set when projects are registered in WinCC OA. If your project is marked as a sub-project or template, it may be automatically set to `notRunnable=1`.
+
+### General
+
+**Extension Not Responding:**  
+If the extension doesn't work as expected (project not detected, PMON commands fail), reload VS Code:  
+1. Press `Ctrl+Shift+P`
+2. Type and select `Reload Window`
+3. This refreshes the extension
+
+### Current Limitations
+
+- **Add Manager**: Feature currently disabled (not yet implemented)
+- **Version Detection**: Legacy projects without version in registry may show warnings
 
 ---
 
 ## 🛠️ Requirements
 
-- Visual Studio Code 1.80.0 or higher
-- WinCC OA project with valid `config/config` file
+- **VS Code:** 1.107.1 or higher
+- **WinCC OA:** 3.19+ installed on your system
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -170,25 +193,6 @@ This core library is used by:
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👥 Authors
-
-**winccoa-tools-pack**
-- GitHub: [@winccoa-tools-pack](https://github.com/winccoa-tools-pack)
-
----
-
 ## ⚠️ Disclaimer
 
 **WinCC OA** and **Siemens** are trademarks of Siemens AG. This project is not affiliated with, endorsed by, or sponsored by Siemens AG. This is a community-driven open source project created to enhance the development experience for WinCC OA developers.
@@ -197,6 +201,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made with ❤️ for the WinCC OA community**
+Made with ❤️ for the WinCC OA community
+
+[GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-control) • [Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-control/issues) • [WinCC OA Docs](https://www.winccoa.com)
 
 </div>

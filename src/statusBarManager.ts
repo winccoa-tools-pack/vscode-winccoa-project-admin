@@ -44,16 +44,16 @@ export class StatusBarManager {
      */
     private updateStatusBar(): void {
         const currentProject = this.projectManager.getCurrentProject();
-        const runningCount = this.projectManager.getRunningProjects().length;
 
         if (currentProject) {
-            this.statusBarItem.text = `$(server-process) ${currentProject.name} (${currentProject.version})`;
-            this.statusBarItem.backgroundColor = undefined;
-        } else if (runningCount > 0) {
-            this.statusBarItem.text = `$(server) ${runningCount} WinCC OA project${runningCount > 1 ? 's' : ''}`;
-            this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+            const icon = currentProject.isRunning ? '$(server-process)' : '$(server-environment)';
+            this.statusBarItem.text = `${icon} ${currentProject.name} (${currentProject.version})`;
+            this.statusBarItem.backgroundColor = currentProject.isRunning 
+                ? undefined 
+                : new vscode.ThemeColor('statusBarItem.warningBackground');
         } else {
-            this.statusBarItem.text = '$(server-environment) No WinCC OA project';
+            // No project selected - show error state in red
+            this.statusBarItem.text = '$(server-environment) No WinCC OA project selected';
             this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
         }
     }
@@ -62,11 +62,17 @@ export class StatusBarManager {
      * Show Quick Pick to select a project
      */
     async showProjectPicker(): Promise<void> {
-        // Refresh project list first
-        await this.projectManager.refreshProjects();
-
-        const projects = this.projectManager.getRunningProjects();
+        // Use cached project list - don't reload everything!
+        // Only verify current project status if needed
         const currentProject = this.projectManager.getCurrentProject();
+        if (currentProject) {
+            // Quick check: Is current project still valid?
+            await this.projectManager.verifyCurrentProject();
+        }
+
+        const allProjects = this.projectManager.getRunningProjects();
+        // Filter to only show running projects in picker
+        const projects = allProjects.filter(p => p.status === 'running');
 
         if (projects.length === 0) {
             vscode.window.showWarningMessage('No running WinCC OA projects found');

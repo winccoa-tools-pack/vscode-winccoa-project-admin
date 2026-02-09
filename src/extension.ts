@@ -3,6 +3,7 @@ import { ProjectManager } from './projectManager';
 import { StatusBarManager } from './statusBarManager';
 import { SystemTreeProvider } from './views/systemTreeProvider';
 import { ManagerTreeProvider } from './views/managerTreeProvider';
+import { LanguageModelToolsService } from './languageModelTools';
 import { WinCCOACoreAPI } from './types';
 import { ExtensionOutputChannel } from './extensionOutput';
 
@@ -10,6 +11,7 @@ let projectManager: ProjectManager;
 let statusBarManager: StatusBarManager;
 let systemTreeProvider: SystemTreeProvider;
 let managerTreeProvider: ManagerTreeProvider;
+let languageModelToolsService: LanguageModelToolsService;
 
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
     // Initialize logger first
@@ -40,6 +42,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
             vscode.window.registerTreeDataProvider('winccoa.managerView', managerTreeProvider)
         );
         ExtensionOutputChannel.info('Extension', 'TreeView providers registered');
+        
+        // Register Language Model Tools for GitHub Copilot
+        ExtensionOutputChannel.info('Extension', 'Registering Language Model Tools...');
+        languageModelToolsService = new LanguageModelToolsService(
+            projectManager,
+            systemTreeProvider,
+            managerTreeProvider
+        );
+        languageModelToolsService.register(context);
+        ExtensionOutputChannel.info('Extension', 'Language Model Tools registered');
         
         // Start background initialization (don't block activation)
         projectManager.initialize().then(() => {
@@ -98,8 +110,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register view refresh commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.systemView.refresh', () => {
-                systemTreeProvider.refresh();
+            vscode.commands.registerCommand('winccoa.systemView.refresh', async () => {
+                ExtensionOutputChannel.info('Extension', '[REFRESH BUTTON] Triggered force refresh for all projects');
+                // Force full refresh of all projects
+                await projectManager.forceRefreshAll();
+                // TreeView will auto-update via onDidChangeProjects event
             })
         );
         
@@ -202,8 +217,55 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 }
             })
         );
-        ExtensionOutputChannel.info('Extension', 'Registered project control commands');
         
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.register', async () => {
+                await systemTreeProvider.registerNewProject();
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered project control commands');
+        // Register project unregister command
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.unregister', async (item: any) => {
+                if (item && item.projectData) {
+                    await systemTreeProvider.unregisterProject(item.projectData);
+                }
+            })
+        );        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.addToFavorites', async (item: any) => {
+                if (item && item.projectData) {
+                    const isFav = projectManager.isFavorite(item.projectData.id);
+                    if (!isFav) {
+                        projectManager.toggleFavorite(item.projectData.id);
+                        vscode.window.showInformationMessage(`⭐ Added ${item.projectData.name} to favorites`);
+                    }
+                }
+            })
+        );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.project.removeFromFavorites', async (item: any) => {
+                if (item && item.projectData) {
+                    const isFav = projectManager.isFavorite(item.projectData.id);
+                    if (isFav) {
+                        projectManager.toggleFavorite(item.projectData.id);
+                        vscode.window.showInformationMessage(`Removed ${item.projectData.name} from favorites`);
+                    }
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered project unregister command');
+
+        // Register project from explorer context menu
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.explorer.registerProject', async (uri: vscode.Uri) => {
+                if (uri) {
+                    await systemTreeProvider.registerProjectFromExplorer(uri);
+                }
+            })
+        );
+        ExtensionOutputChannel.info('Extension', 'Registered explorer register project command');        
         // Register subproject commands
         context.subscriptions.push(
             vscode.commands.registerCommand('winccoa.subproject.addToWorkspace', async (item: any) => {
