@@ -43,7 +43,7 @@ pkg.displayName = `${originalDisplayName} [LOCAL-${count}]`;
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 
 try {
-  execSync(`npx vsce package -o "${localVsix}"`, { stdio: 'inherit' });
+  execSync(`npx vsce package --no-dependencies -o "${localVsix}"`, { stdio: 'inherit' });
 } catch (error) {
   console.error('Packaging failed!');
   fs.writeFileSync('package.json', pkgBackup);

@@ -40,20 +40,23 @@ export interface ProjectInfo {
  * @param status - Project status (unknown, running, stopped, transitioning, error)
  * @param error - Optional error message if project failed to load
  */
-export function toProjectInfo(project: ProjEnvProject, status: ProjectStatus = 'unknown', error?: string): ProjectInfo {
+export function toProjectInfo(
+    project: ProjEnvProject,
+    status: ProjectStatus = 'unknown',
+    error?: string,
+): ProjectInfo {
     const version = project.getVersion() || 'unknown';
-    const oaInstallPath = version !== 'unknown' 
-        ? getWinCCOAInstallationPathByVersion(version) || ''
-        : '';
-    
+    const oaInstallPath =
+        version !== 'unknown' ? getWinCCOAInstallationPathByVersion(version) || '' : '';
+
     console.log('[ProjectInfo] Converting project:', {
         id: project.getId(),
         version: version,
         status: status,
         oaInstallPath: oaInstallPath,
-        configPath: project.getConfigPath()
+        configPath: project.getConfigPath(),
     });
-    
+
     return {
         id: project.getId(),
         name: project.getName() || project.getId(),
@@ -63,9 +66,9 @@ export function toProjectInfo(project: ProjEnvProject, status: ProjectStatus = '
         oaInstallPath: oaInstallPath,
         configPath: project.getConfigPath(),
         status: status,
-        isRunning: status === 'running',  // Backward compatibility
+        isRunning: status === 'running', // Backward compatibility
         error: error,
-        hasError: status === 'error'      // Backward compatibility
+        hasError: status === 'error', // Backward compatibility
     };
 }
 

@@ -252,6 +252,14 @@ Ein Bug im File-Watcher-Menü sorgt dafür, dass aktuell alle Einträge verschwi
 ### Known Issues
 **WinCC OA Limitation**: Beim Ausführen einzelner Testfälle generiert WinCC OA aktuell keinen vollständigen Test-Report. Die Infrastruktur in den Extensions ist vorbereitet, aber die volle Funktionalität hängt von zukünftigen WinCC OA Verbesserungen ab.
 
+**npm-link + vsce package Incompatibility**: 
+- **Problem**: `npm link @winccoa-tools-pack/npm-winccoa-core` verursacht Packaging-Fehler
+- **Symptom**: `vsce package` schlägt fehl mit "invalid devDependencies in production" weil npm-link die devDependencies der gelinken Library in die Production-Dependency-Liste zieht
+- **Workaround**: `vsce package --no-dependencies` in Makefile nutzen (seit v1.3.0)
+- **Root Cause**: npm-link symlinks die komplette Library inklusive node_modules/, vsce sieht die devDependencies (@types/node, prettier, typescript-eslint) als Teil der Production-Dependencies
+- **Future Solution**: Entweder npm-link vor package temporär entfernen oder npm-winccoa-core als echtes npm package publishen
+- **Impact**: Extension funktioniert einwandfrei, da webpack den Code bereits gebundled hat - nur der Dependency-Check schlägt fehl
+
 ## Makefile Automation
 
 ### Version Badge Auto-Update (seit 2026-01-04)

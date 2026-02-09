@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "winccoa-tools-pack",
-  "version": "1.1.1",
+  "version": "2.0.3",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -167,6 +167,33 @@
         "command": "winccoa.subproject.openInExplorer",
         "title": "Open in Explorer",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.register",
+        "title": "Register New Project",
+        "category": "WinCC OA",
+        "icon": "$(add)"
+      },
+      {
+        "command": "winccoa.project.unregister",
+        "title": "Unregister Project",
+        "category": "WinCC OA",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "winccoa.explorer.registerProject",
+        "title": "Register as WinCC OA Project",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.addToFavorites",
+        "title": "Add to Favorites",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.project.removeFromFavorites",
+        "title": "Remove from Favorites",
+        "category": "WinCC OA"
       }
     ],
     "menus": {
@@ -185,6 +212,11 @@
           "command": "winccoa.openLogViewer",
           "when": "view == winccoa.systemView",
           "group": "navigation@3"
+        },
+        {
+          "command": "winccoa.project.register",
+          "when": "view == winccoa.systemView",
+          "group": "navigation@4"
         },
         {
           "command": "winccoa.managerView.refresh",
@@ -210,28 +242,43 @@
         },
         {
           "command": "winccoa.project.start",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "inline@1"
         },
         {
           "command": "winccoa.project.stop",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "inline@2"
         },
         {
           "command": "winccoa.project.setActive",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "1_project@1"
         },
         {
-          "command": "winccoa.project.addToWorkspace",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "command": "winccoa.project.addToFavorites",
+          "when": "view == winccoa.systemView && viewItem == project-nonfavorite",
           "group": "1_project@2"
         },
         {
+          "command": "winccoa.project.removeFromFavorites",
+          "when": "view == winccoa.systemView && viewItem == project-favorite",
+          "group": "1_project@3"
+        },
+        {
+          "command": "winccoa.project.addToWorkspace",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "group": "1_project@4"
+        },
+        {
           "command": "winccoa.project.openInExplorer",
-          "when": "view == winccoa.systemView && viewItem == project",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
           "group": "2_open@1"
+        },
+        {
+          "command": "winccoa.project.unregister",
+          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "group": "9_danger@1"
         },
         {
           "command": "winccoa.subproject.addToWorkspace",
@@ -243,8 +290,257 @@
           "when": "view == winccoa.systemView && viewItem == subproject",
           "group": "2_open@1"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "winccoa.explorer.registerProject",
+          "when": "explorerResourceIsFolder",
+          "group": "winccoa@1"
+        }
       ]
     },
+    "languageModelTools": [
+      {
+        "name": "winccoa_list_projects",
+        "displayName": "List WinCC OA Projects",
+        "modelDescription": "Get all registered WinCC OA projects with their status (running/stopped/error). Use when the user asks about available projects, project lists, or which projects exist.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_projects",
+        "icon": "$(list-unordered)",
+        "userDescription": "List all WinCC OA projects with status information",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "statusFilter": {
+              "type": "string",
+              "enum": [
+                "all",
+                "running",
+                "stopped",
+                "error"
+              ],
+              "description": "Filter projects by status (default: all)"
+            }
+          }
+        }
+      },
+      {
+        "name": "winccoa_get_project_info",
+        "displayName": "Get WinCC OA Project Information",
+        "modelDescription": "Get detailed information about a specific WinCC OA project including version, paths, and status. Use when the user asks for details about a specific project.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_project_details",
+        "icon": "$(info)",
+        "userDescription": "Get detailed information about a specific WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name to get information for"
+            }
+          },
+          "required": [
+            "projectId"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_set_active_project",
+        "displayName": "Set Active WinCC OA Project",
+        "modelDescription": "Set the currently active/selected WinCC OA project in VS Code. Use when the user wants to switch to a different project context or work with a specific project.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_select_project",
+        "icon": "$(target)",
+        "userDescription": "Set the active WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name to set as active"
+            }
+          },
+          "required": [
+            "projectId"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_start_project",
+        "displayName": "Start WinCC OA Project",
+        "modelDescription": "Start a WinCC OA project (starts PMON and all managers). Use when the user wants to start a project or run a project.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_start",
+        "icon": "$(play)",
+        "userDescription": "Start a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name to start"
+            },
+            "waitForStartup": {
+              "type": "boolean",
+              "description": "Wait for project to fully start (default: false)"
+            }
+          },
+          "required": [
+            "projectId"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_stop_project",
+        "displayName": "Stop WinCC OA Project",
+        "modelDescription": "Stop a running WinCC OA project (stops all managers and PMON). Use when the user wants to stop a project or shut down a project.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_stop",
+        "icon": "$(debug-stop)",
+        "userDescription": "Stop a running WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name to stop"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Timeout in seconds (default: 30)"
+            }
+          },
+          "required": [
+            "projectId"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_get_pmon_status",
+        "displayName": "Get WinCC OA PMON Status",
+        "modelDescription": "Get the PMON (Process Monitor) status for a WinCC OA project. PMON manages all project processes. Use when the user asks about project runtime status or if a project is running.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_pmon",
+        "icon": "$(pulse)",
+        "userDescription": "Get PMON status for a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name to check PMON status for"
+            }
+          },
+          "required": [
+            "projectId"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_project_managers",
+        "displayName": "List WinCC OA Managers",
+        "modelDescription": "List all managers (processes/components) running in a WinCC OA project. Managers include Event, Dist, DB, UI, etc. Use when the user asks about running components or processes.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_project_managers",
+        "icon": "$(server-process)",
+        "userDescription": "List all managers in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            },
+            "statusFilter": {
+              "type": "string",
+              "enum": [
+                "all",
+                "running",
+                "stopped"
+              ],
+              "description": "Filter managers by status (default: all)"
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "winccoa_start_manager",
+        "displayName": "Start WinCC OA Manager",
+        "modelDescription": "Start a specific manager (process/component) in a WinCC OA project. Managers are identified by their number (e.g., 1 for DIST_1, 2 for EVENT_1). Use when the user wants to start a specific manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_start",
+        "icon": "$(play)",
+        "userDescription": "Start a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to start (e.g., 1 for DIST_1)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_stop_manager",
+        "displayName": "Stop WinCC OA Manager",
+        "modelDescription": "Stop a specific manager (process/component) in a WinCC OA project. Use when the user wants to stop a specific manager or troubleshoot a manager issue.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_stop",
+        "icon": "$(stop)",
+        "userDescription": "Stop a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to stop (e.g., 2 for EVENT_1)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_restart_manager",
+        "displayName": "Restart WinCC OA Manager",
+        "modelDescription": "Restart a specific manager (stop then start). Use when the user wants to restart a manager to apply changes or troubleshoot.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_restart",
+        "icon": "$(debug-restart)",
+        "userDescription": "Restart a specific manager in a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to restart"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      }
+    ],
     "configuration": {
       "title": "WinCC OA Project Admin",
       "properties": {
@@ -306,7 +602,7 @@
     "eslint": "^8.50.0",
     "glob": "^13.0.0",
     "markdownlint-cli": "^0.47.0",
-    "mocha": "^11.7.5",
+    "mocha": "^11.3.0",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
     "typescript-eslint": "^8.51.0",

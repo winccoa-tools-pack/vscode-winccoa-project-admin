@@ -87,7 +87,7 @@ package: build
 	@-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
 	@echo "Updating version badge in README.md..."
 	@node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
-	@$(VSCE) package --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+	@$(VSCE) package --no-dependencies --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
 	@echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
 
 # Run tests

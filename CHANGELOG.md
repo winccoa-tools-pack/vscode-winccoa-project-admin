@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-01-31
+
+### Fixed
+- Start/Stop inline buttons now appear correctly for all projects (fixed viewItem context matching)
+
+## [2.0.2] - 2026-01-31
+
+### Added
+- **Favorites Feature**: Users can now pin favorite projects for faster access
+  - Context menu commands: "Add to Favorites" and "Remove from Favorites"
+  - Favorite projects are sorted to the top of the project list
+  - Progressive loading prioritizes favorites (loads status first)
+  - Visual indicator: ⭐ prefix in project description
+  - Favorites are persisted per workspace using workspaceState
+  - Original status icons (running/stopped) remain visible
+
+### Changed
+- Project list now shows favorites first, then other projects (alphabetically within each group)
+- Project tooltips include favorite status indicator
+
+## [2.0.1] - 2026-01-24
+
+### Fixed
+- Status bar now updates correctly when stopped project becomes running (polling includes current project)
+- Tool name collision: Renamed `winccoa_list_managers` to `winccoa_project_managers` to avoid conflict with MCP Server extension
+
+### Changed
+- Optimized project picker: Uses cached list instead of full reload (90% reduction in spawns)
+- Current project is now always polled even when stopped, ensuring status bar stays in sync
+- Project picker now only verifies current project status (fast check) instead of reloading all projects
+
+### Performance
+- Reduced process spawns in project picker from 10 to 1 per invocation
+- Smart polling now includes current project regardless of status
+
+## [2.0.0] - 2026-01-24
+
+### Added
+- **Language Model Tools Integration**: GitHub Copilot can now autonomously control WinCC OA projects
+  - `winccoa_list_projects`: Query all registered projects with status
+  - `winccoa_get_project_info`: Get detailed information about a project
+  - `winccoa_set_active_project`: Set active project for operations
+  - `winccoa_start_project`: Start PMON for a project
+  - `winccoa_stop_project`: Stop PMON for a project
+  - `winccoa_get_pmon_status`: Query PMON status
+  - `winccoa_list_managers`: List all managers with status
+  - `winccoa_start_manager`: Start a specific manager by number
+  - `winccoa_stop_manager`: Stop a specific manager by number
+  - `winccoa_restart_manager`: Restart a specific manager (stop + start)
+
+### Changed
+- **BREAKING**: Minimum VS Code version bumped to 1.107.1 (Language Model Tools API required)
+
+## [1.3.0] - 2026-01-24
+
+### Added
+- **Project Unregister UI**: Context menu option to unregister WinCC OA projects
+  - Single confirmation dialog with clear explanation
+  - Automatic PMON stop if project is running before unregister
+  - Clear warning that files will NOT be deleted (only registry entry removed)
+  - Progress indicator during unregister process
+  - Automatic refresh of project list after successful unregister
+  - Context menu entry in "danger" group (separated from other actions)
+- **Explorer Context Menu Registration**: Register projects directly from VS Code Explorer
+  - Right-click on any folder in Explorer
+  - "Register as WinCC OA Project" option
+  - Same validation and auto-detection as UI registration
+  - Seamless integration with existing registration workflow
+
+## [1.2.0] - 2026-01-24
+
+### Added
+- **Project Registration UI**: New "+" button in System View to register WinCC OA projects
+  - User-friendly folder picker dialog to select project directory
+  - Automatic version detection from config file (pvss_path)
+  - Validation of project structure (checks for config/config file)
+  - Confirmation dialog before registration
+  - Progress indicator during registration process
+  - Automatic handling of already-registered projects (unregister + re-register)
+  - Automatic refresh of project list after successful registration
+
+### Changed
+- **npm-winccoa-core**: Updated to latest version with improved error handling in `ProjEnvProjectRegistry`
+  - Better error handling for pvssInst.conf file changes
+  - File watcher error handling to prevent crashes
+  - Enhanced debug logging for project discovery
+
 ## [1.1.1] - 2026-01-05
 
 ### Added
