@@ -36,3 +36,4 @@ coverage/
 bin/*.vsix
 bin/.local_build_counter
 DevEnv.code-workspace
+out/
