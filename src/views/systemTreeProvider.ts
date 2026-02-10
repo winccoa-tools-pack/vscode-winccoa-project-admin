@@ -8,7 +8,90 @@ import { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from '../types';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
-class SystemItem extends vscode.TreeItem {
+export class SystemItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly itemType:
+            | 'systemStatus'
+            | 'projectInfo'
+            | 'info'
+            | 'projects'
+            | 'project'
+            | 'subprojects'
+            | 'subproject',
+        public readonly description?: string,
+        public readonly tooltipText?: string,
+        public readonly isRunning?: boolean,
+        public readonly projectPath?: string,
+        public readonly projectData?: ProjectInfo | string[],
+        public readonly subprojectPath?: string,
+        public readonly customIconPath?: vscode.ThemeIcon,
+    ) {
+        super(label, collapsibleState);
+
+        if (itemType === 'systemStatus') {
+            if (isRunning) {
+                this.iconPath = new vscode.ThemeIcon(
+                    'pulse',
+                    new vscode.ThemeColor('testing.iconPassed'),
+                );
+            } else {
+                this.iconPath = new vscode.ThemeIcon(
+                    'circle-slash',
+                    new vscode.ThemeColor('testing.iconFailed'),
+                );
+            }
+            this.contextValue = 'systemStatus';
+            this.tooltip = tooltipText;
+            this.description = description;
+        } else if (itemType === 'projectInfo') {
+            this.iconPath = new vscode.ThemeIcon('info');
+            this.contextValue = 'projectInfo';
+            this.tooltip = tooltipText;
+        } else if (itemType === 'projects') {
+            this.iconPath = new vscode.ThemeIcon('folder-library');
+            this.contextValue = 'projects';
+            this.tooltip = tooltipText;
+        } else if (itemType === 'subprojects') {
+            this.iconPath = new vscode.ThemeIcon('symbol-namespace');
+            this.contextValue = 'subprojects';
+            this.tooltip = tooltipText;
+            this.description = description;
+        } else if (itemType === 'subproject') {
+            this.iconPath = new vscode.ThemeIcon('folder-opened');
+            this.contextValue = 'subproject';
+            this.tooltip = tooltipText;
+            this.description = description;
+            // Click does nothing - use context menu instead
+        } else if (itemType === 'project') {
+            // Use custom icon if provided (e.g., error icon)
+            if (customIconPath) {
+                this.iconPath = customIconPath;
+            } else if (isRunning) {
+                this.iconPath = new vscode.ThemeIcon(
+                    'server-process',
+                    new vscode.ThemeColor('testing.iconPassed'),
+                );
+            } else {
+                this.iconPath = new vscode.ThemeIcon(
+                    'server',
+                    new vscode.ThemeColor('testing.iconFailed'),
+                );
+            }
+            this.contextValue = 'project';
+            this.tooltip = tooltipText;
+            this.description = description;
+            // Click does nothing - use context menu instead
+        } else if (itemType === 'info') {
+            this.iconPath = new vscode.ThemeIcon('symbol-property');
+            this.contextValue = 'infoItem';
+            this.description = description;
+        }
+    }
+}
+
+export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<SystemItem | undefined | null | void> =
         new vscode.EventEmitter<SystemItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<SystemItem | undefined | null | void> =
@@ -1010,7 +1093,7 @@ class SystemItem extends vscode.TreeItem {
      */
     async unregisterProject(projectData: ProjectInfo): Promise<void> {
         const projectId = projectData.id;
-        const projectPath = projectData.path;
+        const projectPath = projectData.projectDir;
 
         ExtensionOutputChannel.info(
             'SystemTreeProvider',
@@ -1108,89 +1191,6 @@ class SystemItem extends vscode.TreeItem {
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Failed to unregister project: ${errorMsg}`);
             ExtensionOutputChannel.error('SystemTreeProvider', `Unregister error: ${errorMsg}`);
-        }
-    }
-}
-
-export class SystemItem extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly itemType:
-            | 'systemStatus'
-            | 'projectInfo'
-            | 'info'
-            | 'projects'
-            | 'project'
-            | 'subprojects'
-            | 'subproject',
-        public readonly description?: string,
-        public readonly tooltipText?: string,
-        public readonly isRunning?: boolean,
-        public readonly projectPath?: string,
-        public readonly projectData?: ProjectInfo | string[],
-        public readonly subprojectPath?: string,
-        public readonly customIconPath?: vscode.ThemeIcon,
-    ) {
-        super(label, collapsibleState);
-
-        if (itemType === 'systemStatus') {
-            if (isRunning) {
-                this.iconPath = new vscode.ThemeIcon(
-                    'pulse',
-                    new vscode.ThemeColor('testing.iconPassed'),
-                );
-            } else {
-                this.iconPath = new vscode.ThemeIcon(
-                    'circle-slash',
-                    new vscode.ThemeColor('testing.iconFailed'),
-                );
-            }
-            this.contextValue = 'systemStatus';
-            this.tooltip = tooltipText;
-            this.description = description;
-        } else if (itemType === 'projectInfo') {
-            this.iconPath = new vscode.ThemeIcon('info');
-            this.contextValue = 'projectInfo';
-            this.tooltip = tooltipText;
-        } else if (itemType === 'projects') {
-            this.iconPath = new vscode.ThemeIcon('folder-library');
-            this.contextValue = 'projects';
-            this.tooltip = tooltipText;
-        } else if (itemType === 'subprojects') {
-            this.iconPath = new vscode.ThemeIcon('symbol-namespace');
-            this.contextValue = 'subprojects';
-            this.tooltip = tooltipText;
-            this.description = description;
-        } else if (itemType === 'subproject') {
-            this.iconPath = new vscode.ThemeIcon('folder-opened');
-            this.contextValue = 'subproject';
-            this.tooltip = tooltipText;
-            this.description = description;
-            // Click does nothing - use context menu instead
-        } else if (itemType === 'project') {
-            // Use custom icon if provided (e.g., error icon)
-            if (customIconPath) {
-                this.iconPath = customIconPath;
-            } else if (isRunning) {
-                this.iconPath = new vscode.ThemeIcon(
-                    'server-process',
-                    new vscode.ThemeColor('testing.iconPassed'),
-                );
-            } else {
-                this.iconPath = new vscode.ThemeIcon(
-                    'server',
-                    new vscode.ThemeColor('testing.iconFailed'),
-                );
-            }
-            this.contextValue = 'project';
-            this.tooltip = tooltipText;
-            this.description = description;
-            // Click does nothing - use context menu instead
-        } else if (itemType === 'info') {
-            this.iconPath = new vscode.ThemeIcon('symbol-property');
-            this.contextValue = 'infoItem';
-            this.description = description;
         }
     }
 }

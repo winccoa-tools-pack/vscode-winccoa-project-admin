@@ -8,6 +8,11 @@ import { ManagerTreeProvider } from './views/managerTreeProvider';
 import type { ProjectInfo, WinCCOACoreAPI } from './types';
 import type { ManagerDisplayData } from './views/managerTreeProvider';
 import { LanguageModelToolsService } from './languageModelTools';
+
+// Type guard to check if projectData is ProjectInfo
+function isProjectInfo(projectData: ProjectInfo | string[]): projectData is ProjectInfo {
+    return typeof projectData === 'object' && projectData !== null && 'id' in projectData;
+}
 import { ExtensionOutputChannel } from './extensionOutput';
 
 let projectManager: ProjectManager;
@@ -267,31 +272,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         ExtensionOutputChannel.info('Extension', 'Registered project control commands');
         // Register project unregister command
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.unregister', async (item: SystemItem) => {
-                if (item && item.projectData) {
-                    await systemTreeProvider.unregisterProject(item.projectData);
-                }
-            }),
+            vscode.commands.registerCommand(
+                'winccoa.project.unregister',
+                async (item: SystemItem) => {
+                    if (item && item.projectData && isProjectInfo(item.projectData)) {
+                        await systemTreeProvider.unregisterProject(item.projectData);
+                    }
+                },
+            ),
         );
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.project.addToFavorites', async (item: SystemItem) => {
-                if (item && item.projectData) {
-                    const isFav = projectManager.isFavorite(item.projectData.id);
-                    if (!isFav) {
-                        projectManager.toggleFavorite(item.projectData.id);
-                        vscode.window.showInformationMessage(
-                            `⭐ Added ${item.projectData.name} to favorites`,
-                        );
+            vscode.commands.registerCommand(
+                'winccoa.project.addToFavorites',
+                async (item: SystemItem) => {
+                    if (item && item.projectData && isProjectInfo(item.projectData)) {
+                        const isFav = projectManager.isFavorite(item.projectData.id);
+                        if (!isFav) {
+                            projectManager.toggleFavorite(item.projectData.id);
+                            vscode.window.showInformationMessage(
+                                `⭐ Added ${item.projectData.name} to favorites`,
+                            );
+                        }
                     }
-                }
-            }),
+                },
+            ),
         );
 
         context.subscriptions.push(
             vscode.commands.registerCommand(
                 'winccoa.project.removeFromFavorites',
                 async (item: SystemItem) => {
-                    if (item && item.projectData) {
+                    if (item && item.projectData && isProjectInfo(item.projectData)) {
                         const isFav = projectManager.isFavorite(item.projectData.id);
                         if (isFav) {
                             projectManager.toggleFavorite(item.projectData.id);
