@@ -35,4 +35,3 @@ export const EXTENSION_NAME = 'WinCC OA Project Admin';
  * @example 'winccoaMyExtension'
  */
 export const EXTENSION_CONFIG_SECTION = 'winccoaProjectAdmin';
-

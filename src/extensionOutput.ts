@@ -74,7 +74,6 @@ export class ExtensionOutputChannel {
     /** The VS Code output channel instance */
     public static instance: vscode.OutputChannel;
 
-
     /** Current log level threshold - messages below this level are filtered out */
     private static currentLogLevel: LogLevel = LogLevel.INFO;
 
