@@ -3,16 +3,16 @@
 # Run 'git flow init' to initialize Git Flow in this repository
 
 [gitflow "branch"]
-	master = main
-	develop = develop
+    master = main
+    develop = develop
 
 [gitflow "prefix"]
-	feature = feature/
-	bugfix = bugfix/
-	release = release/
-	hotfix = hotfix/
-	support = support/
-	versiontag = v
+    feature = feature/
+    bugfix = bugfix/
+    release = release/
+    hotfix = hotfix/
+    support = support/
+    versiontag = v
 
 [gitflow "path"]
-	hooks = .git/hooks
+    hooks = .git/hooks

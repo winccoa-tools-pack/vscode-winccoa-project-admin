@@ -9,6 +9,7 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
 ### Lösung: Webpack Bundling
 
 **Was wir gemacht haben:**
+
 1. Webpack installiert: `webpack`, `webpack-cli`, `ts-loader`
 2. `webpack.config.js` erstellt mit target: 'node' und externals: vscode
 3. package.json scripts angepasst:
@@ -19,6 +20,7 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
 4. `.vscodeignore` erweitert: `node_modules/**` und `webpack.config.js` excluded
 
 **Resultat:**
+
 - Gesamter Code + npm-shared-library-core wird in EINE Datei gebundelt: `dist/extension.js` (35.3 KB)
 - KEINE node_modules im VSIX Package nötig
 - Package Größe: 73.65 KB (54 Dateien)
@@ -26,29 +28,33 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
 ### Fix in npm-shared-library-core
 
 **Problem:** `overrides` in package.json verursachte Konflikte
+
 ```json
 "overrides": {
   "glob": "^9.0.0"
 }
 ```
 
-**Fix:** 
+**Fix:**
+
 - `overrides` Sektion aus `/npm-shared-library-core/package.json` entfernt
 - `npm install` neu ausgeführt
 - glob dependency sauber aufgelöst
 
 ## TODO: Cleanup für Production Release
 
-### Wenn npm-shared-library-core über npm/git verfügbar ist:
+### Wenn npm-shared-library-core über npm/git verfügbar ist
 
 1. **package.json dependencies ändern:**
+
    ```json
    "dependencies": {
      "@winccoa-tools-pack/core-utils": "^0.1.0"  // statt file:../npm-shared-library-core
    }
    ```
-   
+
    ODER via git:
+
    ```json
    "dependencies": {
      "@winccoa-tools-pack/core-utils": "git+https://github.com/winccoa-tools-pack/npm-shared-library-core.git#v0.1.0"
@@ -60,10 +66,11 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
    - Performance: Nur eine Datei laden statt hunderte Module
    - Keine Runtime Dependency Resolution nötig
    - Schnellere Extension Aktivierung
-   
+
    **→ NICHT zurück zu node_modules packaging gehen!**
 
 3. **npm install testen:**
+
    ```bash
    npm install
    npm run package
@@ -79,6 +86,7 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
 ## Empfohlener Workflow für andere Extensions
 
 1. **Extension Dependencies:**
+
    ```json
    "extensionDependencies": [
      "winccoa-tools-pack.winccoa-core"
@@ -86,6 +94,7 @@ VS Code Extension Packaging (`vsce`) validiert alle Dependencies rekursiv mit `n
    ```
 
 2. **API Usage:**
+
    ```typescript
    import * as vscode from 'vscode';
    

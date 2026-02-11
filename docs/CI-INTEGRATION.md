@@ -26,7 +26,8 @@ Notes:
 
 Help / Safe Triggering
 
-- **What to check before running**: Ensure repository secrets `DOCKER_USER` and `DOCKER_PASSWORD` are configured if you intend the workflow to push images. If you only want to build and run tests, you can run the workflow without those secrets — the job will build and run tests but will skip the push step when credentials are missing.
+- **What to check before running**: Ensure repository secrets `DOCKER_USER` and `DOCKER_PASSWORD` are configured if you intend the workflow to push images. If you only want to build and run tests, you can run the workflow without those secrets
+  — the job will build and run tests but will skip the push step when credentials are missing.
 - **Avoid accidental pushes**: The build workflow accepts `docker_namespace` and `repo_name` inputs. Always supply your own Docker Hub namespace (or leave blank to default to the repository owner) so that images are not pushed into the upstream template namespace by mistake.
 - **How to run safely (Actions UI)**: Open the repository Actions tab, select "Build WinCC OA image", click "Run workflow" and set `docker_namespace` to your Docker Hub username and `repo_name` to an appropriate repo name.
 - **How to run safely (CLI)**: Use the GitHub CLI to dispatch a run and pass inputs. Example:
