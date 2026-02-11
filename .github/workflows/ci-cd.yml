@@ -71,6 +71,13 @@ jobs:
         run: npm ci
       - name: Build package
         run: npm run build
+      - name: Setup virtual display (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
       - name: Run unit tests
         run: npm run test:unit
         env:
