@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f "./test/fixtures/projects/runnable/config/config"
+          test -f "./src/test/fixtures/projects/runnable/config/config"
       - name: Install dependencies (host)
         run: npm ci
       - name: Build package (host)
