@@ -1,51 +1,52 @@
 
 // eslint.config.js (CommonJS)
 const js = require('@eslint/js');
-const tseslint = require('typescript-eslint');
+const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const tsParser = require('@typescript-eslint/parser');
+const globals = require('globals');
 
-module.exports = tseslint.config(
-  // Base ESLint recommended rules (replacement for "eslint:recommended")
+module.exports = [
+  // Base ESLint recommended rules
   js.configs.recommended,
 
-  // TypeScript recommended rules (replacement for "plugin:@typescript-eslint/recommended")
-  tseslint.configs.recommended,
-
-  // Apply TS-specific parser options & environment equivalents
+  // TypeScript files
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-      parser: tseslint.parser,
+      parser: tsParser,
       parserOptions: {
-        project: ['./tsconfig.json'],   // matches your original "project"
-        sourceType: 'module',           // matches your original "sourceType"
-        ecmaVersion: 2021,              // ES2021
+        project: ['./tsconfig.json'],
+        sourceType: 'module',
+        ecmaVersion: 2021,
       },
-      // Node + ES2021 environment analogue
       globals: {
-        // Node globals (minimal set; extend as you need)
-        process: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
+        ...globals.node,
       },
     },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
     rules: {
-      // keep empty (you had "rules": {})
-      // add rule overrides here if needed
+      ...tsPlugin.configs.recommended.rules,
+      'no-undef': 'off', // TypeScript handles this, and NodeJS is a TypeScript type
     },
   },
 
   // Legacy tests: allow `any` without spending time refactoring
   {
     files: ['src/test/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.mocha,
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 
-  // Ignore typical output folders (flat config replaces .eslintignore)
+  // Ignore typical output folders
   {
-    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/']
+    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/', 'src/test/runTest.ts']
   }
-);
+];
