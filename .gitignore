@@ -10,7 +10,7 @@ bin/
 !bin/*.vsix
 
 # IDE
-.vscode/
+#.vscode/
 .idea/
 *.swp
 *.swo

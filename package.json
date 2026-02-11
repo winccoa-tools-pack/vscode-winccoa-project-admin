@@ -15,18 +15,15 @@
     "vscode": "^1.106.0"
   },
   "categories": [
-    "Other",
-    "Extension Packs"
+    "Other"
   ],
   "keywords": [
     "wincc-oa",
-    "wincc",
-    "oa",
+    "winccoa",
     "scada",
+    "hmi",
     "siemens",
-    "core",
-    "library",
-    "shared"
+    "core"
   ],
   "activationEvents": [
     "onStartupFinished"
