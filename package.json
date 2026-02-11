@@ -609,6 +609,9 @@
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
   },
+  "config": {
+    "winccoaImage": "mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core"
+  },
   "dependencies": {
     "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d2a509c"
   }
