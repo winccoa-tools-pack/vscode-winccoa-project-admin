@@ -20,7 +20,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -110,6 +110,21 @@ jobs:
                 draft: hadConflicts ? true : pr.draft,
               });
               core.notice(`Updated PR #${pr.number} (${pr.html_url}).`);
+
+              // Auto-merge if no conflicts and PR is not draft
+              if (!hadConflicts && !pr.draft) {
+                try {
+                  await github.rest.pulls.merge({
+                    owner,
+                    repo,
+                    pull_number: pr.number,
+                    merge_method: 'merge',
+                  });
+                  core.notice(`Auto-merged PR #${pr.number}`);
+                } catch (e) {
+                  core.warning(`Could not auto-merge PR #${pr.number}: ${e.message}`);
+                }
+              }
               return;
             }
 
@@ -123,3 +138,18 @@ jobs:
               draft: hadConflicts,
             });
             core.notice(`Created PR #${created.data.number} (${created.data.html_url}).`);
+
+            // Auto-merge if no conflicts
+            if (!hadConflicts) {
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: created.data.number,
+                  merge_method: 'merge',
+                });
+                core.notice(`Auto-merged PR #${created.data.number}`);
+              } catch (e) {
+                core.warning(`Could not auto-merge PR #${created.data.number}: ${e.message}`);
+              }
+            }
