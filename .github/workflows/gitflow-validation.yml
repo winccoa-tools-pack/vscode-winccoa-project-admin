@@ -37,6 +37,8 @@ jobs:
             const rules = [
             // main to develop means merging main back into develop (git flow)
               { type: 'main', prefixes: ['main'], expectedBase: 'develop' },
+            // fork develop into base develop
+              { type: 'fork', prefixes: ['develop'], expectedBase: 'develop' },
               { type: 'feature', prefixes: ['feature/'], expectedBase: 'develop' },
               { type: 'bugfix',  prefixes: ['bugfix/'],  expectedBase: 'develop' },
               { type: 'chore',   prefixes: ['chore/'],   expectedBase: 'develop', botOnly: true },

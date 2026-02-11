@@ -4,6 +4,8 @@
 frontend:
   - changed-files:
       - any-glob-to-any-file: 'src/**'
+      - exclude-glob: 'src/**/*.md'
+      - exclude-glob: 'src/test/**'
 
 ci:
   - changed-files:
@@ -16,4 +18,4 @@ docs:
 
 tests:
   - changed-files:
-      - any-glob-to-any-file: 'test/**'
+      - any-glob-to-any-file: 'src/test/**'
