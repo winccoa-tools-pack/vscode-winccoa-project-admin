@@ -68,3 +68,13 @@ From the Actions tab:
 
 - `npm ci` fails: ensure `package-lock.json` matches `package.json` and commit the updated lockfile.
 - Container pull fails: verify your image name (and Docker credentials if private).
+
+---
+
+## Quick Links
+
+• [📦 VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=mPokornyETM.wincc-oa-tools-pack)
+
+---
+
+<center>Made with ❤️ for and by the WinCC OA community</center>

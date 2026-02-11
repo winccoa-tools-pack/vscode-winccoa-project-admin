@@ -81,3 +81,13 @@ Note: the provided rulesets require these status check contexts:
 - `Git Flow Validation - Required`
 
 If you keep these rulesets enabled, ensure your workflows emit these check names (or adjust the rulesets to match your repo).
+
+---
+
+## Quick Links
+
+• [📦 VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=mPokornyETM.wincc-oa-tools-pack)
+
+---
+
+<center>Made with ❤️ for and by the WinCC OA community</center>

@@ -22,7 +22,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Validate branch + target + commits
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -147,7 +147,7 @@ jobs:
       contents: read
     steps:
       - name: Comment if branch still exists
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;

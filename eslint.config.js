@@ -47,6 +47,6 @@ module.exports = [
 
   // Ignore typical output folders
   {
-    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/', 'src/test/runTest.ts']
+    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/']
   }
 ];

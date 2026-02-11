@@ -61,17 +61,13 @@ jobs:
     if: success()
 
     steps:
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Run lint
-              run: npm run lint
-
-            - name: Compile TypeScript
-              run: npm run compile
-
-            - name: Run tests
-              run: npm test
-              env:
-                  CI: true
-
+      - name: Success Notification
+        run: |
+          echo "🧪 Alpha pre-release ${{ needs.pre-release.outputs.tag }} created successfully!"
+          echo "📦 Tested VSIX attached to the GitHub pre-release"
+          echo "🔍 Available for testing and validation"
+          echo "📝 Auto-generated from a main-target PR (release/hotfix)"
+          echo ""
+          echo "🔗 Pre-release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.pre-release.outputs.tag }}"
+          echo ""
+          echo "🧪 Test the pre-release and provide feedback!"
