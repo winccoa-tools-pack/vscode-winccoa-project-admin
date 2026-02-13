@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-02-13
+
+### Added
+- **GitHub Copilot Language Model Tools** (3 new autonomous manager lifecycle operations):
+  - `winccoa_add_manager`: Add managers directly via Copilot without wizard UI
+    - Accepts all manager parameters (component, startMode, startOptions, secondToKill, resetMin, resetStartCounter)
+    - Defaults: startMode=2 (Always), secondToKill=30, resetMin=1, resetStartCounter=3
+    - Example: "Add WCCOActrl manager with -num 5 -f test.ctl"
+  - `winccoa_delete_manager`: Delete managers autonomously via Copilot
+    - Safety check: Cannot delete PMON or Data Manager (index 0-1)
+    - Auto-stops running managers before deletion
+    - Example: "Delete manager 4"
+  - `winccoa_configure_manager`: Update manager settings directly via Copilot
+    - Partial updates supported (only changed fields required)
+    - Stop → Delete → Insert → Restart workflow
+    - Cannot configure PMON or Data Manager (index 0-1)
+    - Example: "Configure manager 3 to start mode always with 60 seconds kill timeout"
+- **Direct Manager Operations** (new internal methods for Copilot integration):
+  - `ManagerTreeProvider.addManagerDirect()`: Bypasses wizard, adds manager directly from parameters
+  - `ManagerTreeProvider.updateManagerDirect()`: Bypasses settings panel, updates manager from partial options
+  - Both methods query live PMON state (not cached) for accurate positioning
+
+### Changed
+- **Manager Add Position Fix**: `addManagerDirect()` now queries current manager list from PMON instead of using cached array
+  - Ensures managers are always appended at the correct end position
+  - Prevents off-by-one insertion errors
+
 ## [2.1.0] - 2026-02-13
 
 ### Added

@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -561,6 +561,121 @@
             "managerNum": {
               "type": "number",
               "description": "The manager number to restart"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_add_manager",
+        "displayName": "Add WinCC OA Manager",
+        "modelDescription": "Add a new manager to a WinCC OA project. Opens the manager add wizard for user input. Use when the user wants to add or create a new manager component.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_add",
+        "icon": "$(add)",
+        "userDescription": "Add a new manager to a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "component": {
+              "type": "string",
+              "description": "Manager component name (e.g., WCCOActrl, WCCOAui, WCCOAascii)"
+            },
+            "startMode": {
+              "type": "number",
+              "description": "Start mode: 0=Manual, 1=Once, 2=Always (default: 2)"
+            },
+            "startOptions": {
+              "type": "string",
+              "description": "Command-line options (e.g., '-num 1 -f script.ctl')"
+            },
+            "secondToKill": {
+              "type": "number",
+              "description": "Seconds to wait before force kill (default: 30)"
+            },
+            "resetMin": {
+              "type": "number",
+              "description": "Minutes before allowing restart (default: 1)"
+            },
+            "resetStartCounter": {
+              "type": "number",
+              "description": "Max restart attempts (default: 3)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "component"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_delete_manager",
+        "displayName": "Delete WinCC OA Manager",
+        "modelDescription": "Delete a manager from a WinCC OA project. Cannot delete PMON or Data Manager (index 0-1). Use when the user wants to remove a manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_delete",
+        "icon": "$(trash)",
+        "userDescription": "Delete a manager from a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to delete (must be > 1, cannot delete PMON or Data Manager)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_configure_manager",
+        "displayName": "Configure WinCC OA Manager",
+        "modelDescription": "Configure manager settings (start mode, kill timeout, restart behavior). Opens the manager configuration panel for user input. Cannot configure PMON or Data Manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_configure",
+        "icon": "$(settings-gear)",
+        "userDescription": "Configure settings for a WinCC OA manager",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to configure (must be > 1)"
+            },
+            "startMode": {
+              "type": "number",
+              "description": "Start mode: 0=Manual, 1=Once, 2=Always"
+            },
+            "startOptions": {
+              "type": "string",
+              "description": "Command-line options"
+            },
+            "secondToKill": {
+              "type": "number",
+              "description": "Seconds to wait before force kill"
+            },
+            "resetMin": {
+              "type": "number",
+              "description": "Minutes before allowing restart"
+            },
+            "resetStartCounter": {
+              "type": "number",
+              "description": "Max restart attempts"
             },
             "projectId": {
               "type": "string",

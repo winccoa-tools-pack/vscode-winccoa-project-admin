@@ -531,6 +531,53 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
     }
 
+    /**
+     * Add a manager directly with provided parameters (for Language Model Tools / Copilot)
+     */
+    async addManagerDirect(options: ProjEnvManagerOptions): Promise<boolean> {
+        try {
+            if (!this.currentProjectId) {
+                throw new Error('No active project');
+            }
+
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Adding manager directly: ${options.component}`);
+
+            // Get current manager list from PMON (not cached)
+            const managers = await this.pmon.getManagerOptionsList(this.currentProjectId);
+            const insertPosition = managers.length;
+
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Calling insertManagerAt: ${options.component} at position ${insertPosition}`);
+
+            const exitCode = await this.pmon.insertManagerAt(
+                options,
+                this.currentProjectId,
+                insertPosition
+            );
+
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `insertManagerAt returned: ${exitCode}`);
+
+            if (exitCode === 0) {
+                // Wait a bit for config to be written
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Reload managers
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'Reloading managers after insert...');
+                await this.loadManagers();
+                
+                // Force refresh the tree view
+                this._onDidChangeTreeData.fire();
+                ExtensionOutputChannel.info('ManagerTreeProvider', `Manager ${options.component} added successfully`);
+                return true;
+            } else {
+                ExtensionOutputChannel.error('ManagerTreeProvider', `insertManagerAt failed with exit code: ${exitCode}`);
+                return false;
+            }
+        } catch (error) {
+            ExtensionOutputChannel.error('ManagerTreeProvider', 'Error during addManagerDirect', error instanceof Error ? error : new Error(String(error)));
+            return false;
+        }
+    }
+
     async editManager(item: ManagerItem): Promise<void> {
         if (!this.currentProjectId || !item.managerData) {
             vscode.window.showErrorMessage('No manager selected');
@@ -617,6 +664,81 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Error in edit manager: ${errorMsg}`);
             ExtensionOutputChannel.error('ManagerTreeProvider', 'Error in editManager', error instanceof Error ? error : new Error(String(error)));
+        }
+    }
+
+    /**
+     * Update manager directly with provided options (for Language Model Tools / Copilot)
+     */
+    async updateManagerDirect(managerNum: number, updatedOptions: Partial<ProjEnvManagerOptions>): Promise<boolean> {
+        try {
+            if (!this.currentProjectId) {
+                throw new Error('No active project');
+            }
+
+            // Safety check
+            if (managerNum <= 1) {
+                throw new Error('Cannot configure PMON or Data Manager (index 0-1)');
+            }
+
+            // Get current manager
+            const managerData = this.managers.find(m => m.idx === managerNum);
+            if (!managerData || !managerData.options) {
+                throw new Error(`Manager ${managerNum} not found`);
+            }
+
+            // Merge updated options with current options
+            const finalOptions: ProjEnvManagerOptions = {
+                ...managerData.options,
+                ...updatedOptions
+            };
+
+            ExtensionOutputChannel.debug('ManagerTreeProvider', `Updating manager ${managerNum} directly`);
+
+            const wasRunning = managerData.info.state === ProjEnvManagerState.Running;
+
+            // Stop manager if running
+            if (wasRunning) {
+                ExtensionOutputChannel.info('ManagerTreeProvider', `Stopping manager ${managerNum} for update`);
+                await this.pmon.stopManager(this.currentProjectId, managerNum);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+
+            // Delete old manager
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Removing old manager at index ${managerNum}`);
+            await this.pmon.removeManager(this.currentProjectId, managerNum);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Insert updated manager at same position
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Inserting updated manager at index ${managerNum}`);
+            const exitCode = await this.pmon.insertManagerAt(
+                finalOptions,
+                this.currentProjectId,
+                managerNum
+            );
+
+            if (exitCode !== 0) {
+                ExtensionOutputChannel.error('ManagerTreeProvider', `Failed to insert manager (exit code: ${exitCode})`);
+                return false;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Restart if was running
+            if (wasRunning) {
+                ExtensionOutputChannel.info('ManagerTreeProvider', `Restarting manager ${managerNum}`);
+                await this.pmon.startManager(this.currentProjectId, managerNum);
+            }
+
+            // Reload managers
+            await this.loadManagers();
+            this._onDidChangeTreeData.fire();
+            
+            ExtensionOutputChannel.info('ManagerTreeProvider', `Manager ${managerNum} updated successfully`);
+            return true;
+        } catch (error) {
+            ExtensionOutputChannel.error('ManagerTreeProvider', 'Error during updateManagerDirect', error instanceof Error ? error : new Error(String(error)));
+            return false;
         }
     }
 
