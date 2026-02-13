@@ -163,6 +163,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                 await managerTreeProvider.addManager();
             })
         );
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('winccoa.manager.edit', async (item: any) => {
+                if (item && item.managerData) {
+                    await managerTreeProvider.editManager(item);
+                }
+            })
+        );
         ExtensionOutputChannel.info('Extension', 'Registered manager control commands');
 
         // Register system control commands

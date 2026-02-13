@@ -95,6 +95,12 @@
         "icon": "$(trash)"
       },
       {
+        "command": "winccoa.manager.edit",
+        "title": "Edit Manager Settings",
+        "category": "WinCC OA",
+        "icon": "$(settings-gear)"
+      },
+      {
         "command": "winccoa.manager.add",
         "title": "Add Manager",
         "category": "WinCC OA",
@@ -258,6 +264,11 @@
         },
         {
           "command": "winccoa.manager.delete",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@2"
+        },
+        {
+          "command": "winccoa.manager.edit",
           "when": "view == winccoa.managerView && viewItem == manager",
           "group": "manager@1"
         },

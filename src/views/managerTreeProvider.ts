@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
+import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions, ProjEnvManagerStartMode } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
+import { ManagerSettingsPanel } from './managerSettingsPanel';
 
 interface ManagerDisplayData {
     idx: number;
@@ -485,8 +486,8 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                         component: componentName,
                         startMode: modeSelection.mode,
                         secondToKill: 30,
-                        resetMin: 0,
-                        resetStartCounter: 1,
+                        resetMin: 1,
+                        resetStartCounter: 3,
                         startOptions: startOptions || ''
                     };
 
@@ -527,6 +528,95 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Error in add manager wizard: ${errorMsg}`);
             ExtensionOutputChannel.error('ManagerTreeProvider', 'Error in addManager wizard', error instanceof Error ? error : new Error(String(error)));
+        }
+    }
+
+    async editManager(item: ManagerItem): Promise<void> {
+        if (!this.currentProjectId || !item.managerData) {
+            vscode.window.showErrorMessage('No manager selected');
+            return;
+        }
+
+        const managerData = item.managerData;
+        const currentOptions = managerData.options;
+
+        if (!currentOptions) {
+            vscode.window.showErrorMessage('Manager options not available');
+            return;
+        }
+
+        // Safety check: Don't allow editing critical managers
+        if (managerData.idx <= 1) {
+            vscode.window.showErrorMessage('Cannot edit PMON or Data Manager (index 0-1)');
+            return;
+        }
+
+        try {
+            // Show settings panel and wait for result
+            const updatedOptions = await ManagerSettingsPanel.show(currentOptions);
+            
+            if (!updatedOptions) {
+                ExtensionOutputChannel.debug('ManagerTreeProvider', 'User cancelled manager settings');
+                return;
+            }
+
+            // Update manager: Delete old, insert new at same position
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Updating ${currentOptions.component}...`,
+                cancellable: false
+            }, async () => {
+                try {
+                    const wasRunning = managerData.info.state === ProjEnvManagerState.Running;
+                    const managerIndex = managerData.idx;
+
+                    // Stop manager if running
+                    if (wasRunning) {
+                        ExtensionOutputChannel.info('ManagerTreeProvider', `Stopping manager ${managerIndex} for update`);
+                        await this.pmon.stopManager(this.currentProjectId!, managerIndex);
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    }
+
+                    // Delete old manager
+                    ExtensionOutputChannel.info('ManagerTreeProvider', `Removing old manager at index ${managerIndex}`);
+                    await this.pmon.removeManager(this.currentProjectId!, managerIndex);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // Insert updated manager at same position
+                    ExtensionOutputChannel.info('ManagerTreeProvider', `Inserting updated manager at index ${managerIndex}`);
+                    const exitCode = await this.pmon.insertManagerAt(
+                        updatedOptions,
+                        this.currentProjectId!,
+                        managerIndex
+                    );
+
+                    if (exitCode !== 0) {
+                        throw new Error(`Failed to insert manager (exit code: ${exitCode})`);
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // Restart if was running
+                    if (wasRunning) {
+                        ExtensionOutputChannel.info('ManagerTreeProvider', `Restarting manager ${managerIndex}`);
+                        await this.pmon.startManager(this.currentProjectId!, managerIndex);
+                    }
+
+                    vscode.window.showInformationMessage(`✓ Manager "${currentOptions.component}" updated successfully`);
+
+                    // Reload managers
+                    await this.loadManagers();
+                    this._onDidChangeTreeData.fire();
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Failed to update manager: ${errorMsg}`);
+                    ExtensionOutputChannel.error('ManagerTreeProvider', 'Error during manager update', error instanceof Error ? error : new Error(String(error)));
+                }
+            });
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Error in edit manager: ${errorMsg}`);
+            ExtensionOutputChannel.error('ManagerTreeProvider', 'Error in editManager', error instanceof Error ? error : new Error(String(error)));
         }
     }
 
