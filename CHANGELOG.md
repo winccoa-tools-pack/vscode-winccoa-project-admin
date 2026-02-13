@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-02-13
+
+### Changed
+- **npm-winccoa-core Migration**: Switched from local file dependency to published npm package `@winccoa-tools-pack/npm-winccoa-core@^0.2.3`
+  - Cleaner dependency management
+  - Automatic updates via npm
+  - No longer requires local npm-winccoa-core build
+
+### Fixed
+- **API Breaking Change**: Added missing `resetMin` property to `ProjEnvManagerOptions` in Manager TreeView
+  - Required by npm-winccoa-core v0.2.3 API changes
+  - Prevents "Property 'resetMin' is missing" TypeScript errors
+- **Version Detection Fallback**: Robust handling of projects with missing/invalid WinCC OA versions
+  - Automatically parses version from `config/config` file when `project.getVersion()` returns "unknown"
+  - Validates parsed version against installed WinCC OA versions on system
+  - Normalizes version format (e.g., "3.21.1" → "3.21")
+  - Prevents "WinCC OA version unknown not found on system" errors in all PMON operations
+  - Fixes errors in: Progressive Loading, Smart Polling, Manager TreeView, System TreeView (Start/Stop)
+- **ProjEnvProject Instance Caching**: Eliminated redundant object creation and config parsing
+  - Caches `ProjEnvProject` instances in `_projectCache` Map during initial project discovery
+  - Reuses cached instances in: `loadProjectStatusProgressive()`, `refreshSmartPolling()`, `verifyCurrentProject()`
+  - Preserves `setVersion()` state across multiple method calls
+  - Config file is now parsed only **once** per project at startup instead of repeatedly every 15 seconds
+
+### Performance
+- Eliminated redundant file I/O: Config file parsing reduced from ~240 times/hour to 1 time per project
+- Smart polling (every 15 seconds) no longer creates new ProjEnvProject instances
+- Reduced memory churn by reusing cached objects
+
 ## [2.0.3] - 2026-01-31
 
 ### Fixed

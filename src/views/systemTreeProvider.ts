@@ -30,6 +30,44 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         this._onDidChangeTreeData.fire();
     }
 
+    /**
+     * Get valid version for PMON operations
+     * Falls back to parsing config file if project.version is invalid
+     */
+    private getValidVersion(project: ProjectInfo): string {
+        // Check if current version is valid (not "unknown", not empty)
+        if (project.version && project.version !== 'unknown') {
+            return project.version;
+        }
+
+        ExtensionOutputChannel.warn('SystemTreeProvider', `Project ${project.id} has invalid version "${project.version}", parsing from config`);
+
+        // Fallback: Parse from config file
+        try {
+            const configPath = path.join(project.projectDir, 'config', 'config');
+            
+            if (!fs.existsSync(configPath)) {
+                throw new Error(`Config file not found: ${configPath}`);
+            }
+
+            const configContent = fs.readFileSync(configPath, 'utf-8');
+            const versionMatch = configContent.match(/proj_version\s*=\s*"([0-9]+\.[0-9]+(?:\.[0-9]+)?)"/i);
+            
+            if (versionMatch && versionMatch[1]) {
+                const version = versionMatch[1];
+                // Normalize to major.minor format
+                const normalized = version.split('.').slice(0, 2).join('.');
+                ExtensionOutputChannel.info('SystemTreeProvider', `Parsed version from config: ${normalized}`);
+                return normalized;
+            }
+
+            throw new Error(`No proj_version found in ${configPath}`);
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            throw new Error(`Cannot determine WinCC OA version for project ${project.id}: ${err.message}`);
+        }
+    }
+
     getTreeItem(element: SystemItem): vscode.TreeItem {
         return element;
     }
@@ -246,9 +284,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            // Set WinCC OA version for pmon component
-            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${project.version}`);
-            this.pmon.setVersion(project.version);
+            // Get valid version (with fallback to config parsing)
+            const version = this.getValidVersion(project);
+            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${version}`);
+            this.pmon.setVersion(version);
             
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
             
@@ -302,9 +341,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
-                // Set WinCC OA version for pmon component
-                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${project.version}`);
-                this.pmon.setVersion(project.version);
+                // Get valid version (with fallback to config parsing)
+                const version = this.getValidVersion(project);
+                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${version}`);
+                this.pmon.setVersion(version);
                 
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
                 
@@ -347,7 +387,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            // Set WinCC OA version for pmon component
+            // Version is already parsed in toProjectInfo()
             ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
             this.pmon.setVersion(currentProject.version);
             
@@ -406,7 +446,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         
         if (answer === 'Yes') {
             try {
-                // Set WinCC OA version for pmon component
+                // Version is already parsed in toProjectInfo()
                 ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
                 this.pmon.setVersion(currentProject.version);
                 

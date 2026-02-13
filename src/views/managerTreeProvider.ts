@@ -59,7 +59,14 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         try {
             this.currentProjectId = currentProject.id;
 
-            // Set WinCC OA version for pmon component
+            // Set WinCC OA version for pmon component (already parsed in toProjectInfo())
+            if (!currentProject.version || currentProject.version === 'unknown') {
+                ExtensionOutputChannel.warn('ManagerTreeProvider', `Project ${currentProject.id} has invalid version: ${currentProject.version}`);
+                this.managers = [];
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+            
             ExtensionOutputChannel.debug('ManagerTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
             this.pmon.setVersion(currentProject.version);
 
@@ -384,8 +391,8 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                         component: componentName,
                         startMode: modeSelection.mode,
                         secondToKill: 30,
+                        resetMin: 0,
                         resetStartCounter: 1,
-                        restart: 0,
                         startOptions: startOptions || ''
                     };
 
