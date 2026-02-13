@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build package
-        run: npm run build
+        run: npm run compile:tsc
       - name: Setup virtual display (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -125,7 +125,7 @@ jobs:
       - name: Install dependencies (host)
         run: npm ci
       - name: Build package (host)
-        run: npm run build
+        run: npm run compile:tsc
       - name: Run WinCC OA container
         shell: bash
         run: |
@@ -153,7 +153,7 @@ jobs:
             set -e
             echo "Node version: $(node -v)"
             echo "Running all integration tests..."
-            xvfb-run -s "-screen 0 1280x1024x24" node --import tsx scripts/run-node-tests.ts test/integration
+            node scripts/run-node-tests.ts test/integration
           ' || EXIT_CODE=$?
           
           if [ "$EXIT_CODE" -eq 137 ]; then

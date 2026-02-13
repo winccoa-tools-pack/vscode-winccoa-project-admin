@@ -6,6 +6,7 @@ import {
     getWinCCOAInstallationPathByVersion,
     getAvailableWinCCOAVersions,
 } from '@winccoa-tools-pack/npm-winccoa-core';
+import { stopWatchingProjectRegistries, reloadProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry';
 
 // Use CommonJS __filename and __dirname directly
 
@@ -13,7 +14,12 @@ import {
  * Gets the absolute path to the test fixtures directory
  */
 export function getFixturesPath(): string {
-    return path.resolve(__dirname, '..', '..', 'test', 'fixtures');
+    console.log(
+        'Getting fixtures path:',
+        __dirname,
+        path.resolve(__dirname, '..', 'test', 'fixtures'),
+    );
+    return path.resolve(__dirname, '..', 'test', 'fixtures');
 }
 
 /**
@@ -41,6 +47,8 @@ export function getTestProjectPath(projectName: string): string {
  * ```
  */
 export async function registerRunnableTestProject(): Promise<ProjEnvProject> {
+
+    await reloadProjectRegistries(); // Ensure we have the latest project registry state before registering a new project
     const subProjectPath = getTestProjectPath('sub-proj');
     const subProject: ProjEnvProject = new ProjEnvProject();
 
@@ -157,6 +165,8 @@ export async function withRunnableTestProject(
     } finally {
         if (project) {
             await unregisterTestProject(project);
+
+            stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test
         }
     }
 }

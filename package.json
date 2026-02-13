@@ -44,11 +44,13 @@
       "winccoa-project-admin": [
         {
           "id": "winccoa.systemView",
-          "name": "System Status"
+          "name": "System Status",
+          "icon": "$(server)"
         },
         {
           "id": "winccoa.managerView",
-          "name": "Managers"
+          "name": "Managers",
+          "icon": "$(tools)"
         }
       ]
     },
@@ -568,7 +570,6 @@
     "compile": "webpack",
     "compile:tsc": "tsc -p ./ && npm run copy-fixtures",
     "copy-fixtures": "copyfiles -u 1 \"src/test/fixtures/**/*\" out/",
-    "build": "npm run compile",
     "start": "code --extensionDevelopmentPath=.",
     "start:insiders": "code-insiders --extensionDevelopmentPath=.",
     "dev": "npm run watch",
@@ -580,10 +581,10 @@
     "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "test": "vscode-test --label unitTests",
+    "test": "npm run test:unit && npm run test:integration",
     "test:unit": "vscode-test --label unitTests",
-    "test:integrationt": "vscode-test --label integrationTests",
-    "ci:integration": "npm ci && npm run compile && npm run test:integrationt",
+    "test:integration": "vscode-test --label integrationTests",
+    "ci:integration": "npm ci && npm run compile && npm run test:integration",
     "style-check": "npm run format:check && npm run lint"
   },
   "devDependencies": {
@@ -610,6 +611,6 @@
     "winccoaImage": "mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d2a509c"
+    "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d7edf38"
   }
 }

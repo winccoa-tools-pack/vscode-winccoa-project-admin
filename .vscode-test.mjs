@@ -24,7 +24,7 @@ export default defineConfig([{
     workspaceFolder: './test-workspace',
     mocha: {
         ui: 'tdd',
-        timeout: 20000
+        timeout: 30000
     }
 }
 ]

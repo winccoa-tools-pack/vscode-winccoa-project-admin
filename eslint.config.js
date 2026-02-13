@@ -1,11 +1,11 @@
 
-// eslint.config.js (CommonJS)
-const js = require('@eslint/js');
-const tsPlugin = require('@typescript-eslint/eslint-plugin');
-const tsParser = require('@typescript-eslint/parser');
-const globals = require('globals');
+// eslint.config.js (ESM)
+import js from '@eslint/js';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import globals from 'globals';
 
-module.exports = [
+export default [
   // Base ESLint recommended rules
   js.configs.recommended,
 
@@ -45,8 +45,21 @@ module.exports = [
     },
   },
 
+  // JavaScript scripts in scripts/ directory
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-undef': 'off', // Node.js globals are defined
+    },
+  },
+
   // Ignore typical output folders
   {
-    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/']
+    ignores: ['node_modules/', 'dist/', 'out/', 'coverage/', 'scripts/run-node-tests.ts']
   }
 ];

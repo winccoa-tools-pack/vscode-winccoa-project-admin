@@ -1,0 +1,12 @@
+{
+    "folders": [
+        {
+            "name": "WinCC OA Project Admin",
+            "path": ".."
+        }
+    ],
+    "settings": {
+        "typescript.preferences.noSemicolons": "off",
+        "editor.formatOnSave": true
+    }
+}

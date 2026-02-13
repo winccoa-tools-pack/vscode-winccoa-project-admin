@@ -257,7 +257,6 @@ src/
 - `npm run compile` - Build the extension with webpack
 - `npm run compile:tsc` - Type-check and copy test fixtures
 - `npm run watch` - Watch mode for development
-- `npm run build` - Alias for compile
 
 ### Development Scripts
 
