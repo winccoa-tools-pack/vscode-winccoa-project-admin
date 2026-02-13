@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-13
+
+### Added
+- **Manager Delete Feature**: Complete manager deletion functionality with safety checks
+  - Delete managers via context menu (trash icon)
+  - Safety protection: Cannot delete critical managers at index 0-1 (PMON/Data Manager)
+  - Auto-stop running managers before deletion with extended 5-second wait time
+  - Simple confirmation dialog: "Delete manager 'X' - are you sure?"
+  - Automatic manager list refresh after successful deletion
+  - Command: `winccoa.manager.delete` registered in Manager View
+- **Manager Add Feature**: Complete manager addition wizard with intelligent defaults
+  - 4-step wizard: Type → Name → Start Mode → Options
+  - 12 predefined WinCC OA manager types (WCCOActrl, WCCOAui, WCCILevent, etc.) + Custom option
+  - Intelligent `-num X` auto-suggestion finds next free manager number
+  - Duplicate detection prevents adding same component+options combination
+  - Start mode selection: Manual (0), Once (1), Always (2) with corrected mapping
+  - Always appends managers at end of list (simplified from 5-step wizard)
+  - Command: `winccoa.manager.add` registered with $(add) icon in Manager View title bar
+
+### Fixed
+- **Manager Start Modes**: Corrected swapped Once/Always values in wizard (Once=1, Always=2)
+- **Manager Stop Timing**: Increased wait time from 1 second to 5 seconds for safer state transitions
+
 ## [2.0.4] - 2026-02-13
 
 ### Changed
