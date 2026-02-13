@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "RichardJanisch",
-  "version": "2.0.4",
+  "version": "2.1.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -87,6 +87,18 @@
         "title": "Restart Manager",
         "category": "WinCC OA",
         "icon": "$(debug-restart)"
+      },
+      {
+        "command": "winccoa.manager.delete",
+        "title": "Delete Manager",
+        "category": "WinCC OA",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "winccoa.manager.add",
+        "title": "Add Manager",
+        "category": "WinCC OA",
+        "icon": "$(add)"
       },
       {
         "command": "winccoa.system.start",
@@ -221,6 +233,11 @@
           "command": "winccoa.managerView.refresh",
           "when": "view == winccoa.managerView",
           "group": "navigation"
+        },
+        {
+          "command": "winccoa.manager.add",
+          "when": "view == winccoa.managerView",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -238,6 +255,11 @@
           "command": "winccoa.manager.restart",
           "when": "view == winccoa.managerView && viewItem == manager",
           "group": "inline"
+        },
+        {
+          "command": "winccoa.manager.delete",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@1"
         },
         {
           "command": "winccoa.project.start",
@@ -583,6 +605,7 @@
     "style-fix": "npm run lint:fix && npm run format && npm run lint:md:fix && npm run format:md",
     "test": "npm run style-check && npm run compile && node ./dist/test/runTest.js",
     "test:integration": "npm run build && node ./dist/test/runTest.js",
+    "test:add-manager": "ts-node scripts/test-add-manager.ts",
     "ci:integration": "npm ci && npm run test:integration"
   },
   "devDependencies": {
@@ -599,6 +622,7 @@
     "mocha": "^11.3.0",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.0",
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
