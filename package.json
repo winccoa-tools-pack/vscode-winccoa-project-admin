@@ -568,7 +568,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "webpack",
-    "compile:tsc": "tsc -p ./ && npm run copy-fixtures",
+    "clean:out": "node -e \"require('fs').rmSync('out',{ recursive:true, force:true })\"",
+    "compile:tsc": "npm run clean:out && tsc -p ./ && npm run copy-fixtures",
     "copy-fixtures": "copyfiles -u 1 \"src/test/fixtures/**/*\" out/",
     "start": "code --extensionDevelopmentPath=.",
     "start:insiders": "code-insiders --extensionDevelopmentPath=.",

@@ -6,7 +6,6 @@ import {
     getWinCCOAInstallationPathByVersion,
     getAvailableWinCCOAVersions,
 } from '@winccoa-tools-pack/npm-winccoa-core';
-import { stopWatchingProjectRegistries, reloadProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry';
 
 // Use CommonJS __filename and __dirname directly
 
@@ -48,7 +47,6 @@ export function getTestProjectPath(projectName: string): string {
  */
 export async function registerRunnableTestProject(): Promise<ProjEnvProject> {
 
-    await reloadProjectRegistries(); // Ensure we have the latest project registry state before registering a new project
     const subProjectPath = getTestProjectPath('sub-proj');
     const subProject: ProjEnvProject = new ProjEnvProject();
 
@@ -166,7 +164,7 @@ export async function withRunnableTestProject(
         if (project) {
             await unregisterTestProject(project);
 
-            stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test
+            // stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test
         }
     }
 }
