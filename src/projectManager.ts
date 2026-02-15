@@ -29,6 +29,10 @@ export class ProjectManager {
         return this.context.extensionMode === vscode.ExtensionMode.Test;
     }
 
+    protected async fetchRunnableProjects(): Promise<ProjEnvProject[]> {
+        return getRunnableProjects();
+    }
+
     /**
      * Initialize - load projects progressively and start smart polling
      */
@@ -95,7 +99,7 @@ export class ProjectManager {
      */
     async getAllRunnableProjects(): Promise<ProjectInfo[]> {
         try {
-            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
             const projects: ProjectInfo[] = [];
 
             for (const project of runnable) {
@@ -174,7 +178,7 @@ export class ProjectManager {
             // Import getRegisteredProjects for debug logging
             const { getRegisteredProjects } = await import('@winccoa-tools-pack/npm-winccoa-core');
             const allRegistered = await getRegisteredProjects();
-            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
 
             // Debug logging
             ExtensionOutputChannel.debug(
@@ -233,7 +237,7 @@ export class ProjectManager {
      * Favorites are loaded first for better UX
      */
     private async loadProjectStatusProgressive(): Promise<void> {
-        const runnable: ProjEnvProject[] = await getRunnableProjects();
+        const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
 
         // Separate favorites and non-favorites
         const favorites: ProjEnvProject[] = [];
@@ -378,7 +382,7 @@ export class ProjectManager {
 
                 try {
                     // Re-fetch project instance (we only have ProjectInfo, not ProjEnvProject)
-                    const runnable = await getRunnableProjects();
+                    const runnable = await this.fetchRunnableProjects();
                     const projEnv = runnable.find((p) => p.getId() === projectId);
                     if (!projEnv) {
                         ExtensionOutputChannel.warn(
@@ -457,7 +461,7 @@ export class ProjectManager {
         );
 
         try {
-            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
             const project = runnable.find((p) => p.getId() === projectId);
 
             if (!project) {

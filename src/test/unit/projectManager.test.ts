@@ -1,10 +1,24 @@
 import * as assert from 'assert';
+import * as vscode from 'vscode';
 import { ProjectManager } from '../../projectManager';
 import { ProjectInfo, toProjectInfo } from '../../types';
 
 suite('ProjectManager Unit Tests', () => {
     let mockContext: any;
     let projectManager: ProjectManager;
+
+    class ProjectManagerWithStubbedRunnable extends ProjectManager {
+        constructor(
+            context: any,
+            private readonly runnable: any[],
+        ) {
+            super(context);
+        }
+
+        protected override async fetchRunnableProjects(): Promise<any[]> {
+            return this.runnable;
+        }
+    }
 
     suiteSetup(() => {
         // Create mock VS Code extension context
@@ -145,6 +159,136 @@ suite('ProjectManager Unit Tests', () => {
             const favorites = projectManager.getFavorites();
             assert.ok(Array.isArray(favorites), 'getFavorites should return an array');
             assert.strictEqual(favorites.length, 0, 'Should have no favorites initially');
+        });
+
+        test('should persist favorites to workspace state on toggle', () => {
+            const updates: Array<{ key: string; value: unknown }> = [];
+            const contextWithUpdateSpy = {
+                ...mockContext,
+                workspaceState: {
+                    get: (key: string, defaultValue?: any) => defaultValue,
+                    update: (key: string, value: unknown) => {
+                        updates.push({ key, value });
+                        return Promise.resolve();
+                    },
+                },
+            };
+
+            const manager = new ProjectManager(contextWithUpdateSpy);
+
+            manager.toggleFavorite('fav-1');
+            assert.ok(updates.length >= 1, 'workspaceState.update should be called');
+            assert.strictEqual(updates[updates.length - 1]?.key, 'favoriteProjects');
+            assert.deepStrictEqual(updates[updates.length - 1]?.value, ['fav-1']);
+
+            manager.toggleFavorite('fav-2');
+            assert.deepStrictEqual(updates[updates.length - 1]?.value, ['fav-1', 'fav-2']);
+
+            manager.toggleFavorite('fav-1');
+            assert.deepStrictEqual(updates[updates.length - 1]?.value, ['fav-2']);
+        });
+    });
+
+    suite('Core stability (high priority)', () => {
+        test('should include projects even when PMON status check fails (per-project error isolation)', async () => {
+            const throwingProject = {
+                getId: () => 'bad',
+                getName: () => 'Bad',
+                getVersion: () => '3.20',
+                getInstallDir: () => '/bad',
+                getDir: () => '/bad',
+                getConfigPath: () => '/bad/config/config',
+                isPmonRunning: async () => {
+                    throw new Error('boom');
+                },
+            };
+
+            const okProject = {
+                getId: () => 'ok',
+                getName: () => 'Ok',
+                getVersion: () => '3.20',
+                getInstallDir: () => '/ok',
+                getDir: () => '/ok',
+                getConfigPath: () => '/ok/config/config',
+                isPmonRunning: async () => true,
+            };
+
+            const manager = new ProjectManagerWithStubbedRunnable(mockContext, [
+                throwingProject,
+                okProject,
+            ]);
+            const projects = await manager.getAllRunnableProjects();
+            assert.strictEqual(projects.length, 2, 'Should return both projects');
+
+            const bad = projects.find((p: any) => p.id === 'bad');
+            const ok = projects.find((p: any) => p.id === 'ok');
+
+            assert.ok(bad, 'Bad project should be included');
+            assert.strictEqual(bad.status, 'error');
+            assert.ok(typeof bad.error === 'string' && bad.error.includes('boom'));
+
+            assert.ok(ok, 'Ok project should be included');
+            assert.strictEqual(ok.status, 'running');
+        });
+
+        test('should skip PMON check when project has no version (does not crash)', async () => {
+            const noVersionProject = {
+                getId: () => 'noversion',
+                getName: () => 'NoVersion',
+                getVersion: () => '',
+                getInstallDir: () => '/noversion',
+                getDir: () => '/noversion',
+                getConfigPath: () => '/noversion/config/config',
+                isPmonRunning: async () => {
+                    throw new Error('should-not-be-called');
+                },
+            };
+
+            const manager = new ProjectManagerWithStubbedRunnable(mockContext, [noVersionProject]);
+            const projects = await manager.getAllRunnableProjects();
+            assert.strictEqual(projects.length, 1);
+            assert.strictEqual(projects[0]?.id, 'noversion');
+            assert.strictEqual(projects[0]?.status, 'stopped');
+        });
+
+        test('should only create polling interval when enabled, and always dispose it', async () => {
+            const context = {
+                ...mockContext,
+                extensionMode: vscode.ExtensionMode.Test,
+            };
+            const manager = new ProjectManager(context);
+
+            // Avoid calling real WinCC OA logic
+            (manager as any).loadProjectsInitial = async () => {};
+            (manager as any).loadProjectStatusProgressive = async () => {};
+            (manager as any).refreshSmartPolling = async () => {};
+
+            const originalSetInterval = global.setInterval;
+            const originalClearInterval = global.clearInterval;
+
+            const calls: { set: any[]; clear: any[] } = { set: [], clear: [] };
+            (global as any).setInterval = (fn: any, ms?: any) => {
+                calls.set.push([fn, ms]);
+                return 'interval-id';
+            };
+            (global as any).clearInterval = (id: any) => {
+                calls.clear.push([id]);
+            };
+
+            try {
+                await manager.initialize({ loadStatus: false, enablePolling: false });
+                assert.strictEqual(calls.set.length, 0, 'setInterval should not be called');
+
+                await manager.initialize({ loadStatus: false, enablePolling: true });
+                assert.strictEqual(calls.set.length, 1, 'setInterval should be called once');
+                assert.strictEqual(calls.set[0]?.[1], 15000, 'Polling interval should be 15s');
+
+                manager.dispose();
+                assert.deepStrictEqual(calls.clear, [['interval-id']], 'clearInterval called');
+            } finally {
+                global.setInterval = originalSetInterval;
+                global.clearInterval = originalClearInterval;
+            }
         });
     });
 });
