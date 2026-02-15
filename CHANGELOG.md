@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-02-14
+
+### Fixed
+- **System View Button Visibility**: Start/Stop/Restart buttons no longer appear on "Projects" folder or "Project Information" section
+  - Fixed regex in package.json menu conditions from `/^project/` to `/^project(-favorite|-nonfavorite)?$/`
+  - Buttons now only appear on actual project items in the tree
+
+## [2.2.0] - 2026-02-13
+
+### Added
+- **GitHub Copilot Language Model Tools** (3 new autonomous manager lifecycle operations):
+  - `winccoa_add_manager`: Add managers directly via Copilot without wizard UI
+    - Accepts all manager parameters (component, startMode, startOptions, secondToKill, resetMin, resetStartCounter)
+    - Defaults: startMode=2 (Always), secondToKill=30, resetMin=1, resetStartCounter=3
+    - Example: "Add WCCOActrl manager with -num 5 -f test.ctl"
+  - `winccoa_delete_manager`: Delete managers autonomously via Copilot
+    - Safety check: Cannot delete PMON or Data Manager (index 0-1)
+    - Auto-stops running managers before deletion
+    - Example: "Delete manager 4"
+  - `winccoa_configure_manager`: Update manager settings directly via Copilot
+    - Partial updates supported (only changed fields required)
+    - Stop → Delete → Insert → Restart workflow
+    - Cannot configure PMON or Data Manager (index 0-1)
+    - Example: "Configure manager 3 to start mode always with 60 seconds kill timeout"
+- **Direct Manager Operations** (new internal methods for Copilot integration):
+  - `ManagerTreeProvider.addManagerDirect()`: Bypasses wizard, adds manager directly from parameters
+  - `ManagerTreeProvider.updateManagerDirect()`: Bypasses settings panel, updates manager from partial options
+  - Both methods query live PMON state (not cached) for accurate positioning
+
+### Changed
+- **Manager Add Position Fix**: `addManagerDirect()` now queries current manager list from PMON instead of using cached array
+  - Ensures managers are always appended at the correct end position
+  - Prevents off-by-one insertion errors
+
+## [2.1.0] - 2026-02-13
+
+### Added
+- **Manager Delete Feature**: Complete manager deletion functionality with safety checks
+  - Delete managers via context menu (trash icon)
+  - Safety protection: Cannot delete critical managers at index 0-1 (PMON/Data Manager)
+  - Auto-stop running managers before deletion with extended 5-second wait time
+  - Simple confirmation dialog: "Delete manager 'X' - are you sure?"
+  - Automatic manager list refresh after successful deletion
+  - Command: `winccoa.manager.delete` registered in Manager View
+- **Manager Add Feature**: Complete manager addition wizard with intelligent defaults
+  - 4-step wizard: Type → Name → Start Mode → Options
+  - 12 predefined WinCC OA manager types (WCCOActrl, WCCOAui, WCCILevent, etc.) + Custom option
+  - Intelligent `-num X` auto-suggestion finds next free manager number
+  - Duplicate detection prevents adding same component+options combination
+  - Start mode selection: Manual (0), Once (1), Always (2) with corrected mapping
+  - Always appends managers at end of list (simplified from 5-step wizard)
+  - Command: `winccoa.manager.add` registered with $(add) icon in Manager View title bar
+
+### Fixed
+- **Manager Start Modes**: Corrected swapped Once/Always values in wizard (Once=1, Always=2)
+- **Manager Stop Timing**: Increased wait time from 1 second to 5 seconds for safer state transitions
+
+## [2.0.4] - 2026-02-13
+
+### Changed
+- **npm-winccoa-core Migration**: Switched from local file dependency to published npm package `@winccoa-tools-pack/npm-winccoa-core@^0.2.3`
+  - Cleaner dependency management
+  - Automatic updates via npm
+  - No longer requires local npm-winccoa-core build
+
+### Fixed
+- **API Breaking Change**: Added missing `resetMin` property to `ProjEnvManagerOptions` in Manager TreeView
+  - Required by npm-winccoa-core v0.2.3 API changes
+  - Prevents "Property 'resetMin' is missing" TypeScript errors
+- **Version Detection Fallback**: Robust handling of projects with missing/invalid WinCC OA versions
+  - Automatically parses version from `config/config` file when `project.getVersion()` returns "unknown"
+  - Validates parsed version against installed WinCC OA versions on system
+  - Normalizes version format (e.g., "3.21.1" → "3.21")
+  - Prevents "WinCC OA version unknown not found on system" errors in all PMON operations
+  - Fixes errors in: Progressive Loading, Smart Polling, Manager TreeView, System TreeView (Start/Stop)
+- **ProjEnvProject Instance Caching**: Eliminated redundant object creation and config parsing
+  - Caches `ProjEnvProject` instances in `_projectCache` Map during initial project discovery
+  - Reuses cached instances in: `loadProjectStatusProgressive()`, `refreshSmartPolling()`, `verifyCurrentProject()`
+  - Preserves `setVersion()` state across multiple method calls
+  - Config file is now parsed only **once** per project at startup instead of repeatedly every 15 seconds
+
+### Performance
+- Eliminated redundant file I/O: Config file parsing reduced from ~240 times/hour to 1 time per project
+- Smart polling (every 15 seconds) no longer creates new ProjEnvProject instances
+- Reduced memory churn by reusing cached objects
+
 ## [2.0.3] - 2026-01-31
 
 ### Fixed

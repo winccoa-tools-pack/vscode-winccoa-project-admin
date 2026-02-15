@@ -12,6 +12,7 @@ export class ProjectManager {
     private _runningProjects: ProjectInfo[] = [];
     private _failedProjects: Set<string> = new Set(); // Cache for projects with errors
     private _favoriteProjects: Set<string> = new Set(); // Favorite project IDs
+    private _projectCache: Map<string, ProjEnvProject> = new Map(); // Cache ProjEnvProject instances to preserve setVersion()
     private _onDidChangeProject = new vscode.EventEmitter<ProjectInfo | undefined>();
     private _onDidChangeProjects = new vscode.EventEmitter<void>(); // NEW: For TreeView refresh
     private _refreshInterval: NodeJS.Timeout | undefined;
@@ -178,8 +179,12 @@ export class ProjectManager {
             // Import getRegisteredProjects for debug logging
             const { getRegisteredProjects } = await import('@winccoa-tools-pack/npm-winccoa-core');
             const allRegistered = await getRegisteredProjects();
-            const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
-
+            const runnable: ProjEnvProject[] = await getRunnableProjects();
+            
+            // CRITICAL: Cache ProjEnvProject instances for reuse (preserves setVersion() state)
+            this._projectCache.clear();
+            runnable.forEach(p => this._projectCache.set(p.getId(), p));
+            
             // Debug logging
             ExtensionOutputChannel.debug(
                 'ProjectManager',
@@ -237,8 +242,9 @@ export class ProjectManager {
      * Favorites are loaded first for better UX
      */
     private async loadProjectStatusProgressive(): Promise<void> {
-        const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
-
+        // CRITICAL: Reuse cached instances (preserves setVersion() from toProjectInfo())
+        const runnable: ProjEnvProject[] = Array.from(this._projectCache.values());
+        
         // Separate favorites and non-favorites
         const favorites: ProjEnvProject[] = [];
         const others: ProjEnvProject[] = [];
@@ -381,14 +387,10 @@ export class ProjectManager {
                 );
 
                 try {
-                    // Re-fetch project instance (we only have ProjectInfo, not ProjEnvProject)
-                    const runnable = await this.fetchRunnableProjects();
-                    const projEnv = runnable.find((p) => p.getId() === projectId);
+                    // Use cached ProjEnvProject instance (preserves setVersion())
+                    const projEnv = this._projectCache.get(projectId);
                     if (!projEnv) {
-                        ExtensionOutputChannel.warn(
-                            'ProjectManager',
-                            `[SMART POLL] ${projectId} not found in runnable projects`,
-                        );
+                        ExtensionOutputChannel.warn('ProjectManager', `[SMART POLL] ${projectId} not found in cache`);
                         continue;
                     }
 
@@ -436,10 +438,11 @@ export class ProjectManager {
      */
     async forceRefreshAll(): Promise<void> {
         ExtensionOutputChannel.info('ProjectManager', 'Force refreshing all projects...');
-
-        // Clear error cache to retry failed projects
+        
+        // Clear caches to get fresh project instances
         this._failedProjects.clear();
-
+        this._projectCache.clear();
+        
         // Re-run progressive loading
         await this.loadProjectsInitial();
         await this.loadProjectStatusProgressive();
@@ -461,14 +464,11 @@ export class ProjectManager {
         );
 
         try {
-            const runnable: ProjEnvProject[] = await this.fetchRunnableProjects();
-            const project = runnable.find((p) => p.getId() === projectId);
+            // Use cached ProjEnvProject instance (preserves setVersion())
+            const project = this._projectCache.get(projectId);
 
             if (!project) {
-                ExtensionOutputChannel.warn(
-                    'ProjectManager',
-                    `[VERIFY] Current project ${projectId} no longer found`,
-                );
+                ExtensionOutputChannel.warn('ProjectManager', `[VERIFY] Current project ${projectId} no longer found in cache`);
                 this.updateProjectStatus(projectId, 'error', 'Project not found');
                 return;
             }

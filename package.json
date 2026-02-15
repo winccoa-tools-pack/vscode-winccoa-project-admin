@@ -3,7 +3,7 @@
   "displayName": "WinCC OA Project Admin",
   "description": "Central control and monitoring for WinCC OA projects - project management, system status, and manager control",
   "publisher": "winccoa-tools-pack",
-  "version": "2.0.3",
+  "version": "2.2.1",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_control_512.png",
@@ -12,7 +12,7 @@
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin"
   },
   "engines": {
-    "vscode": "^1.106.0"
+    "vscode": "^1.109.2"
   },
   "categories": [
     "Other"
@@ -87,6 +87,24 @@
         "title": "Restart Manager",
         "category": "WinCC OA",
         "icon": "$(debug-restart)"
+      },
+      {
+        "command": "winccoa.manager.delete",
+        "title": "Delete Manager",
+        "category": "WinCC OA",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "winccoa.manager.edit",
+        "title": "Edit Manager Settings",
+        "category": "WinCC OA",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "winccoa.manager.add",
+        "title": "Add Manager",
+        "category": "WinCC OA",
+        "icon": "$(add)"
       },
       {
         "command": "winccoa.system.start",
@@ -221,6 +239,11 @@
           "command": "winccoa.managerView.refresh",
           "when": "view == winccoa.managerView",
           "group": "navigation"
+        },
+        {
+          "command": "winccoa.manager.add",
+          "when": "view == winccoa.managerView",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -240,18 +263,28 @@
           "group": "inline"
         },
         {
+          "command": "winccoa.manager.delete",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@2"
+        },
+        {
+          "command": "winccoa.manager.edit",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@1"
+        },
+        {
           "command": "winccoa.project.start",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "inline@1"
         },
         {
           "command": "winccoa.project.stop",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "inline@2"
         },
         {
           "command": "winccoa.project.setActive",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "1_project@1"
         },
         {
@@ -266,17 +299,17 @@
         },
         {
           "command": "winccoa.project.addToWorkspace",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "1_project@4"
         },
         {
           "command": "winccoa.project.openInExplorer",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "2_open@1"
         },
         {
           "command": "winccoa.project.unregister",
-          "when": "view == winccoa.systemView && viewItem =~ /^project/",
+          "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "9_danger@1"
         },
         {
@@ -538,6 +571,121 @@
             "managerNum"
           ]
         }
+      },
+      {
+        "name": "winccoa_add_manager",
+        "displayName": "Add WinCC OA Manager",
+        "modelDescription": "Add a new manager to a WinCC OA project. Opens the manager add wizard for user input. Use when the user wants to add or create a new manager component.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_add",
+        "icon": "$(add)",
+        "userDescription": "Add a new manager to a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "component": {
+              "type": "string",
+              "description": "Manager component name (e.g., WCCOActrl, WCCOAui, WCCOAascii)"
+            },
+            "startMode": {
+              "type": "number",
+              "description": "Start mode: 0=Manual, 1=Once, 2=Always (default: 2)"
+            },
+            "startOptions": {
+              "type": "string",
+              "description": "Command-line options (e.g., '-num 1 -f script.ctl')"
+            },
+            "secondToKill": {
+              "type": "number",
+              "description": "Seconds to wait before force kill (default: 30)"
+            },
+            "resetMin": {
+              "type": "number",
+              "description": "Minutes before allowing restart (default: 1)"
+            },
+            "resetStartCounter": {
+              "type": "number",
+              "description": "Max restart attempts (default: 3)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "component"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_delete_manager",
+        "displayName": "Delete WinCC OA Manager",
+        "modelDescription": "Delete a manager from a WinCC OA project. Cannot delete PMON or Data Manager (index 0-1). Use when the user wants to remove a manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_delete",
+        "icon": "$(trash)",
+        "userDescription": "Delete a manager from a WinCC OA project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to delete (must be > 1, cannot delete PMON or Data Manager)"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_configure_manager",
+        "displayName": "Configure WinCC OA Manager",
+        "modelDescription": "Configure manager settings (start mode, kill timeout, restart behavior). Opens the manager configuration panel for user input. Cannot configure PMON or Data Manager.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_manager_configure",
+        "icon": "$(settings-gear)",
+        "userDescription": "Configure settings for a WinCC OA manager",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to configure (must be > 1)"
+            },
+            "startMode": {
+              "type": "number",
+              "description": "Start mode: 0=Manual, 1=Once, 2=Always"
+            },
+            "startOptions": {
+              "type": "string",
+              "description": "Command-line options"
+            },
+            "secondToKill": {
+              "type": "number",
+              "description": "Seconds to wait before force kill"
+            },
+            "resetMin": {
+              "type": "number",
+              "description": "Minutes before allowing restart"
+            },
+            "resetStartCounter": {
+              "type": "number",
+              "description": "Max restart attempts"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
       }
     ],
     "configuration": {
@@ -601,7 +749,7 @@
     "@types/vscode": "^1.107.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "copyfiles": "^2.4.1",
@@ -611,6 +759,7 @@
     "mocha": "^11.3.0",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.0",
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"

@@ -4,6 +4,13 @@ import * as vscode from 'vscode';
 import { ProjectManager } from '../../projectManager';
 import { registerRunnableTestProject, unregisterTestProject } from '../test-project-helpers';
 import { stopWatchingProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry';
+import path from 'path';
+import fs from 'fs';
+import {
+    PmonComponent,
+    ProjEnvManagerStartMode,
+    type ProjEnvManagerOptions,
+} from '@winccoa-tools-pack/npm-winccoa-core';
 
 suite('Full VS Code Integration Tests with WinCC OA', () => {
     let testProject: any;
@@ -170,6 +177,78 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
             console.log('✅ Project stopped successfully');
         } catch (error) {
             console.log(`Project stop note: ${(error as Error).message}`);
+        }
+    });
+
+    test('should add manager via PMON insertManagerAt (resetMin regression)', async function () {
+        this.timeout(60000);
+
+        const version = testProject?.getVersion?.() as string | undefined;
+        const projectId = testProject?.getId?.() as string | undefined;
+        const projectDir = testProject?.getDir?.() as string | undefined;
+
+        if (!version || !projectId || !projectDir) {
+            this.skip();
+            return;
+        }
+
+        const progsPath = path.join(projectDir, 'config', 'progs');
+        if (!fs.existsSync(progsPath)) {
+            this.skip();
+            return;
+        }
+
+        const baselineProgs = fs.readFileSync(progsPath, 'utf8');
+        // WinCC OA limits manager names (e.g. max 19 chars). Keep this short.
+        const uniqueComponent = `IT_${Date.now()}`.slice(0, 19);
+
+        const pmon = new PmonComponent();
+        pmon.setVersion(version);
+
+        const findManagerIndex = (managers: any[], component: string): number =>
+            managers.findIndex((m) => m?.component === component);
+
+        try {
+            const managersBefore = await pmon.getManagerOptionsList(projectId);
+            assert.ok(Array.isArray(managersBefore), 'Manager list should be an array');
+            assert.strictEqual(
+                findManagerIndex(managersBefore, uniqueComponent),
+                -1,
+                `Test manager ${uniqueComponent} must not exist before insertion`,
+            );
+
+            const insertPosition = managersBefore.length;
+            const options: ProjEnvManagerOptions = {
+                component: uniqueComponent,
+                startMode: ProjEnvManagerStartMode.Manual,
+                secondToKill: 30,
+                resetMin: 0,
+                resetStartCounter: 1,
+                startOptions: '-num 0',
+            };
+
+            const exitCode = await pmon.insertManagerAt(options, projectId, insertPosition);
+            assert.strictEqual(exitCode, 0, `insertManagerAt should return 0 (got ${exitCode})`);
+
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            const managersAfter = await pmon.getManagerOptionsList(projectId);
+            const newIndex = findManagerIndex(managersAfter, uniqueComponent);
+            assert.ok(newIndex !== -1, 'Inserted manager should be present after insertion');
+
+            const addedManager = managersAfter[newIndex];
+            assert.strictEqual(addedManager.component, uniqueComponent);
+            assert.strictEqual(addedManager.resetMin, 0, 'resetMin should be persisted as 0');
+            assert.strictEqual(addedManager.startMode, ProjEnvManagerStartMode.Manual);
+        } catch (error) {
+            const message = (error as Error)?.message ?? String(error);
+            if (/version .* not found|not installed|WCCILpmon/i.test(message)) {
+                this.skip();
+                return;
+            }
+            throw error;
+        } finally {
+            fs.writeFileSync(progsPath, baselineProgs, 'utf8');
         }
     });
 });

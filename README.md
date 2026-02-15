@@ -1,6 +1,8 @@
 # WinCC OA Project Admin
 
-![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)
+<div align="center">
+
+![Version](https://img.shields.io/badge/version-2.2.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
