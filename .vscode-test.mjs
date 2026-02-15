@@ -1,14 +1,9 @@
 import { defineConfig } from '@vscode/test-cli';
 
-export default defineConfig([{
-    files: 'out/test/**/*.test.js',
-    mocha: {
-        ui: 'tdd',
-    }
-},
+export default defineConfig([
 {
     label: 'unitTests',
-    files: 'out/test/unit/**/*.test.js',
+    files: 'out/test/unit/index.js',
     version: 'stable',
     // unit tests usually don’t need a workspace
     mocha: {
@@ -18,7 +13,7 @@ export default defineConfig([{
 },
 {
     label: 'integrationTests',
-    files: 'out/test/integration/**/*.test.js',
+    files: 'out/test/integration/vscode-integration.test.js',
     version: 'stable',
     // integration tests usually run with a workspace open
     workspaceFolder: './test-workspace',

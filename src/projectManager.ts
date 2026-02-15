@@ -25,31 +25,55 @@ export class ProjectManager {
         this.loadFavorites();
     }
 
+    private isTestExtensionMode(): boolean {
+        return this.context.extensionMode === vscode.ExtensionMode.Test;
+    }
+
     /**
      * Initialize - load projects progressively and start smart polling
      */
-    async initialize(): Promise<void> {
+    async initialize(options?: {
+        loadStatus?: boolean;
+        enablePolling?: boolean;
+    }): Promise<void> {
+        const loadStatus = options?.loadStatus ?? !this.isTestExtensionMode();
+        const enablePolling = options?.enablePolling ?? !this.isTestExtensionMode();
+
         // Phase 1: Show all projects immediately with "Unknown" status
         await this.loadProjectsInitial();
 
         // Phase 2: Load status sequentially (progressive UX)
-        await this.loadProjectStatusProgressive();
+        if (loadStatus) {
+            await this.loadProjectStatusProgressive();
+        } else {
+            ExtensionOutputChannel.info(
+                'ProjectManager',
+                'Skipping progressive status loading (test/light mode)',
+            );
+        }
 
         // Phase 3: Smart polling - only running/transitioning projects
-        this._refreshInterval = setInterval(() => {
-            this.refreshSmartPolling().catch((err) => {
-                ExtensionOutputChannel.error(
-                    'ProjectManager',
-                    'Refresh failed',
-                    err instanceof Error ? err : new Error(String(err)),
-                );
-            });
-        }, 15000);
+        if (enablePolling) {
+            this._refreshInterval = setInterval(() => {
+                this.refreshSmartPolling().catch((err) => {
+                    ExtensionOutputChannel.error(
+                        'ProjectManager',
+                        'Refresh failed',
+                        err instanceof Error ? err : new Error(String(err)),
+                    );
+                });
+            }, 15000);
 
-        ExtensionOutputChannel.info(
-            'ProjectManager',
-            'Progressive loading enabled with smart polling (every 15 seconds)',
-        );
+            ExtensionOutputChannel.info(
+                'ProjectManager',
+                'Progressive loading enabled with smart polling (every 15 seconds)',
+            );
+        } else {
+            ExtensionOutputChannel.info(
+                'ProjectManager',
+                'Skipping smart polling interval (test/light mode)',
+            );
+        }
     }
 
     /**

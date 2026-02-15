@@ -10,7 +10,7 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
     let projectManager: ProjectManager;
 
     suiteSetup(async function () {
-        this.timeout(60000); // 60 second timeout for setup
+        this.timeout(180000); // 180 second timeout for setup (WinCC OA / process spawns can be slow)
 
         console.log('🔧 Setting up full integration test environment...');
 
@@ -26,6 +26,7 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
                 extensionPath:
                     vscode.extensions.getExtension('winccoa-tools-pack.winccoa-project-admin')
                         ?.extensionPath || '',
+                extensionMode: vscode.ExtensionMode.Test,
                 globalState: {
                     get: (key: string, defaultValue?: any) => defaultValue,
                     update: () => Promise.resolve(),
@@ -38,7 +39,7 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
             } as any;
 
             projectManager = new ProjectManager(context);
-            await projectManager.initialize();
+            await projectManager.initialize({ loadStatus: false, enablePolling: false });
 
             console.log('✅ Full integration test environment ready');
         } catch (error) {

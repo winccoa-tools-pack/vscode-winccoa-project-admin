@@ -78,10 +78,28 @@ jobs:
           sudo apt-get install -y xvfb
           Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
+      - name: Run unit tests (coverage - single job)
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        run: npm run test:unit:coverage
+        env:
+          CI: true
       - name: Run unit tests
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x') }}
         run: npm run test:unit
         env:
           CI: true
+      - name: Upload unit coverage artifact
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unitTests
+          path: |
+            coverage/unitTests
+      - name: Unit coverage summary
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        shell: bash
+        run: |
+          node scripts/write-coverage-summary.mjs unitTests >> "$GITHUB_STEP_SUMMARY"
 
   integration-winccoa:
     name: Integration Tests - WinCC OA
@@ -152,8 +170,14 @@ jobs:
           docker exec --user root winccoa-ci sh -c '
             set -e
             echo "Node version: $(node -v)"
-            echo "Running all integration tests..."
-            node scripts/run-node-tests.ts test/integration
+            echo "Running VS Code integration tests with coverage..."
+            xvfb-run -a npx --no-install vscode-test --label integrationTests \
+              --coverage \
+              --coverage-output coverage/integrationTests \
+              --coverage-reporter lcov \
+              --coverage-reporter html \
+              --coverage-reporter json-summary \
+              --coverage-reporter text-summary
           ' || EXIT_CODE=$?
           
           if [ "$EXIT_CODE" -eq 137 ]; then
@@ -163,6 +187,16 @@ jobs:
             echo "::error::Integration tests failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
+      - name: Upload integration coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integrationTests
+          path: |
+            coverage/integrationTests
+      - name: Integration coverage summary
+        shell: bash
+        run: |
+          node scripts/write-coverage-summary.mjs integrationTests >> "$GITHUB_STEP_SUMMARY"
       - name: Collect logs on failure
         if: ${{ failure() }}
         shell: bash

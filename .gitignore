@@ -32,6 +32,7 @@ yarn-error.log*
 
 # Testing
 coverage/
+.v8-coverage/
 .vscode-test/
 
 # Temporary files
