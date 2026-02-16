@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           docker run -d --name winccoa-ci \
             --shm-size=2g \
-            --memory=6g \
+            --memory=8g \
             -v "$GITHUB_WORKSPACE":$WORKDIR:rw \
             -e CI=true \
             -e OAINST=/opt/WinCC_OA \
@@ -170,33 +170,14 @@ jobs:
           docker exec --user root winccoa-ci sh -c '
             set -e
             echo "Node version: $(node -v)"
-            echo "Running VS Code integration tests with coverage..."
-            xvfb-run -a npx --no-install vscode-test --label integrationTests \
-              --coverage \
-              --coverage-output coverage/integrationTests \
-              --coverage-reporter lcov \
-              --coverage-reporter html \
-              --coverage-reporter json-summary \
-              --coverage-reporter text-summary
+            echo "Running VS Code integration tests (no coverage to reduce memory)..."
+            xvfb-run -a npx --no-install vscode-test --label integrationTests
           ' || EXIT_CODE=$?
           
-          if [ "$EXIT_CODE" -eq 137 ]; then
-            echo "::warning::Integration tests were killed (exit code 137 - OOM). Ignoring for now, pending memory fix PRs."
-            exit 0
-          elif [ "$EXIT_CODE" -ne 0 ]; then
+          if [ "$EXIT_CODE" -ne 0 ]; then
             echo "::error::Integration tests failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
-      - name: Upload integration coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-integrationTests
-          path: |
-            coverage/integrationTests
-      - name: Integration coverage summary
-        shell: bash
-        run: |
-          node scripts/write-coverage-summary.mjs integrationTests >> "$GITHUB_STEP_SUMMARY"
       - name: Collect logs on failure
         if: ${{ failure() }}
         shell: bash
