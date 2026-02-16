@@ -37,10 +37,7 @@ export class ProjectManager {
     /**
      * Initialize - load projects progressively and start smart polling
      */
-    async initialize(options?: {
-        loadStatus?: boolean;
-        enablePolling?: boolean;
-    }): Promise<void> {
+    async initialize(options?: { loadStatus?: boolean; enablePolling?: boolean }): Promise<void> {
         const loadStatus = options?.loadStatus ?? !this.isTestExtensionMode();
         const enablePolling = options?.enablePolling ?? !this.isTestExtensionMode();
 
@@ -180,11 +177,11 @@ export class ProjectManager {
             const { getRegisteredProjects } = await import('@winccoa-tools-pack/npm-winccoa-core');
             const allRegistered = await getRegisteredProjects();
             const runnable: ProjEnvProject[] = await getRunnableProjects();
-            
+
             // CRITICAL: Cache ProjEnvProject instances for reuse (preserves setVersion() state)
             this._projectCache.clear();
-            runnable.forEach(p => this._projectCache.set(p.getId(), p));
-            
+            runnable.forEach((p) => this._projectCache.set(p.getId(), p));
+
             // Debug logging
             ExtensionOutputChannel.debug(
                 'ProjectManager',
@@ -244,7 +241,7 @@ export class ProjectManager {
     private async loadProjectStatusProgressive(): Promise<void> {
         // CRITICAL: Reuse cached instances (preserves setVersion() from toProjectInfo())
         const runnable: ProjEnvProject[] = Array.from(this._projectCache.values());
-        
+
         // Separate favorites and non-favorites
         const favorites: ProjEnvProject[] = [];
         const others: ProjEnvProject[] = [];
@@ -390,7 +387,10 @@ export class ProjectManager {
                     // Use cached ProjEnvProject instance (preserves setVersion())
                     const projEnv = this._projectCache.get(projectId);
                     if (!projEnv) {
-                        ExtensionOutputChannel.warn('ProjectManager', `[SMART POLL] ${projectId} not found in cache`);
+                        ExtensionOutputChannel.warn(
+                            'ProjectManager',
+                            `[SMART POLL] ${projectId} not found in cache`,
+                        );
                         continue;
                     }
 
@@ -438,11 +438,11 @@ export class ProjectManager {
      */
     async forceRefreshAll(): Promise<void> {
         ExtensionOutputChannel.info('ProjectManager', 'Force refreshing all projects...');
-        
+
         // Clear caches to get fresh project instances
         this._failedProjects.clear();
         this._projectCache.clear();
-        
+
         // Re-run progressive loading
         await this.loadProjectsInitial();
         await this.loadProjectStatusProgressive();
@@ -468,7 +468,10 @@ export class ProjectManager {
             const project = this._projectCache.get(projectId);
 
             if (!project) {
-                ExtensionOutputChannel.warn('ProjectManager', `[VERIFY] Current project ${projectId} no longer found in cache`);
+                ExtensionOutputChannel.warn(
+                    'ProjectManager',
+                    `[VERIFY] Current project ${projectId} no longer found in cache`,
+                );
                 this.updateProjectStatus(projectId, 'error', 'Project not found');
                 return;
             }

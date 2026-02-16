@@ -10,7 +10,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => '/opt/WinCC_OA/3.20',
                 getDir: () => '/opt/WinCC_OA/3.20/test-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'running');
@@ -31,7 +31,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.19',
                 getInstallDir: () => '/opt/WinCC_OA/3.19',
                 getDir: () => '/opt/WinCC_OA/3.19/stopped-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.19/stopped-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.19/stopped-project/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'stopped');
@@ -48,7 +48,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.18',
                 getInstallDir: () => '/opt/WinCC_OA/3.18',
                 getDir: () => '/opt/WinCC_OA/3.18/error-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.18/error-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.18/error-project/config/config',
             };
 
             const errorMessage = 'Version not found';
@@ -67,7 +67,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => null,
                 getInstallDir: () => '/some/path',
                 getDir: () => '/some/path/unknown-version-project',
-                getConfigPath: () => '/some/path/unknown-version-project/config/config'
+                getConfigPath: () => '/some/path/unknown-version-project/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'unknown');
@@ -84,12 +84,16 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => '/opt/WinCC_OA/3.20',
                 getDir: () => '/opt/WinCC_OA/3.20/project-id',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/project-id/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/project-id/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'stopped');
 
-            assert.strictEqual(result.name, 'project-id', 'Should fallback to id when name is null');
+            assert.strictEqual(
+                result.name,
+                'project-id',
+                'Should fallback to id when name is null',
+            );
         });
 
         test('should handle project with empty name (fallback to id)', () => {
@@ -99,12 +103,16 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => '/opt/WinCC_OA/3.20',
                 getDir: () => '/opt/WinCC_OA/3.20/project-id',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/project-id/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/project-id/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'stopped');
 
-            assert.strictEqual(result.name, 'project-id', 'Should fallback to id when name is empty');
+            assert.strictEqual(
+                result.name,
+                'project-id',
+                'Should fallback to id when name is empty',
+            );
         });
 
         test('should handle project with null installDir', () => {
@@ -114,7 +122,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => null,
                 getDir: () => '/opt/WinCC_OA/3.20/test-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config',
             };
 
             const result = toProjectInfo(mockProject as any, 'running');
@@ -129,7 +137,7 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => '/opt/WinCC_OA/3.20',
                 getDir: () => '/opt/WinCC_OA/3.20/test-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config',
             };
 
             const result = toProjectInfo(mockProject as any);
@@ -142,9 +150,15 @@ suite('Types Unit Tests', () => {
 
     suite('ProjectStatus Type Validation', () => {
         test('should validate all ProjectStatus values', () => {
-            const validStatuses: ProjectStatus[] = ['unknown', 'running', 'stopped', 'transitioning', 'error'];
+            const validStatuses: ProjectStatus[] = [
+                'unknown',
+                'running',
+                'stopped',
+                'transitioning',
+                'error',
+            ];
 
-            validStatuses.forEach(status => {
+            validStatuses.forEach((status) => {
                 assert.ok(typeof status === 'string', `Status ${status} should be a string`);
                 assert.ok(status.length > 0, `Status ${status} should not be empty`);
             });
@@ -160,7 +174,7 @@ suite('Types Unit Tests', () => {
                 oaInstallPath: '/oa',
                 configPath: '/config',
                 status: 'running',
-                isRunning: true
+                isRunning: true,
             };
 
             // Test all required properties exist
@@ -187,7 +201,7 @@ suite('Types Unit Tests', () => {
                 status: 'error',
                 isRunning: false,
                 error: 'Test error',
-                hasError: true
+                hasError: true,
             };
 
             assert.strictEqual(errorProject.error, 'Test error');
@@ -207,7 +221,7 @@ suite('Types Unit Tests', () => {
                 oaInstallPath: '/opt/WinCC_OA/3.20',
                 configPath: '/test/project/config/config',
                 status: 'running',
-                isRunning: true
+                isRunning: true,
             };
 
             // TypeScript should catch any missing required properties
@@ -221,12 +235,18 @@ suite('Types Unit Tests', () => {
                 getVersion: () => '3.20',
                 getInstallDir: () => '/opt/WinCC_OA/3.20',
                 getDir: () => '/opt/WinCC_OA/3.20/test-project',
-                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config'
+                getConfigPath: () => '/opt/WinCC_OA/3.20/test-project/config/config',
             };
 
-            const statuses: ProjectStatus[] = ['unknown', 'running', 'stopped', 'transitioning', 'error'];
+            const statuses: ProjectStatus[] = [
+                'unknown',
+                'running',
+                'stopped',
+                'transitioning',
+                'error',
+            ];
 
-            statuses.forEach(status => {
+            statuses.forEach((status) => {
                 const result = toProjectInfo(mockProject as any, status);
                 assert.strictEqual(result.status, status);
                 assert.strictEqual(result.isRunning, status === 'running');

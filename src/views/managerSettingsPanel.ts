@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
-import { ProjEnvManagerOptions, ProjEnvManagerStartMode } from '@winccoa-tools-pack/npm-winccoa-core';
+import {
+    ProjEnvManagerOptions,
+    ProjEnvManagerStartMode,
+} from '@winccoa-tools-pack/npm-winccoa-core';
 
 export class ManagerSettingsPanel {
     public static currentPanel: ManagerSettingsPanel | undefined;
@@ -9,13 +12,13 @@ export class ManagerSettingsPanel {
 
     private constructor(panel: vscode.WebviewPanel, currentOptions: ProjEnvManagerOptions) {
         this._panel = panel;
-        
+
         // Set webview content
         this._panel.webview.html = this._getHtmlContent(currentOptions);
-        
+
         // Handle messages from webview
         this._panel.webview.onDidReceiveMessage(
-            message => {
+            (message) => {
                 switch (message.command) {
                     case 'save':
                         if (this._resolvePromise) {
@@ -32,17 +35,19 @@ export class ManagerSettingsPanel {
                 }
             },
             null,
-            this._disposables
+            this._disposables,
         );
-        
+
         // Handle panel disposal
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     }
-    
-    public static show(currentOptions: ProjEnvManagerOptions): Promise<ProjEnvManagerOptions | null> {
+
+    public static show(
+        currentOptions: ProjEnvManagerOptions,
+    ): Promise<ProjEnvManagerOptions | null> {
         // Open beside current editor (feels more like a dialog)
         const column = vscode.ViewColumn.Beside;
-        
+
         // If panel exists, reveal it
         if (ManagerSettingsPanel.currentPanel) {
             ManagerSettingsPanel.currentPanel._panel.reveal(column);
@@ -54,23 +59,23 @@ export class ManagerSettingsPanel {
                 column,
                 {
                     enableScripts: true,
-                    retainContextWhenHidden: false  // Don't retain - more modal-like
-                }
+                    retainContextWhenHidden: false, // Don't retain - more modal-like
+                },
             );
-            
+
             ManagerSettingsPanel.currentPanel = new ManagerSettingsPanel(panel, currentOptions);
         }
-        
+
         return new Promise((resolve) => {
             if (ManagerSettingsPanel.currentPanel) {
                 ManagerSettingsPanel.currentPanel._resolvePromise = resolve;
             }
         });
     }
-    
+
     public dispose() {
         ManagerSettingsPanel.currentPanel = undefined;
-        
+
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {
@@ -78,10 +83,10 @@ export class ManagerSettingsPanel {
             }
         }
     }
-    
+
     private _getHtmlContent(options: ProjEnvManagerOptions): string {
         const nonce = this._getNonce();
-        
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -231,9 +236,15 @@ export class ManagerSettingsPanel {
                 <div class="label-description">Startup behavior</div>
             </label>
             <select id="startMode" name="startMode">
-                <option value="0" ${options.startMode === ProjEnvManagerStartMode.Manual ? 'selected' : ''}>Manual</option>
-                <option value="1" ${options.startMode === ProjEnvManagerStartMode.Once ? 'selected' : ''}>Once - Start at startup</option>
-                <option value="2" ${options.startMode === ProjEnvManagerStartMode.Always ? 'selected' : ''}>Always - Auto-restart</option>
+                <option value="0" ${
+                    options.startMode === ProjEnvManagerStartMode.Manual ? 'selected' : ''
+                }>Manual</option>
+                <option value="1" ${
+                    options.startMode === ProjEnvManagerStartMode.Once ? 'selected' : ''
+                }>Once - Start at startup</option>
+                <option value="2" ${
+                    options.startMode === ProjEnvManagerStartMode.Always ? 'selected' : ''
+                }>Always - Auto-restart</option>
             </select>
         </div>
         
@@ -318,7 +329,7 @@ export class ManagerSettingsPanel {
 </body>
 </html>`;
     }
-    
+
     private _getNonce(): string {
         let text = '';
         const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

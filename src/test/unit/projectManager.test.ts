@@ -8,10 +8,7 @@ suite('ProjectManager Unit Tests', () => {
     let projectManager: ProjectManager;
 
     class ProjectManagerWithStubbedRunnable extends ProjectManager {
-        constructor(
-            context: any,
-            private readonly runnable: any[],
-        ) {
+        constructor(context: any, private readonly runnable: any[]) {
             super(context);
         }
 
@@ -28,12 +25,12 @@ suite('ProjectManager Unit Tests', () => {
             globalState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
                 update: () => Promise.resolve(),
-                setKeysForSync: () => {}
+                setKeysForSync: () => {},
             },
             workspaceState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
-                update: () => Promise.resolve()
-            }
+                update: () => Promise.resolve(),
+            },
         };
     });
 
@@ -44,8 +41,14 @@ suite('ProjectManager Unit Tests', () => {
     suite('Constructor and Initialization', () => {
         test('should create ProjectManager instance', () => {
             assert.ok(projectManager, 'ProjectManager should be created');
-            assert.ok(typeof projectManager.getCurrentProject === 'function', 'Should have getCurrentProject method');
-            assert.ok(typeof projectManager.getRunningProjects === 'function', 'Should have getRunningProjects method');
+            assert.ok(
+                typeof projectManager.getCurrentProject === 'function',
+                'Should have getCurrentProject method',
+            );
+            assert.ok(
+                typeof projectManager.getRunningProjects === 'function',
+                'Should have getRunningProjects method',
+            );
         });
 
         test('should initialize with empty favorites', () => {
@@ -69,24 +72,30 @@ suite('ProjectManager Unit Tests', () => {
         test('should handle setCurrentProject with mock project', async () => {
             // Mock the getAllRunnableProjects method to return a test project
             const originalGetAllRunnableProjects = projectManager.getAllRunnableProjects;
-            projectManager.getAllRunnableProjects = async () => [{
-                id: 'test-project',
-                name: 'Test Project',
-                installDir: '/opt/WinCC_OA/3.20',
-                projectDir: '/opt/WinCC_OA/3.20/test-project',
-                version: '3.20',
-                oaInstallPath: '/opt/WinCC_OA/3.20',
-                configPath: '/opt/WinCC_OA/3.20/test-project/config/config',
-                status: 'stopped',
-                isRunning: false
-            }];
+            projectManager.getAllRunnableProjects = async () => [
+                {
+                    id: 'test-project',
+                    name: 'Test Project',
+                    installDir: '/opt/WinCC_OA/3.20',
+                    projectDir: '/opt/WinCC_OA/3.20/test-project',
+                    version: '3.20',
+                    oaInstallPath: '/opt/WinCC_OA/3.20',
+                    configPath: '/opt/WinCC_OA/3.20/test-project/config/config',
+                    status: 'stopped',
+                    isRunning: false,
+                },
+            ];
 
             const result = await projectManager.setCurrentProject('test-project');
             assert.strictEqual(result, true, 'Should successfully set current project');
 
             const current = projectManager.getCurrentProject();
             assert.ok(current, 'Current project should be set');
-            assert.strictEqual(current?.id, 'test-project', 'Current project should have correct ID');
+            assert.strictEqual(
+                current?.id,
+                'test-project',
+                'Current project should have correct ID',
+            );
 
             // Restore original method
             projectManager.getAllRunnableProjects = originalGetAllRunnableProjects;
@@ -110,15 +119,27 @@ suite('ProjectManager Unit Tests', () => {
             const projectId = 'test-project-1';
 
             // Initially not favorite
-            assert.strictEqual(projectManager.isFavorite(projectId), false, 'Project should not be favorite initially');
+            assert.strictEqual(
+                projectManager.isFavorite(projectId),
+                false,
+                'Project should not be favorite initially',
+            );
 
             // Toggle to favorite
             projectManager.toggleFavorite(projectId);
-            assert.strictEqual(projectManager.isFavorite(projectId), true, 'Project should be favorite after toggle');
+            assert.strictEqual(
+                projectManager.isFavorite(projectId),
+                true,
+                'Project should be favorite after toggle',
+            );
 
             // Toggle back to not favorite
             projectManager.toggleFavorite(projectId);
-            assert.strictEqual(projectManager.isFavorite(projectId), false, 'Project should not be favorite after second toggle');
+            assert.strictEqual(
+                projectManager.isFavorite(projectId),
+                false,
+                'Project should not be favorite after second toggle',
+            );
         });
 
         test('should load favorites from workspace state', () => {
@@ -130,14 +151,26 @@ suite('ProjectManager Unit Tests', () => {
                         if (key === 'favoriteProjects') return savedFavorites;
                         return defaultValue;
                     },
-                    update: () => Promise.resolve()
-                }
+                    update: () => Promise.resolve(),
+                },
             };
 
             const managerWithFavorites = new ProjectManager(contextWithFavorites);
-            assert.strictEqual(managerWithFavorites.isFavorite('project1'), true, 'Should load project1 as favorite');
-            assert.strictEqual(managerWithFavorites.isFavorite('project2'), true, 'Should load project2 as favorite');
-            assert.strictEqual(managerWithFavorites.isFavorite('project3'), false, 'Should not load project3 as favorite');
+            assert.strictEqual(
+                managerWithFavorites.isFavorite('project1'),
+                true,
+                'Should load project1 as favorite',
+            );
+            assert.strictEqual(
+                managerWithFavorites.isFavorite('project2'),
+                true,
+                'Should load project2 as favorite',
+            );
+            assert.strictEqual(
+                managerWithFavorites.isFavorite('project3'),
+                false,
+                'Should not load project3 as favorite',
+            );
         });
 
         test('should get favorites list', () => {
@@ -304,7 +337,7 @@ suite('ProjectInfo Type Tests', () => {
             oaInstallPath: '/opt/WinCC_OA/3.20',
             configPath: '/opt/WinCC_OA/3.20/test-project/config/config',
             status: 'stopped',
-            isRunning: false
+            isRunning: false,
         };
 
         assert.strictEqual(mockProjectInfo.id, 'test-project');
@@ -326,7 +359,7 @@ suite('ProjectInfo Type Tests', () => {
             status: 'error',
             isRunning: false,
             error: 'Project not found',
-            hasError: true
+            hasError: true,
         };
 
         assert.strictEqual(errorProject.status, 'error');
@@ -339,7 +372,7 @@ suite('Utility Functions', () => {
     test('should validate ProjectStatus enum values', () => {
         const validStatuses = ['unknown', 'running', 'stopped', 'transitioning', 'error'];
 
-        validStatuses.forEach(status => {
+        validStatuses.forEach((status) => {
             assert.ok(status.length > 0, `Status ${status} should be non-empty`);
         });
     });
@@ -359,17 +392,25 @@ suite('Extension Context Mock Tests', () => {
             globalState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
                 update: () => Promise.resolve(),
-                setKeysForSync: () => {}
+                setKeysForSync: () => {},
             },
             workspaceState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
-                update: () => Promise.resolve()
-            }
+                update: () => Promise.resolve(),
+            },
         };
 
         assert.ok(Array.isArray(testContext.subscriptions), 'Subscriptions should be an array');
-        assert.strictEqual(typeof testContext.globalState.get, 'function', 'Global state should have get method');
-        assert.strictEqual(typeof testContext.workspaceState.update, 'function', 'Workspace state should have update method');
+        assert.strictEqual(
+            typeof testContext.globalState.get,
+            'function',
+            'Global state should have get method',
+        );
+        assert.strictEqual(
+            typeof testContext.workspaceState.update,
+            'function',
+            'Workspace state should have update method',
+        );
     });
 
     test('should handle workspace state operations', () => {
@@ -378,12 +419,13 @@ suite('Extension Context Mock Tests', () => {
             subscriptions: [],
             extensionPath: '/test/path',
             workspaceState: {
-                get: (key: string, defaultValue?: any) => storedValue !== null ? storedValue : defaultValue,
+                get: (key: string, defaultValue?: any) =>
+                    storedValue !== null ? storedValue : defaultValue,
                 update: (key: string, value: any) => {
                     storedValue = value;
                     return Promise.resolve();
-                }
-            }
+                },
+            },
         };
 
         // Test storing and retrieving a value
@@ -404,12 +446,12 @@ suite('Error Handling and Edge Cases', () => {
             globalState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
                 update: () => Promise.resolve(),
-                setKeysForSync: () => {}
+                setKeysForSync: () => {},
             },
             workspaceState: {
                 get: (key: string, defaultValue?: any) => defaultValue,
-                update: () => Promise.resolve()
-            }
+                update: () => Promise.resolve(),
+            },
         };
     });
 
@@ -418,10 +460,26 @@ suite('Error Handling and Edge Cases', () => {
     });
 
     test('should handle invalid project IDs gracefully', () => {
-        assert.strictEqual(projectManager.isFavorite(''), false, 'Empty string should not be favorite');
-        assert.strictEqual(projectManager.isFavorite('   '), false, 'Whitespace should not be favorite');
-        assert.strictEqual(projectManager.isFavorite(null as any), false, 'Null should not be favorite');
-        assert.strictEqual(projectManager.isFavorite(undefined as any), false, 'Undefined should not be favorite');
+        assert.strictEqual(
+            projectManager.isFavorite(''),
+            false,
+            'Empty string should not be favorite',
+        );
+        assert.strictEqual(
+            projectManager.isFavorite('   '),
+            false,
+            'Whitespace should not be favorite',
+        );
+        assert.strictEqual(
+            projectManager.isFavorite(null as any),
+            false,
+            'Null should not be favorite',
+        );
+        assert.strictEqual(
+            projectManager.isFavorite(undefined as any),
+            false,
+            'Undefined should not be favorite',
+        );
     });
 
     test('should handle toggleFavorite with invalid IDs', () => {
@@ -429,11 +487,19 @@ suite('Error Handling and Edge Cases', () => {
 
         // Toggle with empty string
         projectManager.toggleFavorite('');
-        assert.strictEqual(projectManager.getFavorites().length, initialFavorites + 1, 'Should add empty string as favorite');
+        assert.strictEqual(
+            projectManager.getFavorites().length,
+            initialFavorites + 1,
+            'Should add empty string as favorite',
+        );
 
         // Toggle again to remove
         projectManager.toggleFavorite('');
-        assert.strictEqual(projectManager.getFavorites().length, initialFavorites, 'Should remove empty string favorite');
+        assert.strictEqual(
+            projectManager.getFavorites().length,
+            initialFavorites,
+            'Should remove empty string favorite',
+        );
     });
 
     test('should handle dispose method', () => {
@@ -450,17 +516,25 @@ suite('Error Handling and Edge Cases', () => {
         const projectIds = ['proj1', 'proj2', 'proj3'];
 
         // Add all as favorites
-        projectIds.forEach(id => projectManager.toggleFavorite(id));
+        projectIds.forEach((id) => projectManager.toggleFavorite(id));
         assert.strictEqual(projectManager.getFavorites().length, 3, 'Should have 3 favorites');
 
         // Remove one
         projectManager.toggleFavorite('proj2');
-        assert.strictEqual(projectManager.getFavorites().length, 2, 'Should have 2 favorites after removal');
+        assert.strictEqual(
+            projectManager.getFavorites().length,
+            2,
+            'Should have 2 favorites after removal',
+        );
         assert.ok(!projectManager.isFavorite('proj2'), 'proj2 should not be favorite');
 
         // Add it back
         projectManager.toggleFavorite('proj2');
-        assert.strictEqual(projectManager.getFavorites().length, 3, 'Should have 3 favorites again');
+        assert.strictEqual(
+            projectManager.getFavorites().length,
+            3,
+            'Should have 3 favorites again',
+        );
         assert.ok(projectManager.isFavorite('proj2'), 'proj2 should be favorite again');
     });
 });

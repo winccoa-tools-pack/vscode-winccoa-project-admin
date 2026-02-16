@@ -46,7 +46,6 @@ export function getTestProjectPath(projectName: string): string {
  * ```
  */
 export async function registerRunnableTestProject(): Promise<ProjEnvProject> {
-
     const subProjectPath = getTestProjectPath('sub-proj');
     const subProject: ProjEnvProject = new ProjEnvProject();
 
