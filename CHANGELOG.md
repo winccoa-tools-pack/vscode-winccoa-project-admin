@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.2.1] - 2026-02-14
 
 ### Fixed
+
 - **System View Button Visibility**: Start/Stop/Restart buttons no longer appear on "Projects" folder or "Project Information" section
   - Fixed regex in package.json menu conditions from `/^project/` to `/^project(-favorite|-nonfavorite)?$/`
   - Buttons now only appear on actual project items in the tree
@@ -15,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.2.0] - 2026-02-13
 
 ### Added
+
 - **GitHub Copilot Language Model Tools** (3 new autonomous manager lifecycle operations):
   - `winccoa_add_manager`: Add managers directly via Copilot without wizard UI
     - Accepts all manager parameters (component, startMode, startOptions, secondToKill, resetMin, resetStartCounter)
@@ -35,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Both methods query live PMON state (not cached) for accurate positioning
 
 ### Changed
+
 - **Manager Add Position Fix**: `addManagerDirect()` now queries current manager list from PMON instead of using cached array
   - Ensures managers are always appended at the correct end position
   - Prevents off-by-one insertion errors
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2026-02-13
 
 ### Added
+
 - **Manager Delete Feature**: Complete manager deletion functionality with safety checks
   - Delete managers via context menu (trash icon)
   - Safety protection: Cannot delete critical managers at index 0-1 (PMON/Data Manager)
@@ -59,18 +63,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command: `winccoa.manager.add` registered with $(add) icon in Manager View title bar
 
 ### Fixed
+
 - **Manager Start Modes**: Corrected swapped Once/Always values in wizard (Once=1, Always=2)
 - **Manager Stop Timing**: Increased wait time from 1 second to 5 seconds for safer state transitions
 
 ## [2.0.4] - 2026-02-13
 
 ### Changed
+
 - **npm-winccoa-core Migration**: Switched from local file dependency to published npm package `@winccoa-tools-pack/npm-winccoa-core@^0.2.3`
   - Cleaner dependency management
   - Automatic updates via npm
   - No longer requires local npm-winccoa-core build
 
 ### Fixed
+
 - **API Breaking Change**: Added missing `resetMin` property to `ProjEnvManagerOptions` in Manager TreeView
   - Required by npm-winccoa-core v0.2.3 API changes
   - Prevents "Property 'resetMin' is missing" TypeScript errors
@@ -87,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Config file is now parsed only **once** per project at startup instead of repeatedly every 15 seconds
 
 ### Performance
+
 - Eliminated redundant file I/O: Config file parsing reduced from ~240 times/hour to 1 time per project
 - Smart polling (every 15 seconds) no longer creates new ProjEnvProject instances
 - Reduced memory churn by reusing cached objects

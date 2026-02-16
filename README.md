@@ -6,6 +6,8 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
+</div>
+
 ## Project management and control for WinCC OA in Visual Studio Code
 
 [Features](#-features) • [Known Issues](#-known-issues)
