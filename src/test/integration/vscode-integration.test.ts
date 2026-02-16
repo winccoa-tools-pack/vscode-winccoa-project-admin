@@ -77,25 +77,30 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
         }
 
         // Print system info for PR confirmation (copy-paste this into PR when CI OOMs)
+        // Using process.stdout.write to ensure output is visible even when console.log is suppressed
         const os = process.platform;
         const nodeVersion = process.versions.node;
         const vscodeVersion = vscode.version;
         const winCCOAVersion = testProject?.getVersion?.() || 'N/A';
 
-        console.log('');
-        console.log('═'.repeat(70));
-        console.log('📋 LOCAL INTEGRATION TEST RESULT (copy this into PR if CI OOMs)');
-        console.log('═'.repeat(70));
-        console.log('```');
-        console.log('✅ Integration Tests: PASSED');
-        console.log(`   OS:            ${os} (${process.arch})`);
-        console.log(`   Node.js:       v${nodeVersion}`);
-        console.log(`   VS Code:       ${vscodeVersion}`);
-        console.log(`   WinCC OA:      ${winCCOAVersion}`);
-        console.log(`   Date:          ${new Date().toISOString()}`);
-        console.log('```');
-        console.log('═'.repeat(70));
-        console.log('');
+        const output = [
+            '',
+            '═'.repeat(70),
+            '📋 LOCAL INTEGRATION TEST RESULT (copy this into PR if CI OOMs)',
+            '═'.repeat(70),
+            '```',
+            '✅ Integration Tests: PASSED',
+            `   OS:            ${os} (${process.arch})`,
+            `   Node.js:       v${nodeVersion}`,
+            `   VS Code:       ${vscodeVersion}`,
+            `   WinCC OA:      ${winCCOAVersion}`,
+            `   Date:          ${new Date().toISOString()}`,
+            '```',
+            '═'.repeat(70),
+            '',
+        ].join('\n');
+
+        process.stdout.write(output + '\n');
     });
 
     test('should load projects from WinCC OA system', async function () {
