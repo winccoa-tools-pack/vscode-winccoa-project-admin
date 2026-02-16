@@ -188,22 +188,54 @@ jobs:
           # PR authors must confirm local run passed (see integration test output for copy-paste template).
           if [ "$EXIT_CODE" -eq 137 ]; then
             echo "::warning::Integration tests were OOM-killed (exit 137). PR author must confirm local run passed."
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "## ⚠️ Integration Tests: Manual Confirmation Required" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "The integration tests were killed due to memory limits (exit code 137)." >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "**PR author**: Please run integration tests locally and paste the result in the PR:**" >> "$GITHUB_STEP_SUMMARY"
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "npm run test:integration" >> "$GITHUB_STEP_SUMMARY"
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Copy the **Local Integration Test Result** block from the test output into this PR." >> "$GITHUB_STEP_SUMMARY"
+            echo "OOM_KILLED=true" >> "$GITHUB_ENV"
+            
+            # Write summary for both step summary and PR comment
+            {
+              echo "## ⚠️ Integration Tests: Manual Confirmation Required"
+              echo ""
+              echo "The integration tests were killed due to memory limits (exit code 137)."
+              echo ""
+              echo "**PR author**: Please run integration tests locally and paste the result in the PR:"
+              echo ""
+              echo "\`\`\`bash"
+              echo "npm run test:integration"
+              echo "\`\`\`"
+              echo ""
+              echo "Copy the **Local Integration Test Result** block from the test output into this PR."
+            } | tee -a "$GITHUB_STEP_SUMMARY" > /tmp/oom-comment.md
             exit 0
           elif [ "$EXIT_CODE" -ne 0 ]; then
             echo "::error::Integration tests failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
+      - name: Post OOM warning as PR comment
+        if: ${{ always() && github.event_name == 'pull_request' && env.OOM_KILLED == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/oom-comment.md
+      - name: Capture system resource usage
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          echo "==== Host System Memory Usage ===="
+          free -h
+          echo ""
+          echo "==== Top 20 Processes by Memory (Host) ===="
+          ps aux --sort=-%mem | head -21
+          echo ""
+          echo "==== Top 20 Processes by CPU (Host) ===="
+          ps aux --sort=-%cpu | head -21
+          echo ""
+          echo "==== Docker Container Stats ===="
+          docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" || true
+          echo ""
+          echo "==== Processes inside Container ===="
+          docker exec winccoa-ci ps aux --sort=-%mem 2>/dev/null | head -21 || echo "(container not running)"
       - name: Collect logs on failure
         if: ${{ failure() }}
         shell: bash
