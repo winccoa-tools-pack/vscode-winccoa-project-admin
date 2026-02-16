@@ -79,24 +79,33 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
       - name: Run unit tests (coverage - single job)
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
         run: npm run test:unit:coverage
         env:
           CI: true
       - name: Run unit tests
-        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x') }}
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x') }}
         run: npm run test:unit
         env:
           CI: true
       - name: Upload unit coverage artifact
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-unitTests
           path: |
             coverage/unitTests
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/unitTests/lcov.info
+          flags: unittests
+          name: unit-coverage
+          fail_ci_if_error: false
+          verbose: true
       - name: Unit coverage summary
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
         shell: bash
         run: |
           node scripts/write-coverage-summary.mjs unitTests >> "$GITHUB_STEP_SUMMARY"
