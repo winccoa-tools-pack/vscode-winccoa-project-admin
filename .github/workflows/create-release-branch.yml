@@ -1,0 +1,288 @@
+name: Create Release Branch + PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Branch type to create"
+        required: true
+        default: "release"
+        type: choice
+        options:
+          - release
+          - hotfix
+      version:
+        description: "Release version (SemVer, e.g. 1.2.3)"
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch (release: develop, hotfix: main)"
+        required: true
+        default: "develop"
+        type: string
+      target_branch:
+        description: "PR target branch (typically main)"
+        required: true
+        default: "main"
+        type: string
+      draft:
+        description: "Create PR as draft"
+        required: true
+        default: false
+        type: boolean
+      labels:
+        description: "Comma-separated labels to apply (optional)"
+        required: false
+        default: "chore,release"
+        type: string
+
+concurrency:
+  group: create-release-branch-${{ github.repository }}-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create branch (release/hotfix)
+        id: branch
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.REPO_ADMIN_TOKEN != '' && secrets.REPO_ADMIN_TOKEN || github.token }}
+          script: |
+            const kind = String(context.payload.inputs?.kind || 'release').trim();
+            const rawVersion = (context.payload.inputs?.version || '').trim();
+            const version = rawVersion.replace(/^v/i, '');
+            let baseBranch = (context.payload.inputs?.base_branch || 'develop').trim();
+            let targetBranch = (context.payload.inputs?.target_branch || 'main').trim();
+
+            if (!['release', 'hotfix'].includes(kind)) {
+              core.setFailed(`Invalid kind '${kind}'. Expected 'release' or 'hotfix'.`);
+              return;
+            }
+
+            // Convenience: keep defaults but auto-adjust if the user left them untouched.
+            if (kind === 'hotfix' && baseBranch === 'develop') {
+              core.info(`kind=hotfix: overriding base_branch from 'develop' to 'main'`);
+              baseBranch = 'main';
+            }
+            if (kind === 'hotfix' && targetBranch === 'develop') {
+              core.info(`kind=hotfix: overriding target_branch from 'develop' to 'main'`);
+              targetBranch = 'main';
+            }
+
+            if (!/^\d+\.\d+\.\d+$/.test(version)) {
+              core.setFailed(`Invalid version '${rawVersion}'. Expected SemVer like 1.2.3 (optional leading 'v' allowed)`);
+              return;
+            }
+
+            const releaseBranch = (kind === 'hotfix')
+              ? `hotfix/v${version}`
+              : `release/v${version}`;
+            core.info(`Kind: ${kind}`);
+            core.info(`Base: ${baseBranch}`);
+            core.info(`Target: ${targetBranch}`);
+            core.info(`Branch: ${releaseBranch}`);
+
+            // 1) Ensure base branch exists
+            let base;
+            try {
+              base = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: baseBranch,
+              });
+            } catch (error) {
+              core.setFailed(`Base branch '${baseBranch}' not found (or not accessible).`);
+              return;
+            }
+
+            // 2) Create release branch if missing
+            let branchExists = false;
+            try {
+              await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: releaseBranch,
+              });
+              branchExists = true;
+              core.info(`Branch already exists: ${releaseBranch}`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            if (!branchExists) {
+              const sha = base.data.commit.sha;
+              core.info(`Creating ${releaseBranch} at ${sha}`);
+              try {
+                await github.rest.git.createRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `refs/heads/${releaseBranch}`,
+                  sha,
+                });
+              } catch (error) {
+                const status = error?.status;
+                const msg = error?.message || String(error);
+                core.setFailed(
+                  `Failed to create branch '${releaseBranch}'. This is usually caused by rulesets/branch protections blocking ref creation or missing token permissions. (HTTP ${status ?? 'unknown'}) ${msg}`
+                );
+                return;
+              }
+            }
+
+            core.setOutput('kind', kind);
+            core.setOutput('version', version);
+            core.setOutput('base_branch', baseBranch);
+            core.setOutput('target_branch', targetBranch);
+            core.setOutput('branch', releaseBranch);
+
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.branch.outputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Configure git
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set version in package.json and refresh lockfile
+        shell: bash
+        env:
+          VERSION: ${{ steps.branch.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VERSION}" ]; then
+            echo "::error::VERSION is empty"
+            exit 1
+          fi
+
+          npm --version
+          node --version
+
+          npm version "${VERSION}" --no-git-tag-version --allow-same-version
+          npm install --ignore-scripts
+
+      - name: Commit and push changes
+        shell: bash
+        env:
+          VERSION: ${{ steps.branch.outputs.version }}
+        run: |
+          set -euo pipefail
+          git status --porcelain
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add package.json
+          if [ -f package-lock.json ]; then
+            git add package-lock.json
+          fi
+
+          git commit -m "chore(release): prepare v${VERSION}"
+          git push origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Create or reuse PR
+        id: pr
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.REPO_ADMIN_TOKEN != '' && secrets.REPO_ADMIN_TOKEN || github.token }}
+          script: |
+            const kind = String('${{ steps.branch.outputs.kind }}');
+            const version = String('${{ steps.branch.outputs.version }}');
+            const releaseBranch = String('${{ steps.branch.outputs.branch }}');
+            const baseBranch = String('${{ steps.branch.outputs.base_branch }}');
+            const targetBranch = String('${{ steps.branch.outputs.target_branch }}');
+            const draft = String(context.payload.inputs?.draft || 'false').toLowerCase() === 'true';
+            const labelsRaw = (context.payload.inputs?.labels || '').trim();
+            const labels = labelsRaw ? labelsRaw.split(',').map(l => l.trim()).filter(Boolean) : [];
+
+            const head = `${context.repo.owner}:${releaseBranch}`;
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: targetBranch,
+              head,
+              per_page: 10,
+            });
+
+            if (existing.data.length > 0) {
+              const pr = existing.data[0];
+              core.info(`PR already exists: ${pr.html_url}`);
+              core.setOutput('branch', releaseBranch);
+              core.setOutput('pr_url', pr.html_url);
+              return;
+            }
+
+            const title = kind === 'hotfix'
+              ? `fix(hotfix): v${version}`
+              : `chore(release): Release v${version}`;
+
+            const body = [
+              kind === 'hotfix'
+                ? `Automated **hotfix** PR for **v${version}**.`
+                : `Automated release PR for **v${version}**.`,
+              '',
+              'Checklist:',
+              '- [ ] CI passes on this branch',
+              '- [ ] Pre-release workflow produced a tested VSIX (GitHub pre-release asset)',
+              '- [ ] Manual validation done',
+              '- [ ] Merge into main when ready',
+              '',
+              'Notes:',
+              `- Branch: ${releaseBranch}`,
+              `- Base: ${baseBranch}`,
+              `- Target: ${targetBranch}`,
+            ].join('\n');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              head: releaseBranch,
+              base: targetBranch,
+              body,
+              draft,
+            });
+
+            core.info(`Created PR: ${pr.data.html_url}`);
+
+            if (labels.length > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.data.number,
+                  labels,
+                });
+                core.info(`Applied labels: ${labels.join(', ')}`);
+              } catch (error) {
+                core.warning(`Could not apply labels (${labels.join(', ')}): ${error.message}`);
+              }
+            }
+
+            core.setOutput('branch', releaseBranch);
+            core.setOutput('pr_url', pr.data.html_url);
+
+      - name: Summary
+        run: |
+          echo "✅ Branch: ${{ steps.branch.outputs.branch }}"
+          echo "🔗 PR: ${{ steps.pr.outputs.pr_url }}"

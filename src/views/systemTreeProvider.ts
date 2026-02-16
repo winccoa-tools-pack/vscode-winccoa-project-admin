@@ -8,9 +8,94 @@ import { ProjEnvProject } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from '../types';
 import { ExtensionOutputChannel } from '../extensionOutput';
 
+export class SystemItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly itemType:
+            | 'systemStatus'
+            | 'projectInfo'
+            | 'info'
+            | 'projects'
+            | 'project'
+            | 'subprojects'
+            | 'subproject',
+        public readonly description?: string,
+        public readonly tooltipText?: string,
+        public readonly isRunning?: boolean,
+        public readonly projectPath?: string,
+        public readonly projectData?: ProjectInfo | string[],
+        public readonly subprojectPath?: string,
+        public readonly customIconPath?: vscode.ThemeIcon,
+    ) {
+        super(label, collapsibleState);
+
+        if (itemType === 'systemStatus') {
+            if (isRunning) {
+                this.iconPath = new vscode.ThemeIcon(
+                    'pulse',
+                    new vscode.ThemeColor('testing.iconPassed'),
+                );
+            } else {
+                this.iconPath = new vscode.ThemeIcon(
+                    'circle-slash',
+                    new vscode.ThemeColor('testing.iconFailed'),
+                );
+            }
+            this.contextValue = 'systemStatus';
+            this.tooltip = tooltipText;
+            this.description = description;
+        } else if (itemType === 'projectInfo') {
+            this.iconPath = new vscode.ThemeIcon('info');
+            this.contextValue = 'projectInfo';
+            this.tooltip = tooltipText;
+        } else if (itemType === 'projects') {
+            this.iconPath = new vscode.ThemeIcon('folder-library');
+            this.contextValue = 'projects';
+            this.tooltip = tooltipText;
+        } else if (itemType === 'subprojects') {
+            this.iconPath = new vscode.ThemeIcon('symbol-namespace');
+            this.contextValue = 'subprojects';
+            this.tooltip = tooltipText;
+            this.description = description;
+        } else if (itemType === 'subproject') {
+            this.iconPath = new vscode.ThemeIcon('folder-opened');
+            this.contextValue = 'subproject';
+            this.tooltip = tooltipText;
+            this.description = description;
+            // Click does nothing - use context menu instead
+        } else if (itemType === 'project') {
+            // Use custom icon if provided (e.g., error icon)
+            if (customIconPath) {
+                this.iconPath = customIconPath;
+            } else if (isRunning) {
+                this.iconPath = new vscode.ThemeIcon(
+                    'server-process',
+                    new vscode.ThemeColor('testing.iconPassed'),
+                );
+            } else {
+                this.iconPath = new vscode.ThemeIcon(
+                    'server',
+                    new vscode.ThemeColor('testing.iconFailed'),
+                );
+            }
+            this.contextValue = 'project';
+            this.tooltip = tooltipText;
+            this.description = description;
+            // Click does nothing - use context menu instead
+        } else if (itemType === 'info') {
+            this.iconPath = new vscode.ThemeIcon('symbol-property');
+            this.contextValue = 'infoItem';
+            this.description = description;
+        }
+    }
+}
+
 export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<SystemItem | undefined | null | void> = new vscode.EventEmitter<SystemItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<SystemItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<SystemItem | undefined | null | void> =
+        new vscode.EventEmitter<SystemItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<SystemItem | undefined | null | void> =
+        this._onDidChangeTreeData.event;
 
     private pmon: PmonComponent = new PmonComponent();
 
@@ -19,7 +104,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         this.projectManager.onDidChangeProject(() => {
             this.refresh();
         });
-        
+
         // Subscribe to project list changes (for progressive loading)
         this.projectManager.onDidChangeProjects(() => {
             this.refresh();
@@ -40,31 +125,41 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             return project.version;
         }
 
-        ExtensionOutputChannel.warn('SystemTreeProvider', `Project ${project.id} has invalid version "${project.version}", parsing from config`);
+        ExtensionOutputChannel.warn(
+            'SystemTreeProvider',
+            `Project ${project.id} has invalid version "${project.version}", parsing from config`,
+        );
 
         // Fallback: Parse from config file
         try {
             const configPath = path.join(project.projectDir, 'config', 'config');
-            
+
             if (!fs.existsSync(configPath)) {
                 throw new Error(`Config file not found: ${configPath}`);
             }
 
             const configContent = fs.readFileSync(configPath, 'utf-8');
-            const versionMatch = configContent.match(/proj_version\s*=\s*"([0-9]+\.[0-9]+(?:\.[0-9]+)?)"/i);
-            
+            const versionMatch = configContent.match(
+                /proj_version\s*=\s*"([0-9]+\.[0-9]+(?:\.[0-9]+)?)"/i,
+            );
+
             if (versionMatch && versionMatch[1]) {
                 const version = versionMatch[1];
                 // Normalize to major.minor format
                 const normalized = version.split('.').slice(0, 2).join('.');
-                ExtensionOutputChannel.info('SystemTreeProvider', `Parsed version from config: ${normalized}`);
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Parsed version from config: ${normalized}`,
+                );
                 return normalized;
             }
 
             throw new Error(`No proj_version found in ${configPath}`);
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            throw new Error(`Cannot determine WinCC OA version for project ${project.id}: ${err.message}`);
+            throw new Error(
+                `Cannot determine WinCC OA version for project ${project.id}: ${err.message}`,
+            );
         }
     }
 
@@ -76,12 +171,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         if (!element) {
             // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
-            
+
             // Set version if we have a current project
             if (currentProject) {
                 this.pmon.setVersion(currentProject.version);
             }
-            
+
             // If no projects loaded yet, show loading state
             if (!currentProject && this.projectManager.getRunningProjects().length === 0) {
                 // Check if we have any runnable projects yet
@@ -95,21 +190,21 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                                 'info',
                                 'Initializing',
                                 'Please wait...',
-                                undefined
-                            )
+                                undefined,
+                            ),
                         ];
                     }
-                } catch (err) {
+                } catch {
                     // Still loading
                 }
             }
             const isRunning = currentProject?.isRunning || false;
-            
+
             const statusDescription = isRunning ? '● Running' : '○ Stopped';
-            const statusTooltip = currentProject 
+            const statusTooltip = currentProject
                 ? `System status for ${currentProject.name}: ${isRunning ? 'Running' : 'Stopped'}`
                 : 'No project selected';
-            
+
             return [
                 new SystemItem(
                     'System Status',
@@ -117,7 +212,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     'systemStatus',
                     statusDescription,
                     statusTooltip,
-                    isRunning
+                    isRunning,
                 ),
                 new SystemItem(
                     'Project Information',
@@ -125,7 +220,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     'projectInfo',
                     undefined,
                     'WinCC OA Project Details',
-                    undefined
+                    undefined,
                 ),
                 new SystemItem(
                     'Projects',
@@ -133,18 +228,58 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     'projects',
                     undefined,
                     'Main Project and Subprojects',
-                    undefined
-                )
+                    undefined,
+                ),
             ];
         } else if (element.itemType === 'projectInfo') {
             const currentProject = this.projectManager.getCurrentProject();
-            
+
             if (currentProject) {
                 const items = [
-                    new SystemItem('Project Name', vscode.TreeItemCollapsibleState.None, 'info', currentProject.name, undefined, undefined, undefined, undefined, undefined),
-                    new SystemItem('Version', vscode.TreeItemCollapsibleState.None, 'info', currentProject.version || 'N/A', undefined, undefined, undefined, undefined, undefined),
-                    new SystemItem('Project Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.projectDir, undefined, undefined, undefined, undefined, undefined),
-                    new SystemItem('Install Path', vscode.TreeItemCollapsibleState.None, 'info', currentProject.oaInstallPath, undefined, undefined, undefined, undefined, undefined)
+                    new SystemItem(
+                        'Project Name',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        currentProject.name,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
+                    new SystemItem(
+                        'Version',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        currentProject.version || 'N/A',
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
+                    new SystemItem(
+                        'Project Path',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        currentProject.projectDir,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
+                    new SystemItem(
+                        'Install Path',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        currentProject.oaInstallPath,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
                 ];
 
                 // Parse and add subprojects
@@ -160,20 +295,30 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                             undefined,
                             undefined,
                             subProjects,
-                            undefined
-                        )
+                            undefined,
+                        ),
                     );
                 }
 
                 return items;
             } else {
                 return [
-                    new SystemItem('No project selected', vscode.TreeItemCollapsibleState.None, 'info', 'Select a project from status bar', undefined, undefined, undefined, undefined, undefined)
+                    new SystemItem(
+                        'No project selected',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        'Select a project from status bar',
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
                 ];
             }
         } else if (element.itemType === 'subprojects') {
             // Display subprojects stored in projectData
-            const subProjects = element.projectData || [];
+            const subProjects = Array.isArray(element.projectData) ? element.projectData : [];
             return subProjects.map((subProj: string) => {
                 const baseName = path.basename(subProj);
                 return new SystemItem(
@@ -185,76 +330,117 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     undefined,
                     subProj,
                     undefined,
-                    subProj
+                    subProj,
                 );
             });
         } else if (element.itemType === 'projects') {
             // Use cached running projects instead of polling again
             const allProjects = this.projectManager.getRunningProjects();
-            
+
             if (allProjects.length === 0) {
                 return [
-                    new SystemItem('No projects found', vscode.TreeItemCollapsibleState.None, 'info', 'Register a project first', undefined, undefined, undefined, undefined, undefined)
+                    new SystemItem(
+                        'No projects found',
+                        vscode.TreeItemCollapsibleState.None,
+                        'info',
+                        'Register a project first',
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                    ),
                 ];
             }
-            
+
             // Sort projects: favorites first (by name), then non-favorites (by name)
             const sorted = allProjects.sort((a, b) => {
                 const aFav = this.projectManager.isFavorite(a.id);
                 const bFav = this.projectManager.isFavorite(b.id);
-                
+
                 // Favorites always come first
                 if (aFav && !bFav) return -1;
                 if (!aFav && bFav) return 1;
-                
+
                 // Within same group, sort alphabetically
                 return a.name.localeCompare(b.name);
             });
-            
-            return sorted.map(project => {
+
+            return sorted.map((project) => {
                 const isFavorite = this.projectManager.isFavorite(project.id);
                 // Determine icon and description based on project status
                 let description: string;
                 let tooltip: string;
                 let iconPath: vscode.ThemeIcon | undefined;
-                
+
                 // Favorite prefix for description
                 const favPrefix = isFavorite ? '⭐ ' : '';
-                
+
                 switch (project.status) {
                     case 'unknown':
                         description = `${favPrefix}Loading...`;
-                        tooltip = `Project: ${project.name}\nStatus: Loading...${isFavorite ? '\n⭐ Favorite' : ''}`;
-                        iconPath = new vscode.ThemeIcon('circle-outline', new vscode.ThemeColor('descriptionForeground'));
+                        tooltip = `Project: ${project.name}\nStatus: Loading...${
+                            isFavorite ? '\n⭐ Favorite' : ''
+                        }`;
+                        iconPath = new vscode.ThemeIcon(
+                            'circle-outline',
+                            new vscode.ThemeColor('descriptionForeground'),
+                        );
                         break;
                     case 'running':
                         description = `${favPrefix}Running`;
-                        tooltip = `Project: ${project.name}\nStatus: Running${isFavorite ? '\n⭐ Favorite' : ''}`;
-                        iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+                        tooltip = `Project: ${project.name}\nStatus: Running${
+                            isFavorite ? '\n⭐ Favorite' : ''
+                        }`;
+                        iconPath = new vscode.ThemeIcon(
+                            'circle-filled',
+                            new vscode.ThemeColor('testing.iconPassed'),
+                        );
                         break;
                     case 'stopped':
                         description = `${favPrefix}Stopped`;
-                        tooltip = `Project: ${project.name}\nStatus: Stopped${isFavorite ? '\n⭐ Favorite' : ''}`;
-                        iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+                        tooltip = `Project: ${project.name}\nStatus: Stopped${
+                            isFavorite ? '\n⭐ Favorite' : ''
+                        }`;
+                        iconPath = new vscode.ThemeIcon(
+                            'circle-filled',
+                            new vscode.ThemeColor('testing.iconFailed'),
+                        );
                         break;
                     case 'transitioning':
                         description = `${favPrefix}Transitioning...`;
-                        tooltip = `Project: ${project.name}\nStatus: Transitioning${isFavorite ? '\n⭐ Favorite' : ''}`;
-                        iconPath = new vscode.ThemeIcon('sync~spin', new vscode.ThemeColor('charts.yellow'));
+                        tooltip = `Project: ${project.name}\nStatus: Transitioning${
+                            isFavorite ? '\n⭐ Favorite' : ''
+                        }`;
+                        iconPath = new vscode.ThemeIcon(
+                            'sync~spin',
+                            new vscode.ThemeColor('charts.yellow'),
+                        );
                         break;
                     case 'error':
                         description = `${favPrefix}Error`;
-                        tooltip = `Project: ${project.name}\nError: ${project.error}${isFavorite ? '\n⭐ Favorite' : ''}`;
-                        iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
+                        tooltip = `Project: ${project.name}\nError: ${project.error}${
+                            isFavorite ? '\n⭐ Favorite' : ''
+                        }`;
+                        iconPath = new vscode.ThemeIcon(
+                            'warning',
+                            new vscode.ThemeColor('errorForeground'),
+                        );
                         break;
                     default:
                         description = favPrefix + (project.isRunning ? 'Running' : 'Stopped');
                         tooltip = `Project: ${project.name}${isFavorite ? '\n⭐ Favorite' : ''}`;
                         iconPath = project.isRunning
-                            ? new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'))
-                            : new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+                            ? new vscode.ThemeIcon(
+                                  'circle-filled',
+                                  new vscode.ThemeColor('testing.iconPassed'),
+                              )
+                            : new vscode.ThemeIcon(
+                                  'circle-filled',
+                                  new vscode.ThemeColor('testing.iconFailed'),
+                              );
                 }
-                
+
                 const item = new SystemItem(
                     project.name,
                     vscode.TreeItemCollapsibleState.None,
@@ -265,19 +451,19 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     project.projectDir,
                     project,
                     undefined, // subprojectPath not needed for projects
-                    iconPath
+                    iconPath,
                 );
-                
+
                 // Override contextValue to distinguish favorites
                 item.contextValue = isFavorite ? 'project-favorite' : 'project-nonfavorite';
-                
+
                 return item;
             });
         }
         return [];
     }
 
-    async startProject(project: any): Promise<void> {
+    async startProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -286,35 +472,49 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         try {
             // Get valid version (with fallback to config parsing)
             const version = this.getValidVersion(project);
-            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${version}`);
+            ExtensionOutputChannel.debug(
+                'SystemTreeProvider',
+                `Setting WinCC OA version: ${version}`,
+            );
             this.pmon.setVersion(version);
-            
+
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
-            
+
             // Step 1: Check if PMON is running
-            ExtensionOutputChannel.debug('SystemTreeProvider', `Checking PMON status for project: ${project.id}`);
+            ExtensionOutputChannel.debug(
+                'SystemTreeProvider',
+                `Checking PMON status for project: ${project.id}`,
+            );
             const pmonStatus = await this.pmon.getStatus(project.id);
             ExtensionOutputChannel.debug('SystemTreeProvider', `PMON status: ${pmonStatus}`);
-            
+
             if (pmonStatus !== ProjEnvPmonStatus.Running) {
                 // Step 2: PMON not running - start it first
                 vscode.window.showInformationMessage(`⟳ Starting PMON for ${project.name}...`);
-                ExtensionOutputChannel.info('SystemTreeProvider', `Starting PMON for project: ${project.id}`);
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Starting PMON for project: ${project.id}`,
+                );
                 const pmonResult = await this.pmon.startPmonOnly(project.id);
-                
+
                 if (pmonResult !== 0) {
-                    vscode.window.showErrorMessage(`Failed to start PMON (error code: ${pmonResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to start PMON (error code: ${pmonResult})`,
+                    );
                     return;
                 }
-                
+
                 // Wait a moment for PMON to initialize
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
             }
-            
+
             // Step 3: Now start all managers
-            ExtensionOutputChannel.info('SystemTreeProvider', `Starting all managers for project: ${project.id}`);
+            ExtensionOutputChannel.info(
+                'SystemTreeProvider',
+                `Starting all managers for project: ${project.id}`,
+            );
             const result = await this.pmon.startProject(project.id, true);
-            
+
             if (result === 0) {
                 vscode.window.showInformationMessage(`✓ ${project.name} started successfully`);
                 await this.projectManager.refreshProjects();
@@ -323,11 +523,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showErrorMessage(`Failed to start managers (error code: ${result})`);
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to start project: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to start project: ${errorMsg}`);
         }
     }
 
-    async stopProject(project: any): Promise<void> {
+    async stopProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -336,51 +537,65 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         const answer = await vscode.window.showWarningMessage(
             `Are you sure you want to stop ${project.name}?`,
             'Yes',
-            'No'
+            'No',
         );
-        
+
         if (answer === 'Yes') {
             try {
                 // Get valid version (with fallback to config parsing)
                 const version = this.getValidVersion(project);
-                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${version}`);
+                ExtensionOutputChannel.debug(
+                    'SystemTreeProvider',
+                    `Setting WinCC OA version: ${version}`,
+                );
                 this.pmon.setVersion(version);
-                
+
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
-                
+
                 // Step 1: Stop all managers first
-                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping all managers for project: ${project.id}`);
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Stopping all managers for project: ${project.id}`,
+                );
                 const stopResult = await this.pmon.stopProject(project.id);
-                
+
                 if (stopResult !== 0) {
-                    vscode.window.showErrorMessage(`Failed to stop managers (error code: ${stopResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to stop managers (error code: ${stopResult})`,
+                    );
                     return;
                 }
-                
+
                 // Wait for managers to stop
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+
                 // Step 2: Now stop PMON
                 vscode.window.showInformationMessage(`⏹ Stopping PMON for ${project.name}...`);
-                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${project.id}`);
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Stopping PMON for project: ${project.id}`,
+                );
                 const pmonResult = await this.pmon.stopProjectAndPmon(project.id, undefined);
-                
+
                 if (pmonResult === 0) {
                     vscode.window.showInformationMessage(`✓ ${project.name} stopped`);
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${pmonResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to stop PMON (error code: ${pmonResult})`,
+                    );
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to stop project: ${error}`);
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to stop project: ${errorMsg}`);
             }
         }
     }
 
     async startOASystem(): Promise<void> {
         const currentProject = this.projectManager.getCurrentProject();
-        
+
         if (!currentProject) {
             vscode.window.showErrorMessage('No project selected');
             return;
@@ -388,35 +603,51 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         try {
             // Version is already parsed in toProjectInfo()
-            ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
+            ExtensionOutputChannel.debug(
+                'SystemTreeProvider',
+                `Setting WinCC OA version: ${currentProject.version}`,
+            );
             this.pmon.setVersion(currentProject.version);
-            
+
             vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
-            
+
             // Step 1: Check if PMON is running
-            ExtensionOutputChannel.debug('SystemTreeProvider', `Checking PMON status for project: ${currentProject.id}`);
+            ExtensionOutputChannel.debug(
+                'SystemTreeProvider',
+                `Checking PMON status for project: ${currentProject.id}`,
+            );
             const pmonStatus = await this.pmon.getStatus(currentProject.id);
             ExtensionOutputChannel.debug('SystemTreeProvider', `PMON status: ${pmonStatus}`);
-            
+
             if (pmonStatus !== ProjEnvPmonStatus.Running) {
                 // Step 2: PMON not running - start it first
-                vscode.window.showInformationMessage(`⟳ Starting PMON for ${currentProject.name}...`);
-                ExtensionOutputChannel.info('SystemTreeProvider', `Starting PMON for project: ${currentProject.id}`);
+                vscode.window.showInformationMessage(
+                    `⟳ Starting PMON for ${currentProject.name}...`,
+                );
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Starting PMON for project: ${currentProject.id}`,
+                );
                 const pmonResult = await this.pmon.startPmonOnly(currentProject.id);
-                
+
                 if (pmonResult !== 0) {
-                    vscode.window.showErrorMessage(`Failed to start PMON (error code: ${pmonResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to start PMON (error code: ${pmonResult})`,
+                    );
                     return;
                 }
-                
+
                 // Wait for PMON to initialize
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
             }
-            
+
             // Step 3: Start all managers
-            ExtensionOutputChannel.info('SystemTreeProvider', `Starting all managers for project: ${currentProject.id}`);
+            ExtensionOutputChannel.info(
+                'SystemTreeProvider',
+                `Starting all managers for project: ${currentProject.id}`,
+            );
             const result = await this.pmon.startProject(currentProject.id, true);
-            
+
             if (result === 0) {
                 vscode.window.showInformationMessage(`✓ System started for ${currentProject.name}`);
                 // Refresh to update status
@@ -432,7 +663,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
     async stopOASystem(): Promise<void> {
         const currentProject = this.projectManager.getCurrentProject();
-        
+
         if (!currentProject) {
             vscode.window.showErrorMessage('No project selected');
             return;
@@ -441,41 +672,60 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         const answer = await vscode.window.showWarningMessage(
             `Stop system for ${currentProject.name}?`,
             'Yes',
-            'No'
+            'No',
         );
-        
+
         if (answer === 'Yes') {
             try {
                 // Version is already parsed in toProjectInfo()
-                ExtensionOutputChannel.debug('SystemTreeProvider', `Setting WinCC OA version: ${currentProject.version}`);
+                ExtensionOutputChannel.debug(
+                    'SystemTreeProvider',
+                    `Setting WinCC OA version: ${currentProject.version}`,
+                );
                 this.pmon.setVersion(currentProject.version);
-                
-                vscode.window.showInformationMessage(`⏹ Stopping system for ${currentProject.name}...`);
-                
+
+                vscode.window.showInformationMessage(
+                    `⏹ Stopping system for ${currentProject.name}...`,
+                );
+
                 // Step 1: Stop all managers first
-                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping all managers for project: ${currentProject.id}`);
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Stopping all managers for project: ${currentProject.id}`,
+                );
                 const stopResult = await this.pmon.stopProject(currentProject.id);
-                
+
                 if (stopResult !== 0) {
-                    vscode.window.showErrorMessage(`Failed to stop managers (error code: ${stopResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to stop managers (error code: ${stopResult})`,
+                    );
                     return;
                 }
-                
+
                 // Wait for managers to stop
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+
                 // Step 2: Stop PMON
-                vscode.window.showInformationMessage(`⏹ Stopping PMON for ${currentProject.name}...`);
-                ExtensionOutputChannel.info('SystemTreeProvider', `Stopping PMON for project: ${currentProject.id}`);
+                vscode.window.showInformationMessage(
+                    `⏹ Stopping PMON for ${currentProject.name}...`,
+                );
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    `Stopping PMON for project: ${currentProject.id}`,
+                );
                 const pmonResult = await this.pmon.stopProjectAndPmon(currentProject.id, undefined);
-                
+
                 if (pmonResult === 0) {
-                    vscode.window.showInformationMessage(`✓ System stopped for ${currentProject.name}`);
+                    vscode.window.showInformationMessage(
+                        `✓ System stopped for ${currentProject.name}`,
+                    );
                     // Refresh to update status
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to stop PMON (error code: ${pmonResult})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to stop PMON (error code: ${pmonResult})`,
+                    );
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to stop system: ${error}`);
@@ -483,7 +733,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
     }
 
-    async setActiveProject(project: any): Promise<void> {
+    async setActiveProject(project: ProjectInfo): Promise<void> {
         if (!project || !project.id) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -494,11 +744,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             vscode.window.showInformationMessage(`✓ ${project.name} set as active project`);
             this.refresh();
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to set active project: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to set active project: ${errorMsg}`);
         }
     }
 
-    async addProjectToWorkspace(project: any): Promise<void> {
+    async addProjectToWorkspace(project: ProjectInfo): Promise<void> {
         if (!project || !project.projectDir) {
             vscode.window.showErrorMessage('Invalid project');
             return;
@@ -506,18 +757,18 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         try {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
-            const alreadyInWorkspace = workspaceFolders.some(folder => folder.uri.fsPath === project.projectDir);
-            
+            const alreadyInWorkspace = workspaceFolders.some(
+                (folder) => folder.uri.fsPath === project.projectDir,
+            );
+
             if (alreadyInWorkspace) {
                 vscode.window.showInformationMessage(`Project already in workspace`);
                 return;
             }
 
-            const success = vscode.workspace.updateWorkspaceFolders(
-                workspaceFolders.length,
-                0,
-                { uri: vscode.Uri.file(project.projectDir) }
-            );
+            const success = vscode.workspace.updateWorkspaceFolders(workspaceFolders.length, 0, {
+                uri: vscode.Uri.file(project.projectDir),
+            });
 
             if (success) {
                 vscode.window.showInformationMessage(`✓ Project added to workspace`);
@@ -525,20 +776,25 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showErrorMessage('Failed to add project to workspace');
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to add project to workspace: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to add project to workspace: ${errorMsg}`);
         }
     }
 
-    async openProjectInExplorer(project: any): Promise<void> {
+    async openProjectInExplorer(project: ProjectInfo): Promise<void> {
         if (!project || !project.projectDir) {
             vscode.window.showErrorMessage('Invalid project');
             return;
         }
 
         try {
-            await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(project.projectDir));
+            await vscode.commands.executeCommand(
+                'revealFileInOS',
+                vscode.Uri.file(project.projectDir),
+            );
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to open project in explorer: ${error}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to open project in explorer: ${errorMsg}`);
         }
     }
 
@@ -550,18 +806,18 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         try {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
-            const alreadyInWorkspace = workspaceFolders.some(folder => folder.uri.fsPath === subprojectPath);
-            
+            const alreadyInWorkspace = workspaceFolders.some(
+                (folder) => folder.uri.fsPath === subprojectPath,
+            );
+
             if (alreadyInWorkspace) {
                 vscode.window.showInformationMessage(`Subproject already in workspace`);
                 return;
             }
 
-            const success = vscode.workspace.updateWorkspaceFolders(
-                workspaceFolders.length,
-                0,
-                { uri: vscode.Uri.file(subprojectPath) }
-            );
+            const success = vscode.workspace.updateWorkspaceFolders(workspaceFolders.length, 0, {
+                uri: vscode.Uri.file(subprojectPath),
+            });
 
             if (success) {
                 vscode.window.showInformationMessage(`✓ Subproject added to workspace`);
@@ -588,7 +844,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
     async restartOASystem(): Promise<void> {
         const currentProject = this.projectManager.getCurrentProject();
-        
+
         if (!currentProject) {
             vscode.window.showErrorMessage('No project selected');
             return;
@@ -597,32 +853,38 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         const answer = await vscode.window.showWarningMessage(
             `Restart PMON for ${currentProject.name}?`,
             'Yes',
-            'No'
+            'No',
         );
-        
+
         if (answer === 'Yes') {
             try {
                 // Set WinCC OA version for pmon component
                 this.pmon.setVersion(currentProject.version);
-                
-                vscode.window.showInformationMessage(`⟳ Restarting PMON for ${currentProject.name}...`);
-                
+
+                vscode.window.showInformationMessage(
+                    `⟳ Restarting PMON for ${currentProject.name}...`,
+                );
+
                 // Stop PMON first
                 await this.pmon.stopProjectAndPmon(currentProject.id, undefined);
-                
+
                 // Wait a moment
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
                 // Start PMON again
                 const result = await this.pmon.startPmonOnly(currentProject.id);
-                
+
                 if (result === 0) {
-                    vscode.window.showInformationMessage(`✓ PMON restarted for ${currentProject.name}`);
+                    vscode.window.showInformationMessage(
+                        `✓ PMON restarted for ${currentProject.name}`,
+                    );
                     // Refresh to update status
                     await this.projectManager.refreshProjects();
                     this.refresh();
                 } else {
-                    vscode.window.showErrorMessage(`Failed to restart PMON (error code: ${result})`);
+                    vscode.window.showErrorMessage(
+                        `Failed to restart PMON (error code: ${result})`,
+                    );
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to restart PMON: ${error}`);
@@ -648,7 +910,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
             for (const line of lines) {
                 const trimmed = line.trim();
-                
+
                 // Check for section headers
                 if (trimmed.startsWith('[')) {
                     inGeneralSection = trimmed === '[general]';
@@ -688,19 +950,25 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
      */
     async registerNewProject(): Promise<void> {
         try {
-            ExtensionOutputChannel.info('SystemTreeProvider', 'Starting project registration wizard');
-            
+            ExtensionOutputChannel.info(
+                'SystemTreeProvider',
+                'Starting project registration wizard',
+            );
+
             // Step 1: Ask user to select project folder
             const projectFolder = await vscode.window.showOpenDialog({
                 canSelectFiles: false,
                 canSelectFolders: true,
                 canSelectMany: false,
                 openLabel: 'Select Project Folder',
-                title: 'Select WinCC OA Project to Register'
+                title: 'Select WinCC OA Project to Register',
             });
 
             if (!projectFolder || projectFolder.length === 0) {
-                ExtensionOutputChannel.info('SystemTreeProvider', 'Project registration cancelled by user');
+                ExtensionOutputChannel.info(
+                    'SystemTreeProvider',
+                    'Project registration cancelled by user',
+                );
                 return;
             }
 
@@ -719,18 +987,26 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
     private async registerProject(projectPath: string): Promise<void> {
         try {
             const projectId = path.basename(projectPath);
-            
+
             ExtensionOutputChannel.info('SystemTreeProvider', `Selected project: ${projectPath}`);
 
             // Step 2: Validate project structure
             const configPath = path.join(projectPath, 'config', 'config');
             if (!fs.existsSync(configPath)) {
-                vscode.window.showErrorMessage(`Invalid project: config file not found at ${configPath}`);
-                ExtensionOutputChannel.error('SystemTreeProvider', `Config file not found: ${configPath}`);
+                vscode.window.showErrorMessage(
+                    `Invalid project: config file not found at ${configPath}`,
+                );
+                ExtensionOutputChannel.error(
+                    'SystemTreeProvider',
+                    `Config file not found: ${configPath}`,
+                );
                 return;
             }
 
-            ExtensionOutputChannel.info('SystemTreeProvider', `Valid project detected: ${projectId}`);
+            ExtensionOutputChannel.info(
+                'SystemTreeProvider',
+                `Valid project detected: ${projectId}`,
+            );
 
             // Step 3: Detect version from config file
             let projectVersion = '3.19'; // Default fallback
@@ -742,11 +1018,17 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                     const pathVersionMatch = pvssPath.match(/(\d+\.\d+)/);
                     if (pathVersionMatch) {
                         projectVersion = pathVersionMatch[1];
-                        ExtensionOutputChannel.info('SystemTreeProvider', `Detected version from config: ${projectVersion}`);
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            `Detected version from config: ${projectVersion}`,
+                        );
                     }
                 }
-            } catch (error) {
-                ExtensionOutputChannel.warn('SystemTreeProvider', `Could not read version from config, using default: ${projectVersion}`);
+            } catch {
+                ExtensionOutputChannel.warn(
+                    'SystemTreeProvider',
+                    `Could not read version from config, using default: ${projectVersion}`,
+                );
             }
 
             // Step 4: Confirm with user
@@ -754,7 +1036,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 `Register project "${projectId}" (Version ${projectVersion})?`,
                 { modal: true },
                 'Yes',
-                'No'
+                'No',
             );
 
             if (confirmation !== 'Yes') {
@@ -763,68 +1045,93 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             }
 
             // Step 5: Register project
-            vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Registering project ${projectId}...`,
-                cancellable: false
-            }, async (progress) => {
-                try {
-                    progress.report({ message: 'Creating project instance...' });
-                    
-                    const project = new ProjEnvProject();
-                    project.setDir(projectPath);
-                    project.setVersion(projectVersion);
-                    project.setRunnable(true);
-                    
-                    ExtensionOutputChannel.info('SystemTreeProvider', `Project setup: ID=${project.getId()}, Version=${project.getVersion()}`);
+            vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Registering project ${projectId}...`,
+                    cancellable: false,
+                },
+                async (progress) => {
+                    try {
+                        progress.report({ message: 'Creating project instance...' });
 
-                    // Check if already registered
-                    if (project.isRegistered()) {
-                        const overwrite = await vscode.window.showWarningMessage(
-                            `Project "${projectId}" is already registered. Unregister and re-register?`,
-                            { modal: true },
-                            'Yes',
-                            'No'
+                        const project = new ProjEnvProject();
+                        project.setDir(projectPath);
+                        project.setVersion(projectVersion);
+                        project.setRunnable(true);
+
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            `Project setup: ID=${project.getId()}, Version=${project.getVersion()}`,
                         );
 
-                        if (overwrite !== 'Yes') {
-                            ExtensionOutputChannel.info('SystemTreeProvider', 'Registration cancelled - already registered');
-                            return;
+                        // Check if already registered
+                        if (project.isRegistered()) {
+                            const overwrite = await vscode.window.showWarningMessage(
+                                `Project "${projectId}" is already registered. Unregister and re-register?`,
+                                { modal: true },
+                                'Yes',
+                                'No',
+                            );
+
+                            if (overwrite !== 'Yes') {
+                                ExtensionOutputChannel.info(
+                                    'SystemTreeProvider',
+                                    'Registration cancelled - already registered',
+                                );
+                                return;
+                            }
+
+                            progress.report({ message: 'Unregistering existing project...' });
+                            const unregResult = await project.unregisterProj();
+
+                            if (unregResult !== 0) {
+                                throw new Error(
+                                    `Failed to unregister project (code: ${unregResult})`,
+                                );
+                            }
+
+                            ExtensionOutputChannel.info(
+                                'SystemTreeProvider',
+                                'Project unregistered successfully',
+                            );
                         }
 
-                        progress.report({ message: 'Unregistering existing project...' });
-                        const unregResult = await project.unregisterProj();
-                        
-                        if (unregResult !== 0) {
-                            throw new Error(`Failed to unregister project (code: ${unregResult})`);
+                        progress.report({ message: 'Registering with WinCC OA...' });
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            'Calling registerProj()...',
+                        );
+
+                        const result = await project.registerProj();
+
+                        if (result === 0) {
+                            vscode.window.showInformationMessage(
+                                `✓ Project "${projectId}" registered successfully!`,
+                            );
+                            ExtensionOutputChannel.info(
+                                'SystemTreeProvider',
+                                `Project registered: ${projectId}`,
+                            );
+
+                            // Refresh project list
+                            await this.projectManager.refreshProjects();
+                            this.refresh();
+                        } else if (result === -1) {
+                            throw new Error('Config file not found or invalid');
+                        } else {
+                            throw new Error(`Registration failed with code: ${result}`);
                         }
-                        
-                        ExtensionOutputChannel.info('SystemTreeProvider', 'Project unregistered successfully');
+                    } catch (error) {
+                        const errorMsg = error instanceof Error ? error.message : String(error);
+                        vscode.window.showErrorMessage(`Failed to register project: ${errorMsg}`);
+                        ExtensionOutputChannel.error(
+                            'SystemTreeProvider',
+                            `Registration failed: ${errorMsg}`,
+                        );
                     }
-
-                    progress.report({ message: 'Registering with WinCC OA...' });
-                    ExtensionOutputChannel.info('SystemTreeProvider', 'Calling registerProj()...');
-                    
-                    const result = await project.registerProj();
-
-                    if (result === 0) {
-                        vscode.window.showInformationMessage(`✓ Project "${projectId}" registered successfully!`);
-                        ExtensionOutputChannel.info('SystemTreeProvider', `Project registered: ${projectId}`);
-                        
-                        // Refresh project list
-                        await this.projectManager.refreshProjects();
-                        this.refresh();
-                    } else if (result === -1) {
-                        throw new Error('Config file not found or invalid');
-                    } else {
-                        throw new Error(`Registration failed with code: ${result}`);
-                    }
-                } catch (error) {
-                    const errorMsg = error instanceof Error ? error.message : String(error);
-                    vscode.window.showErrorMessage(`Failed to register project: ${errorMsg}`);
-                    ExtensionOutputChannel.error('SystemTreeProvider', `Registration failed: ${errorMsg}`);
-                }
-            });
+                },
+            );
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Error during registration: ${errorMsg}`);
@@ -834,18 +1141,21 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
     /**
      */
-    async unregisterProject(projectData: any): Promise<void> {
+    async unregisterProject(projectData: ProjectInfo): Promise<void> {
         const projectId = projectData.id;
-        const projectPath = projectData.path;
+        const projectPath = projectData.projectDir;
 
-        ExtensionOutputChannel.info('SystemTreeProvider', `Starting unregister flow for project: ${projectId}`);
+        ExtensionOutputChannel.info(
+            'SystemTreeProvider',
+            `Starting unregister flow for project: ${projectId}`,
+        );
 
         // Confirmation dialog with explanation
         const confirm = await vscode.window.showWarningMessage(
             `⚠️ Unregister Project "${projectId}"?\n\nThis will remove the project from WinCC OA's registry (pvssInst.conf).\nThe project files will NOT be deleted.`,
             { modal: true },
             'Yes, Unregister',
-            'Cancel'
+            'Cancel',
         );
 
         if (confirm !== 'Yes, Unregister') {
@@ -855,126 +1165,82 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         // Execute unregister
         try {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Unregistering project ${projectId}...`,
-                cancellable: false
-            }, async (progress) => {
-                progress.report({ message: 'Creating project instance...' });
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Unregistering project ${projectId}...`,
+                    cancellable: false,
+                },
+                async (progress) => {
+                    progress.report({ message: 'Creating project instance...' });
 
-                const project = new ProjEnvProject();
-                project.setId(projectId);
+                    const project = new ProjEnvProject();
+                    project.setId(projectId);
 
-                // Check if project is currently running
-                if (projectData.status === 'running') {
-                    const stopFirst = await vscode.window.showWarningMessage(
-                        `Project "${projectId}" is currently running. Stop it first?`,
-                        { modal: true },
-                        'Stop and Unregister',
-                        'Cancel'
-                    );
+                    // Check if project is currently running
+                    if (projectData.status === 'running') {
+                        const stopFirst = await vscode.window.showWarningMessage(
+                            `Project "${projectId}" is currently running. Stop it first?`,
+                            { modal: true },
+                            'Stop and Unregister',
+                            'Cancel',
+                        );
 
-                    if (stopFirst !== 'Stop and Unregister') {
-                        ExtensionOutputChannel.info('SystemTreeProvider', 'Unregister cancelled - project is running');
-                        return;
+                        if (stopFirst !== 'Stop and Unregister') {
+                            ExtensionOutputChannel.info(
+                                'SystemTreeProvider',
+                                'Unregister cancelled - project is running',
+                            );
+                            return;
+                        }
+
+                        progress.report({ message: 'Stopping project...' });
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            'Stopping PMON before unregister...',
+                        );
+
+                        project.setDir(projectPath);
+                        project.setVersion(projectData.version);
+                        await project.stopPmon(10);
+
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            'PMON stopped successfully',
+                        );
                     }
 
-                    progress.report({ message: 'Stopping project...' });
-                    ExtensionOutputChannel.info('SystemTreeProvider', 'Stopping PMON before unregister...');
+                    // Unregister project
+                    progress.report({ message: 'Unregistering from WinCC OA...' });
+                    ExtensionOutputChannel.info(
+                        'SystemTreeProvider',
+                        'Calling unregisterProj()...',
+                    );
 
-                    project.setDir(projectPath);
-                    project.setVersion(projectData.version);
-                    await project.stopPmon(10);
+                    const result = await project.unregisterProj();
 
-                    ExtensionOutputChannel.info('SystemTreeProvider', 'PMON stopped successfully');
-                }
+                    if (result === 0) {
+                        vscode.window.showInformationMessage(
+                            `✓ Project "${projectId}" unregistered successfully!`,
+                        );
+                        ExtensionOutputChannel.info(
+                            'SystemTreeProvider',
+                            `Project ${projectId} unregistered successfully`,
+                        );
 
-                // Unregister project
-                progress.report({ message: 'Unregistering from WinCC OA...' });
-                ExtensionOutputChannel.info('SystemTreeProvider', 'Calling unregisterProj()...');
-
-                const result = await project.unregisterProj();
-
-                if (result === 0) {
-                    vscode.window.showInformationMessage(`✓ Project "${projectId}" unregistered successfully!`);
-                    ExtensionOutputChannel.info('SystemTreeProvider', `Project ${projectId} unregistered successfully`);
-
-                    // Refresh project list
-                    progress.report({ message: 'Refreshing project list...' });
-                    await this.projectManager.refreshProjects();
-                    this.refresh();
-                } else {
-                    throw new Error(`Unregister failed with code: ${result}`);
-                }
-            });
+                        // Refresh project list
+                        progress.report({ message: 'Refreshing project list...' });
+                        await this.projectManager.refreshProjects();
+                        this.refresh();
+                    } else {
+                        throw new Error(`Unregister failed with code: ${result}`);
+                    }
+                },
+            );
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Failed to unregister project: ${errorMsg}`);
             ExtensionOutputChannel.error('SystemTreeProvider', `Unregister error: ${errorMsg}`);
-        }
-    }
-}
-
-class SystemItem extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly itemType: 'systemStatus' | 'projectInfo' | 'info' | 'projects' | 'project' | 'subprojects' | 'subproject',
-        public readonly description?: string,
-        public readonly tooltipText?: string,
-        public readonly isRunning?: boolean,
-        public readonly projectPath?: string,
-        public readonly projectData?: any,
-        public readonly subprojectPath?: string,
-        public readonly customIconPath?: vscode.ThemeIcon
-    ) {
-        super(label, collapsibleState);
-        
-        if (itemType === 'systemStatus') {
-            if (isRunning) {
-                this.iconPath = new vscode.ThemeIcon('pulse', new vscode.ThemeColor('testing.iconPassed'));
-            } else {
-                this.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('testing.iconFailed'));
-            }
-            this.contextValue = 'systemStatus';
-            this.tooltip = tooltipText;
-            this.description = description;
-        } else if (itemType === 'projectInfo') {
-            this.iconPath = new vscode.ThemeIcon('info');
-            this.contextValue = 'projectInfo';
-            this.tooltip = tooltipText;
-        } else if (itemType === 'projects') {
-            this.iconPath = new vscode.ThemeIcon('folder-library');
-            this.contextValue = 'projects';
-            this.tooltip = tooltipText;
-        } else if (itemType === 'subprojects') {
-            this.iconPath = new vscode.ThemeIcon('symbol-namespace');
-            this.contextValue = 'subprojects';
-            this.tooltip = tooltipText;
-            this.description = description;
-        } else if (itemType === 'subproject') {
-            this.iconPath = new vscode.ThemeIcon('folder-opened');
-            this.contextValue = 'subproject';
-            this.tooltip = tooltipText;
-            this.description = description;
-            // Click does nothing - use context menu instead
-        } else if (itemType === 'project') {
-            // Use custom icon if provided (e.g., error icon)
-            if (customIconPath) {
-                this.iconPath = customIconPath;
-            } else if (isRunning) {
-                this.iconPath = new vscode.ThemeIcon('server-process', new vscode.ThemeColor('testing.iconPassed'));
-            } else {
-                this.iconPath = new vscode.ThemeIcon('server', new vscode.ThemeColor('testing.iconFailed'));
-            }
-            this.contextValue = 'project';
-            this.tooltip = tooltipText;
-            this.description = description;
-            // Click does nothing - use context menu instead
-        } else if (itemType === 'info') {
-            this.iconPath = new vscode.ThemeIcon('symbol-property');
-            this.contextValue = 'infoItem';
-            this.description = description;
         }
     }
 }

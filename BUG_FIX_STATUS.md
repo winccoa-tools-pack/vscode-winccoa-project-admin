@@ -8,9 +8,11 @@ Version: 1.0.7 → 1.0.8 (PATCH - Bug Fixes)
 ## Identifizierte Bugs
 
 ### Bug #1: Zyklisches PMON Polling (Performance-Killer)
+
 **Status:** ⚠️ NICHT BEHOBEN  
 **Priorität:** HIGH  
 **Root Cause:**
+
 - Extension pollt PMON alle 15 Sekunden via `setInterval()`
 - Pro Refresh: 10 Projekte × isPmonRunning() = 10 Process Spawns
 - Jeder Spawn: 30-170ms (Windows: +Antivirus Scan)
@@ -18,11 +20,13 @@ Version: 1.0.7 → 1.0.8 (PATCH - Bug Fixes)
 - Prozesse schließen korrekt (kein Process-Leak), aber Spawning-Overhead ist massiv
 
 **Betroffene Files:**
+
 - `src/projectManager.ts`: Line 118 - `setInterval(refreshProjects, 15000)`
 - `npm-winccoa-core/src/types/project/ProjEnvProject.ts`: Line 731-734 - `isPmonRunning()`
 - `npm-winccoa-core/src/types/components/implementations/PmonComponent.ts`: Line 81-86 - `getStatus()`
 
 **Fix-Strategie (TODO):**
+
 - Caching-Layer für PMON Status (5-10 Sekunden Cache)
 - Setting: `winccoa.projectAdmin.refreshInterval` (default: 15000ms)
 - Lazy Loading: Nur aktuelles Projekt pollen, Rest on-demand
@@ -30,14 +34,17 @@ Version: 1.0.7 → 1.0.8 (PATCH - Bug Fixes)
 ---
 
 ### Bug #2: Fehlendes Error Handling beim Polling
+
 **Status:** ⚠️ NICHT BEHOBEN  
 **Priorität:** HIGH  
 **Root Cause:**
+
 - Bei PMON-Errors (Projekt down, PMON nicht erreichbar) wird fröhlich weiter gepollt
 - Keine Error-Anzeige im UI
 - Extension-State korrupt durch ungültige Daten
 
 **Fix-Strategie (TODO):**
+
 - Setting: `winccoa.projectAdmin.autoRefresh` (default: true) - User kann Auto-Polling deaktivieren
 - Error-State Tracking: `lastError`, `isPollingPaused`
 - UI: Error-Banner in TreeView mit "Retry" Button
@@ -47,9 +54,11 @@ Version: 1.0.7 → 1.0.8 (PATCH - Bug Fixes)
 ---
 
 ### Bug #3: Missing Version crasht KOMPLETTEN Refresh (CRITICAL!)
+
 **Status:** ✅ BEHOBEN (Code fertig, nicht getestet)  
 **Priorität:** CRITICAL  
 **Root Cause:**
+
 ```typescript
 // projectManager.ts:122-126 - VORHER (BROKEN)
 for (const project of runnable) {
@@ -61,7 +70,8 @@ for (const project of runnable) {
 ```
 
 **Error Stack:**
-```
+
+```text
 Error: WinCC OA version 3.18 not found on system to locate component WCCILpmon
     at WinCCOAComponent.getPath()
     at WinCCOAComponent.start()
@@ -71,7 +81,9 @@ Error: WinCC OA version 3.18 not found on system to locate component WCCILpmon
 ```
 
 **Implementierte Lösung:**
+
 1. **types.ts - ProjectInfo Interface erweitert:**
+
 ```typescript
 export interface ProjectInfo {
     id: string;
@@ -83,7 +95,8 @@ export interface ProjectInfo {
 }
 ```
 
-2. **types.ts - toProjectInfo() Signature erweitert:**
+1. **types.ts - toProjectInfo() Signature erweitert:**
+
 ```typescript
 export function toProjectInfo(
     project: ProjEnvProject, 
@@ -100,7 +113,8 @@ export function toProjectInfo(
 }
 ```
 
-3. **projectManager.ts - Try/Catch um isPmonRunning():**
+1. **projectManager.ts - Try/Catch um isPmonRunning():**
+
 ```typescript
 // projectManager.ts - refreshProjects() - FIXED
 async refreshProjects(): Promise<void> {
@@ -132,7 +146,8 @@ async refreshProjects(): Promise<void> {
         // ... rest of method
 ```
 
-4. **systemTreeProvider.ts - Error Icons/Tooltips:**
+1. **systemTreeProvider.ts - Error Icons/Tooltips:**
+
 ```typescript
 // systemTreeProvider.ts - getChildren() 'projects' branch
 return allProjects.map(project => {
@@ -166,7 +181,8 @@ return allProjects.map(project => {
 });
 ```
 
-5. **systemTreeProvider.ts - SystemItem Constructor erweitert:**
+1. **systemTreeProvider.ts - SystemItem Constructor erweitert:**
+
 ```typescript
 class SystemItem extends vscode.TreeItem {
     constructor(
@@ -195,11 +211,13 @@ class SystemItem extends vscode.TreeItem {
 ```
 
 **Geänderte Files:**
+
 - ✅ `src/types.ts` - ProjectInfo interface + toProjectInfo() signature
 - ✅ `src/projectManager.ts` - try/catch in refreshProjects()
 - ✅ `src/views/systemTreeProvider.ts` - Error icons/tooltips
 
 **UX Verbesserungen:**
+
 - Fehlerhafte Projekte werden NICHT ausgeblendet (Option B gewählt)
 - ⚠️ Icon mit rotem Warning-Symbol
 - Tooltip zeigt Error-Message
@@ -209,9 +227,11 @@ class SystemItem extends vscode.TreeItem {
 ---
 
 ### Bug #4: Infinite Loop / Memory Leak bei pvssInst.conf Errors (CRITICAL!)
+
 **Status:** ⚠️ NICHT BEHOBEN  
 **Priorität:** CRITICAL  
 **Root Cause:**
+
 ```typescript
 // npm-winccoa-core/src/types/project/ProjEnvProjectRegistry.ts:168
 reloadTimeout = setTimeout(() => {
@@ -221,6 +241,7 @@ reloadTimeout = setTimeout(() => {
 ```
 
 **Problem-Szenario:**
+
 1. pvssInst.conf File Change Event
 2. `parseProjRegistryFile()` wird gecalled
 3. **Parsing Error** (corrupted file, permission denied)
@@ -230,12 +251,14 @@ reloadTimeout = setTimeout(() => {
 7. **Loop**: Error → Timeout → Error → Timeout → ...
 
 **Symptome (Kollegen-PC):**
+
 - VS Code CPU 100% (ein Core voll)
 - RAM steigt kontinuierlich
 - Projekte werden nicht gefunden
 - Extension unbenutzbar
 
 **Fix-Strategie (TODO):**
+
 ```typescript
 // 1. Try/Catch um parseProjRegistryFile()
 reloadTimeout = setTimeout(() => {
@@ -257,6 +280,7 @@ fileWatcher.on('error', (error) => {
 ```
 
 **Betroffene Files:**
+
 - `npm-winccoa-core/src/types/project/ProjEnvProjectRegistry.ts`: Line 160-172
 
 ---
@@ -279,6 +303,7 @@ export * from './utils/winccoa-paths';
 ```
 
 **Nächster Schritt:**
+
 - npm-winccoa-core auf develop-Branch wechseln
 - **ABER:** User hat auf Windows lokal einen Fix für develop-Branch
 - **Daher:** User macht auf Windows weiter
@@ -287,9 +312,10 @@ export * from './utils/winccoa-paths';
 
 ## Testing-Plan (TODO)
 
-### Bug #3 Fix Testing:
+### Bug #3 Fix Testing
+
 1. **Setup:** Projekt mit fehlender WinCC OA Version (z.B. config hat 3.18, aber nur 3.19/3.20 installiert)
-2. **Expected:** 
+2. **Expected:**
    - Projekt wird in TreeView mit ⚠️ Icon angezeigt
    - Tooltip: "Error: WinCC OA version 3.18 not found on system"
    - Andere Projekte funktionieren weiterhin
@@ -299,7 +325,8 @@ export * from './utils/winccoa-paths';
    - TreeView zeigt alle Projekte (fehlerhafte + funktionierende)
    - Refresh funktioniert weiterhin
 
-### Bug #4 Fix Testing (nach Implementation):
+### Bug #4 Fix Testing (nach Implementation)
+
 1. **Setup:** pvssInst.conf korrumpieren (invalid syntax)
 2. **Expected:**
    - Error-Log im Console
@@ -320,6 +347,7 @@ export * from './utils/winccoa-paths';
 
 2. **Nach erfolgreichem Test:**
    - CHANGELOG.md updaten:
+
      ```markdown
      ## [1.0.8] - 2026-01-05
      ### Fixed
@@ -327,10 +355,11 @@ export * from './utils/winccoa-paths';
      - Projects with errors now display with warning icon and error tooltip
      - Error handling in project refresh prevents cascading failures
      ```
-   
+
    - package.json Version bump: `1.0.7` → `1.0.8`
-   
+
    - Commit & Feature Finish:
+
      ```bash
      git add src/types.ts src/projectManager.ts src/views/systemTreeProvider.ts
      git commit -m "fix: add error handling for missing WinCC OA versions (Bug #3)"
@@ -353,18 +382,22 @@ export * from './utils/winccoa-paths';
 ## Wichtige Code-Locations
 
 ### projectManager.ts
+
 - Line 118: `setInterval(refreshProjects, 15000)` - Polling-Trigger
 - Line 122-143: `refreshProjects()` - Bug #3 Fix hier implementiert
 
 ### types.ts
+
 - Line 1-15: `ProjectInfo` interface - error/hasError fields hinzugefügt
 - Line 40-65: `toProjectInfo()` - error parameter hinzugefügt
 
 ### systemTreeProvider.ts
+
 - Line 147-183: `getChildren() 'projects' branch` - Error icon logic
 - Line 585-650: `SystemItem constructor` - customIconPath parameter
 
 ### npm-winccoa-core (EXTERNAL)
+
 - `src/types/project/ProjEnvProject.ts:731-734` - isPmonRunning() (Bug #1 Performance)
 - `src/types/project/ProjEnvProjectRegistry.ts:168` - Timeout ohne try/catch (Bug #4)
 - `src/types/components/implementations/PmonComponent.ts:81-86` - getStatus() spawning
@@ -374,6 +407,7 @@ export * from './utils/winccoa-paths';
 ## Dependency-Status
 
 **npm-winccoa-core:**
+
 - ❌ release/v0.2.0 - Zu alt, fehlt Exports
 - ✅ develop - Hat alle nötigen Exports, aber Error auf Linux
 - ✅ Windows (lokal) - develop mit User-Fix funktioniert
@@ -418,6 +452,7 @@ A  BUG_FIX_STATUS.md (diese Datei)
 ```
 
 **Nächster Commit:**
+
 ```bash
 git add src/types.ts src/projectManager.ts src/views/systemTreeProvider.ts BUG_FIX_STATUS.md
 git commit -m "fix: add error handling for missing WinCC OA versions (Bug #3)
@@ -437,6 +472,7 @@ Ref: BUG_FIX_STATUS.md for full analysis"
 ## Zusammenfassung für Copilot
 
 **Was du wissen musst:**
+
 - 4 CRITICAL Bugs identifiziert (2 Performance, 2 Crash/Leak)
 - Bug #3 wurde implementiert (Error Handling für fehlende Versionen)
 - Code ist fertig, aber NICHT kompiliert (npm-winccoa-core develop-Branch Problem auf Linux)
@@ -444,6 +480,7 @@ Ref: BUG_FIX_STATUS.md for full analysis"
 - Du musst auf Windows weiterarbeiten
 
 **Was du tun musst:**
+
 1. npm-winccoa-core develop-Branch nutzen (mit lokalem Fix)
 2. vscode-winccoa-control kompilieren
 3. Bug #3 Fix testen (Projekt mit missing version)
@@ -451,6 +488,7 @@ Ref: BUG_FIX_STATUS.md for full analysis"
 5. Danach: Bug #4 Fix planen (nächster Feature Branch)
 
 **Files zum Review:**
+
 - `src/types.ts` - Interface Änderungen
 - `src/projectManager.ts` - Try/Catch Logic
 - `src/views/systemTreeProvider.ts` - UI Changes

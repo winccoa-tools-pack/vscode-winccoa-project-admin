@@ -1,0 +1,166 @@
+name: Release (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: "Stable branch to release from (usually main)"
+        required: true
+        type: string
+    outputs:
+      version:
+        description: "Released version (x.y.z)"
+        value: ${{ jobs.versioning.outputs.version }}
+      tag:
+        description: "Release tag (vX.Y.Z)"
+        value: ${{ jobs.versioning.outputs.tag }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-pipeline-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  versioning:
+    uses: winccoa-tools-pack/.github/.github/workflows/versioning-tags-changelog-reusable.yml@main
+    with:
+      mode: release
+      target_branch: ${{ inputs.target_branch }}
+      create_tag: false
+      push_tag: false
+    secrets: inherit
+
+  precheck:
+    runs-on: ubuntu-latest
+    needs: [versioning]
+    outputs:
+      prerelease_tag: ${{ steps.find.outputs.prerelease_tag }}
+    steps:
+      - name: Find matching prerelease for this version
+        id: find
+        shell: bash
+        run: |
+          VERSION="${{ needs.versioning.outputs.version }}"
+          PREFIX="v$VERSION-"
+          REPO="${GITHUB_REPOSITORY}"
+
+          echo "🔎 Looking for prerelease tags starting with: $PREFIX"
+
+          PRERELEASE_TAG=$(gh release list --repo "$REPO" --limit 200 \
+            --json tagName,isPrerelease,createdAt \
+            --jq "[.[] | select(.isPrerelease == true and (.tagName | startswith(\"$PREFIX\"))) ] | sort_by(.createdAt) | reverse | .[0].tagName" 2>/dev/null)
+
+          if [ -z "$PRERELEASE_TAG" ] || [ "$PRERELEASE_TAG" = "null" ]; then
+            echo "❌ ERROR: No matching prerelease found for version $VERSION (expected tag like v$VERSION-<sha>)"
+            echo "Hint: run prerelease workflow on release/v$VERSION first."
+            exit 1
+          fi
+
+          echo "✅ Found prerelease tag: $PRERELEASE_TAG"
+          echo "prerelease_tag=$PRERELEASE_TAG" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  tag:
+    uses: winccoa-tools-pack/.github/.github/workflows/versioning-tags-changelog-reusable.yml@main
+    needs: [precheck]
+    with:
+      mode: release
+      target_branch: ${{ inputs.target_branch }}
+      create_tag: true
+      push_tag: true
+      force_push_tag: false
+    secrets: inherit
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [versioning, precheck, tag]
+    steps:
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+
+      - name: Install tools
+        run: npm install -g @vscode/vsce
+
+      - name: Download tested VSIX from prerelease
+        shell: bash
+        run: |
+          mkdir -p dist
+          PRERELEASE_TAG="${{ needs.precheck.outputs.prerelease_tag }}"
+          REPO="${GITHUB_REPOSITORY}"
+
+          gh release download --repo "$REPO" "$PRERELEASE_TAG" --pattern "*.vsix" --dir dist
+
+          VSIX_PATH=$(ls -1 dist/*.vsix 2>/dev/null | head -n 1)
+          if [ -z "$VSIX_PATH" ]; then
+            echo "❌ ERROR: No .vsix found in prerelease assets for $PRERELEASE_TAG"
+            ls -la dist || true
+            exit 1
+          fi
+
+          echo "📦 Downloaded VSIX: $VSIX_PATH"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to VS Code Marketplace (if configured)
+        shell: bash
+        run: |
+          VSIX_PATH=$(ls -1 dist/*.vsix 2>/dev/null | head -n 1)
+          if [ -z "$VSIX_PATH" ]; then
+            echo "❌ ERROR: No .vsix found in dist/"
+            exit 1
+          fi
+
+          if [ -n "${{ secrets.VSCE_PAT }}" ]; then
+            echo "🏪 Publishing tested VSIX to VS Code Marketplace..."
+            vsce publish --packagePath "$VSIX_PATH" -p "${{ secrets.VSCE_PAT }}"
+            echo "✅ Published to marketplace successfully!"
+          else
+            echo "⚠️ VSCE_PAT secret not found - skipping marketplace publish"
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          name: ${{ format('Release {0}', needs.tag.outputs.tag) }}
+          target_commitish: ${{ inputs.target_branch }}
+          body: |
+            ${{ needs.versioning.outputs.changelog }}
+
+            ### ✅ Tested Artifact
+            - Published from tested pre-release asset: `${{ needs.precheck.outputs.prerelease_tag }}`
+          files: "dist/*.vsix"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup prereleases for this version
+        shell: bash
+        run: |
+          VERSION="${{ needs.versioning.outputs.version }}"
+          PREFIX="v$VERSION-"
+          REPO="${GITHUB_REPOSITORY}"
+
+          echo "🧹 Deleting prereleases with tag prefix: $PREFIX"
+
+          TAGS=$(gh release list --repo "$REPO" --limit 200 --json tagName,isPrerelease \
+            --jq "[.[] | select(.isPrerelease == true and (.tagName | startswith(\"$PREFIX\"))) ] | .[].tagName")
+
+          if [ -z "$TAGS" ]; then
+            echo "✅ No prereleases to delete"
+            exit 0
+          fi
+
+          for TAG in $TAGS; do
+            echo "  - Deleting $TAG"
+            gh release delete --repo "$REPO" "$TAG" --yes --cleanup-tag || echo "⚠️ Failed to delete $TAG"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

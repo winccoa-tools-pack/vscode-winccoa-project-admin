@@ -13,7 +13,11 @@ module.exports = {
     vscode: 'commonjs vscode'
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    // Prefer CJS exports for node-target bundling to avoid pulling in broken/partial ESM builds
+    // from dependencies (notably npm-winccoa-core).
+    conditionNames: ['require', 'node'],
+    mainFields: ['main']
   },
   module: {
     rules: [

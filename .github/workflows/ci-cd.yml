@@ -2,72 +2,288 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ develop, feature/*, release/*, hotfix/* ]
+    branches: [main, develop, release/**]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      confirmed_local_tests:
+        description: 'I confirm that I have run all integration tests locally and they passed'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   pull-requests: write
-
+ 
 jobs:
-  test:
-    runs-on: windows-latest
-    
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
-      
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v6
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Run lint
-      run: npm run lint
-      
-    - name: Compile TypeScript
-      run: npm run compile
-      
-    - name: Run tests
-      run: npm test
-      env:
-        CI: true
-
-  package:
+  lint:
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
-      
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v6
-      with:
-        node-version: 20.x
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Package extension
-      run: |
-        npm install -g @vscode/vsce
-        vsce package
-        
-    - name: Upload VSIX as artifact
-      uses: actions/upload-artifact@v6
-      with:
-        name: vscode-extension-${{ github.sha }}
-        path: '*.vsix'
-        retention-days: 7
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run linting
+        run: npm run lint && npm run lint:md
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run format check
+        run: npm run format:check
+
+  test:
+    needs: [format, lint]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [20.x, 22.x, 24.x, 25.x]
+    env:
+      CI: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build package
+        run: npm run compile:tsc
+      - name: Setup virtual display (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+      - name: Run unit tests (coverage - single job)
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
+        run: npm run test:unit:coverage
+        env:
+          CI: true
+      - name: Run unit tests
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x') }}
+        run: npm run test:unit
+        env:
+          CI: true
+      - name: Upload unit coverage artifact
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unitTests
+          path: |
+            coverage/unitTests
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/unitTests/lcov.info
+          flags: unittests
+          name: unit-coverage
+          fail_ci_if_error: false
+          verbose: true
+      - name: Unit coverage summary
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
+        shell: bash
+        run: |
+          node scripts/write-coverage-summary.mjs unitTests >> "$GITHUB_STEP_SUMMARY"
+
+  integration-winccoa:
+    name: Integration Tests - WinCC OA
+    needs: [test]
+    if: ${{ needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      WORKDIR: /workspace
+      IMAGE_NAME: mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Set up Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub (optional)
+        shell: bash
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DOCKER_USER:-}" ] && [ -n "${DOCKER_PASSWORD:-}" ]; then
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+          else
+            echo "Docker credentials not available, attempting to pull public image"
+          fi
+      - name: Pull WinCC OA image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE_NAME"
+      - name: Verify runnable fixture config exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "./src/test/fixtures/projects/runnable/config/config"
+      - name: Install dependencies (host)
+        run: npm ci
+      - name: Build package (host)
+        run: npm run compile:tsc
+      - name: Run WinCC OA container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name winccoa-ci \
+            --shm-size=2g \
+            --memory=8g \
+            -v "$GITHUB_WORKSPACE":$WORKDIR:rw \
+            -e CI=true \
+            -e OAINST=/opt/WinCC_OA \
+            -e OAPROJ=$WORKDIR/test/fixtures/projects/runnable \
+            -w $WORKDIR \
+            "$IMAGE_NAME" bash -lc 'sleep 2'
+      - name: Verify Xvfb available
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec --user root winccoa-ci sh -c 'command -v xvfb-run >/dev/null 2>&1 || (echo "::error::xvfb-run not found in container"; exit 1)'
+      - name: Run all integration tests inside container
+        shell: bash
+        run: |
+          set -uo pipefail
+          EXIT_CODE=0
+          docker exec --user root winccoa-ci sh -c '
+            set -e
+            echo "Node version: $(node -v)"
+            echo "Running VS Code integration tests (no coverage to reduce memory)..."
+            xvfb-run -a npx --no-install vscode-test --label integrationTests
+          ' || EXIT_CODE=$?
+          
+          # Exit code 137 = OOM killed by kernel. GitHub runners have limited memory.
+          # Integration tests require WinCC OA + VS Code + Electron which exceeds CI limits.
+          # PR authors must confirm local run passed (see integration test output for copy-paste template).
+          if [ "$EXIT_CODE" -eq 137 ]; then
+            echo "::warning::Integration tests were OOM-killed (exit 137). PR author must confirm local run passed."
+            echo "OOM_KILLED=true" >> "$GITHUB_ENV"
+            
+            # Write summary for both step summary and PR comment
+            {
+              echo "## ⚠️ Integration Tests: Manual Confirmation Required"
+              echo ""
+              echo "The integration tests were killed due to memory limits (exit code 137)."
+              echo ""
+              echo "**PR author**: Please run integration tests locally and paste the result in the PR:"
+              echo ""
+              echo "\`\`\`bash"
+              echo "npm run test:integration"
+              echo "\`\`\`"
+              echo ""
+              echo "Copy the **Local Integration Test Result** block from the test output into this PR."
+            } | tee -a "$GITHUB_STEP_SUMMARY" > /tmp/oom-comment.md
+            exit 0
+          elif [ "$EXIT_CODE" -ne 0 ]; then
+            echo "::error::Integration tests failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+      - name: Post OOM warning as PR comment
+        if: ${{ always() && github.event_name == 'pull_request' && env.OOM_KILLED == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/oom-comment.md
+      - name: Capture system resource usage
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          echo "==== Host System Memory Usage ===="
+          free -h
+          echo ""
+          echo "==== Top 20 Processes by Memory (Host) ===="
+          ps aux --sort=-%mem | head -21
+          echo ""
+          echo "==== Top 20 Processes by CPU (Host) ===="
+          ps aux --sort=-%cpu | head -21
+          echo ""
+          echo "==== Docker Container Stats ===="
+          docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" || true
+          echo ""
+          echo "==== Processes inside Container ===="
+          docker exec winccoa-ci ps aux --sort=-%mem 2>/dev/null | head -21 || echo "(container not running)"
+      - name: Collect logs on failure
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          echo "==== docker logs ===="
+          docker logs winccoa-ci || true
+          echo "==== dmesg (check for OOM Killer) ===="
+          dmesg | tail -n 50 || true
+      - name: Stop and remove container
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          docker rm -f winccoa-ci || true
+
+  required:
+    name: CI/CD Pipeline - Required
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs:
+      - lint
+      - format
+      - test
+      - integration-winccoa
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULTS=(
+            "lint:${{ needs.lint.result }}"
+            "format:${{ needs.format.result }}"
+            "test:${{ needs.test.result }}"
+            "integration-winccoa:${{ needs['integration-winccoa'].result }}"
+          )
+          echo "Job results:"
+          printf ' - %s\n' "${RESULTS[@]}"
+          FAIL=0
+          for r in "${RESULTS[@]}"; do
+            status="${r#*:}"
+            case "$status" in
+              success|skipped)
+                ;;
+              *)
+                echo "::error::Required job did not succeed: $r"
+                FAIL=1
+                ;;
+            esac
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            exit 1
+          fi

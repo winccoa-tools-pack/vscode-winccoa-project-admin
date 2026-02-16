@@ -1,28 +1,155 @@
-name: Gitflow
+name: GitFlow (Upmerge main → develop via PR)
 
 on:
   push:
-  pull_request_review:
-  check_run:
-    types: [completed]
+    branches:
+      - main
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
+
+concurrency:
+  group: upmerge-main-to-develop
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Gitflow
+  upmerge:
+    name: Create/Update Upmerge PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Run gitflow action
-        uses: Logerfo/gitflow-action@0.0.5
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          dev: develop
-          master: main
-          release: release
-          release-regex: '^release/(.*)'
-          label: gitflow
-          auto-merge: true
-          require-merge: false
+          fetch-depth: 0
+
+      - name: Configure git identity
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare upmerge branch
+        id: prep
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UP_BRANCH="feature/upmerge-main-to-develop"
+          BASE_BRANCH="develop"
+
+          echo "up_branch=$UP_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+
+          # Ensure we have the latest refs
+          git fetch origin "+refs/heads/main:refs/remotes/origin/main"
+          git fetch origin "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
+          git fetch origin "+refs/heads/$UP_BRANCH:refs/remotes/origin/$UP_BRANCH" || true
+
+          if git show-ref --verify --quiet "refs/remotes/origin/$UP_BRANCH"; then
+            echo "Upmerge branch exists on origin: $UP_BRANCH"
+            git checkout -B "$UP_BRANCH" "origin/$UP_BRANCH"
+          else
+            echo "Creating upmerge branch from $BASE_BRANCH"
+            git checkout -B "$UP_BRANCH" "origin/$BASE_BRANCH"
+          fi
+
+          # Merge main into upmerge branch
+          if git merge --no-ff --no-edit "origin/main"; then
+            echo "had_conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "had_conflicts=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Merge conflicts detected. Resolve conflicts in PR." 
+            # Keep the conflicted index for PR review
+          fi
+
+      - name: Push upmerge branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push --force-with-lease origin "${{ steps.prep.outputs.up_branch }}"
+
+      - name: Create or update PR (draft if conflicts)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = '${{ steps.prep.outputs.up_branch }}';
+            const base = '${{ steps.prep.outputs.base_branch }}';
+            const hadConflicts = '${{ steps.prep.outputs.had_conflicts }}' === 'true';
+
+            const title = 'chore: upmerge main to develop';
+            const body = [
+              'This PR keeps `develop` up to date with `main` by merging `main` into a dedicated upmerge branch.',
+              '',
+              hadConflicts
+                ? '**Merge conflicts were detected.** Please resolve them in this PR.'
+                : 'No merge conflicts detected.',
+            ].join('\n');
+
+            // Find existing open PR from head to base
+            const prs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${owner}:${head}`,
+              base,
+              per_page: 20,
+            });
+
+            if (prs.data.length > 0) {
+              const pr = prs.data[0];
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                title,
+                body,
+                draft: hadConflicts ? true : pr.draft,
+              });
+              core.notice(`Updated PR #${pr.number} (${pr.html_url}).`);
+
+              // Auto-merge if no conflicts and PR is not draft
+              if (!hadConflicts && !pr.draft) {
+                try {
+                  await github.rest.pulls.merge({
+                    owner,
+                    repo,
+                    pull_number: pr.number,
+                    merge_method: 'merge',
+                  });
+                  core.notice(`Auto-merged PR #${pr.number}`);
+                } catch (e) {
+                  core.warning(`Could not auto-merge PR #${pr.number}: ${e.message}`);
+                }
+              }
+              return;
+            }
+
+            const created = await github.rest.pulls.create({
+              owner,
+              repo,
+              head,
+              base,
+              title,
+              body,
+              draft: hadConflicts,
+            });
+            core.notice(`Created PR #${created.data.number} (${created.data.html_url}).`);
+
+            // Auto-merge if no conflicts
+            if (!hadConflicts) {
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: created.data.number,
+                  merge_method: 'merge',
+                });
+                core.notice(`Auto-merged PR #${created.data.number}`);
+              } catch (e) {
+                core.warning(`Could not auto-merge PR #${created.data.number}: ${e.message}`);
+              }
+            }
