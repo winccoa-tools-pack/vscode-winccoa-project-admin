@@ -508,16 +508,6 @@ export class ProjectManager {
     }
 
     /**
-     * Load state from workspace storage
-     */
-    private loadState(): void {
-        const savedProject = this.context.workspaceState.get<ProjectInfo>('currentProject');
-        if (savedProject) {
-            this._currentProject = savedProject;
-        }
-    }
-
-    /**
      * Save state to workspace storage
      */
     private saveState(): void {
