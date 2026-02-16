@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectManager } from '../projectManager';
-import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions, ProjEnvManagerStartMode } from '@winccoa-tools-pack/npm-winccoa-core';
+import { PmonComponent, ProjEnvManagerInfo, ProjEnvManagerState, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
 import { ManagerSettingsPanel } from './managerSettingsPanel';
 
@@ -321,7 +321,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
     }
 
-    async deleteManager(item: ManagerItem): Promise<void> {
+    async deleteManager(item: { managerData?: ManagerDisplayData }): Promise<void> {
         if (!this.currentProjectId || !item.managerData) {
             vscode.window.showErrorMessage('No manager selected');
             return;
@@ -329,7 +329,6 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
 
         const managerData = item.managerData;
         const managerName =  managerData.options?.component || `Manager ${managerData.idx}`;
-        const managerOptions = managerData.options?.startOptions || '';
 
         try {
             // Simple confirmation
@@ -681,7 +680,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
     }
 
-    async editManager(item: ManagerItem): Promise<void> {
+    async editManager(item: { managerData?: ManagerDisplayData }): Promise<void> {
         if (!this.currentProjectId || !item.managerData) {
             vscode.window.showErrorMessage('No manager selected');
             return;
@@ -845,30 +844,12 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
     }
 
-    private getNextFreeNumber(managers: any[], managerType: string): number {
-        const existingNumbers = managers
-            .filter((m) => m.component.startsWith(managerType + '_'))
-            .map((m) => {
-                const parts = m.component.split('_');
-                return parseInt(parts[parts.length - 1]);
-            })
-            .filter((n) => !isNaN(n))
-            .sort((a, b) => a - b);
-
-        // Find first gap or return next number
-        for (let i = 0; i < existingNumbers.length; i++) {
-            if (existingNumbers[i] !== i) {
-                return i;
-            }
-        }
-
-        return existingNumbers.length;
-    }
-
-    private getNextManagerNum(existingManagers: any[]): number {
+    private getNextManagerNum(
+        existingManagers: Array<Pick<ProjEnvManagerOptions, 'component' | 'startOptions'>>,
+    ): number {
         // Extract -num values from startOptions
         const usedNums = existingManagers
-            .map(m => {
+            .map((m) => {
                 const options = m.startOptions || '';
                 const match = options.match(/-num\s+(\d+)/);
                 return match ? parseInt(match[1]) : null;

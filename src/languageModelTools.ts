@@ -12,7 +12,7 @@ import { SystemTreeProvider } from './views/systemTreeProvider';
 import { ManagerTreeProvider } from './views/managerTreeProvider';
 import { ProjEnvManagerState } from '@winccoa-tools-pack/npm-winccoa-core';
 import type { ProjectInfo } from './types';
-import type { ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
+import type { ProjEnvManagerInfo, ProjEnvManagerOptions } from '@winccoa-tools-pack/npm-winccoa-core';
 
 /**
  * Language Model Tools Service
@@ -1346,6 +1346,7 @@ class AddManagerTool implements vscode.LanguageModelTool<AddManagerInput> {
         options: vscode.LanguageModelToolInvocationOptions<AddManagerInput>,
         _token: vscode.CancellationToken
     ): Promise<vscode.LanguageModelToolResult> {
+        void _token;
         try {
             const input = options.input;
             console.log('[AddManagerTool] Adding manager:', input.component);
@@ -1431,13 +1432,14 @@ class AddManagerTool implements vscode.LanguageModelTool<AddManagerInput> {
                     )
                 ]);
             }
-        } catch (error: any) {
-            ExtensionOutputChannel.error('LanguageModelTool', 'Add manager failed', error);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Add manager failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message || String(error)
+                        error: err.message
                     }, null, 2)
                 )
             ]);
@@ -1464,6 +1466,7 @@ class DeleteManagerTool implements vscode.LanguageModelTool<DeleteManagerInput> 
         options: vscode.LanguageModelToolInvocationOptions<DeleteManagerInput>,
         _token: vscode.CancellationToken
     ): Promise<vscode.LanguageModelToolResult> {
+        void _token;
         try {
             const input = options.input;
             console.log('[DeleteManagerTool] Deleting manager:', input.managerNum);
@@ -1526,13 +1529,13 @@ class DeleteManagerTool implements vscode.LanguageModelTool<DeleteManagerInput> 
             }
 
             // Delete manager via ManagerTreeProvider
-            await this.managerTreeProvider.deleteManager({ 
-                managerData: { 
-                    idx: input.managerNum, 
-                    info: {} as any,
-                    options: {} as any
-                } 
-            } as any);
+            await this.managerTreeProvider.deleteManager({
+                managerData: {
+                    idx: input.managerNum,
+                    info: {} as unknown as ProjEnvManagerInfo,
+                    options: {} as unknown as ProjEnvManagerOptions,
+                },
+            });
 
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
@@ -1544,13 +1547,14 @@ class DeleteManagerTool implements vscode.LanguageModelTool<DeleteManagerInput> 
                     }, null, 2)
                 )
             ]);
-        } catch (error: any) {
-            ExtensionOutputChannel.error('LanguageModelTool', 'Delete manager failed', error);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Delete manager failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message || String(error)
+                        error: err.message
                     }, null, 2)
                 )
             ]);
@@ -1582,6 +1586,7 @@ class ConfigureManagerTool implements vscode.LanguageModelTool<ConfigureManagerI
         options: vscode.LanguageModelToolInvocationOptions<ConfigureManagerInput>,
         _token: vscode.CancellationToken
     ): Promise<vscode.LanguageModelToolResult> {
+        void _token;
         try {
             const input = options.input;
             console.log('[ConfigureManagerTool] Configuring manager:', input.managerNum);
@@ -1688,13 +1693,14 @@ class ConfigureManagerTool implements vscode.LanguageModelTool<ConfigureManagerI
                     )
                 ]);
             }
-        } catch (error: any) {
-            ExtensionOutputChannel.error('LanguageModelTool', 'Configure manager failed', error);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Configure manager failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message || String(error)
+                        error: err.message
                     }, null, 2)
                 )
             ]);
