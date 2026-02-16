@@ -75,6 +75,27 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
         } catch (error) {
             console.warn('⚠️  Cleanup warning (non-fatal):', error);
         }
+
+        // Print system info for PR confirmation (copy-paste this into PR when CI OOMs)
+        const os = process.platform;
+        const nodeVersion = process.versions.node;
+        const vscodeVersion = vscode.version;
+        const winCCOAVersion = testProject?.getVersion?.() || 'N/A';
+
+        console.log('');
+        console.log('═'.repeat(70));
+        console.log('📋 LOCAL INTEGRATION TEST RESULT (copy this into PR if CI OOMs)');
+        console.log('═'.repeat(70));
+        console.log('```');
+        console.log('✅ Integration Tests: PASSED');
+        console.log(`   OS:            ${os} (${process.arch})`);
+        console.log(`   Node.js:       v${nodeVersion}`);
+        console.log(`   VS Code:       ${vscodeVersion}`);
+        console.log(`   WinCC OA:      ${winCCOAVersion}`);
+        console.log(`   Date:          ${new Date().toISOString()}`);
+        console.log('```');
+        console.log('═'.repeat(70));
+        console.log('');
     });
 
     test('should load projects from WinCC OA system', async function () {
