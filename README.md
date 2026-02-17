@@ -2,23 +2,27 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
-
-**Project management and control for WinCC OA in Visual Studio Code**
-
-[Features](#-features) • [Installation](#-installation) • [Known Issues](#-known-issues)
+![Version](https://img.shields.io/github/v/release/winccoa-tools-pack/vscode-winccoa-project-admin?label=version)
+![License](https://img.shields.io/github/license/winccoa-tools-pack/vscode-winccoa-project-admin)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.109.2-007ACC.svg)
+[![Coverage](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin/graph/badge.svg)](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin)
+[![Quality gate](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/actions/workflows/ci-cd.yml)
+[![Released](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/actions/workflows/release.yml/badge.svg)](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/actions/workflows/release.yml)
 
 </div>
+
+## Project management and control for WinCC OA in Visual Studio Code
+
+[Features](#-features) • [Known Issues](#-known-issues)
 
 ---
 
 > **⚠️ Early Access Notice**  
 > This extension is in active development. While core features are stable, you may encounter:
+>
 > - **Performance issues on Windows** (especially with many projects) - We're actively optimizing!
 > - **Edge cases** not yet fully covered
-> 
+>
 > **🐛 Found a bug?** Please report it on our [GitHub Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues)!  
 > Your feedback helps us make this extension better for everyone. 🙏
 >
@@ -35,18 +39,20 @@
 ## ✨ Features
 
 ### 🔍 Automatic Project Detection
+
 - List all runnable Projects
 - Detects WinCC OA version from installation
 - Finds subprojects automatically
 
-
 ### 🎯 Project Management
+
 - **Status Bar UI**: Click to switch between projects
 - **Quick Pick Menu**: Browse all available WinCC OA projects in workspace
 - **Auto-Selection**: Automatically selects first project on startup
 - **Context Menu Actions**: Set active project, add to workspace, open in explorer
 
 ### ⚙️ Manager Control (PMON)
+
 - Start/stop WinCC OA projects via PMON
 - Automatic manager detection and control
 - Proper startup/shutdown sequence (PMON → Managers)
@@ -59,7 +65,7 @@
 ### Logging (for debugging)
 
 | Setting | Default | Description |
-|---------|---------|-------------|
+| -------- | ------- | ----------- |
 | `winccoa.core.logLevel` | `INFO` | Log verbosity: `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
 
 💡 **Tip**: Set log level to `DEBUG` when reporting bugs for detailed diagnostics.
@@ -84,11 +90,12 @@
    - Some manager types may not be detected automatically
 
 4. **Add New Manager:**
-   - did not work correctly. 
+   - did not work correctly.
 
 ### Reporting Bugs
 
 Found an issue? Please report it with:
+
 - WinCC OA version
 - Extension version (`1.0.0`)
 - Steps to reproduce the issue
@@ -103,7 +110,7 @@ Found an issue? Please report it with:
 Access via `Ctrl+Shift+P`:
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `WinCC OA: Select Project` | Choose active project from list |
 | `WinCC OA: Refresh Projects` | Re-scan workspace for projects |
 | `WinCC OA: Start Project (PMON)` | Start WinCC OA project |
@@ -126,10 +133,12 @@ Very large projects (many subprojects, managers) may experience slower detection
 **Symptom:** Some users see basic WinCC OA projects but not custom projects they've added.
 
 **Root Cause:** Projects are loaded from `pvssInst.conf` (Windows: `C:\ProgramData\Siemens\WinCC_OA\pvssInst.conf`). Each project has a `notRunnable` field that controls visibility:
+
 - `notRunnable=0` → Project appears in list (runnable)
 - `notRunnable=1` → Project is filtered out (not runnable)
 
 **Troubleshooting:**
+
 1. Enable Debug Logging:
    - Open VS Code Output Panel (`Ctrl+Shift+U`)
    - Select "WinCC OA Project Admin" from dropdown
@@ -142,7 +151,8 @@ Very large projects (many subprojects, managers) may experience slower detection
    - Verify `notRunnable=0` (not `notRunnable=1`)
 
 3. Example Debug Output:
-   ```
+
+   ```text
    [PVSS REGISTRY] Parsed pvssInst.conf:
    [PVSS REGISTRY]   Total projects: 5
    [PVSS REGISTRY]   Project: MyProject - notRunnable=true (FILTERED OUT)  ← Problem!
@@ -159,6 +169,7 @@ Very large projects (many subprojects, managers) may experience slower detection
 
 **Extension Not Responding:**  
 If the extension doesn't work as expected (project not detected, PMON commands fail), reload VS Code:  
+
 1. Press `Ctrl+Shift+P`
 2. Type and select `Reload Window`
 3. This refreshes the extension
@@ -186,6 +197,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Related Extensions
 
 This core library is used by:
+
 - [WinCC OA Script Actions](https://marketplace.visualstudio.com/items?itemName=RichardJanisch.winccoa-script-actions) - Execute CTRL scripts
 - [WinCC OA Test Explorer](https://marketplace.visualstudio.com/items?itemName=RichardJanisch.winccoa-vscode-tests) - Run unit tests
 - [WinCC OA CTRL Language](https://marketplace.visualstudio.com/items?itemName=mPokornyETM.wincc-oa-ctrl-lang) - Language support
@@ -199,10 +211,6 @@ This core library is used by:
 
 ---
 
-<div align="center">
-
 Made with ❤️ for the WinCC OA community
 
 [GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-control) • [Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-control/issues) • [WinCC OA Docs](https://www.winccoa.com)
-
-</div>

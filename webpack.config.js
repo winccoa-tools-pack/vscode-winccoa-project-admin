@@ -5,7 +5,7 @@ module.exports = {
   mode: 'none',
   entry: './src/extension.ts',
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'out'),
     filename: 'extension.js',
     libraryTarget: 'commonjs2'
   },
@@ -13,7 +13,11 @@ module.exports = {
     vscode: 'commonjs vscode'
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    // Prefer CJS exports for node-target bundling to avoid pulling in broken/partial ESM builds
+    // from dependencies (notably npm-winccoa-core).
+    conditionNames: ['require', 'node'],
+    mainFields: ['main']
   },
   module: {
     rules: [

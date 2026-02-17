@@ -1,0 +1,113 @@
+name: Reusable Action Pre-Release
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: "Branch that triggered prerelease (e.g. release/v1.2.3)"
+        required: true
+        type: string
+      validate_release_branch:
+        description: "If true: require target_branch to be release/vX.Y.Z and match the computed version"
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      version:
+        description: "Computed prerelease version (x.y.z-<shortsha>)"
+        value: ${{ jobs.prerelease.outputs.version }}
+      tag:
+        description: "Computed prerelease tag (v<version>)"
+        value: ${{ jobs.prerelease.outputs.tag }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-pipeline-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  versioning:
+    uses: winccoa-tools-pack/.github/.github/workflows/versioning-tags-changelog-reusable.yml@main
+    with:
+      mode: prerelease
+      target_branch: ${{ inputs.target_branch }}
+      validate_release_branch: ${{ inputs.validate_release_branch }}
+      push_tag: true
+      force_push_tag: true
+    secrets: inherit
+
+  prerelease:
+    runs-on: ubuntu-latest
+    needs: [versioning]
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.target_branch != '' && inputs.target_branch || github.sha }}
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install tools
+        run: npm install -g @vscode/vsce
+
+      - name: Set prerelease metadata
+        id: meta
+        shell: bash
+        run: |
+          TAG="${{ needs.versioning.outputs.tag }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release body
+        id: body
+        shell: bash
+        run: |
+          {
+            echo "body<<EOF"
+            echo "${{ needs.versioning.outputs.changelog }}"
+            echo ""
+            echo "### 🔍 Testing Notes"
+            echo "- This is a **pre-release** build; download the attached VSIX and test locally"
+            echo "- Source branch: ${{ inputs.target_branch }}"
+            echo "- Report issues at: https://github.com/${{ github.repository }}/issues"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Package extension (VSIX)
+        run: vsce package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ format('pre-release-{0}', github.sha) }}
+          path: "*.vsix"
+          retention-days: 14
+
+      - name: Create GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ format('🧪 Pre-Release {0}', steps.meta.outputs.tag) }}
+          target_commitish: ${{ inputs.target_branch != '' && inputs.target_branch || github.sha }}
+          body: ${{ steps.body.outputs.body }}
+          files: "*.vsix"
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

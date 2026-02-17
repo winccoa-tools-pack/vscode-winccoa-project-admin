@@ -1,19 +1,28 @@
+
+# VS Code settings and tests
+.vscode/**
 .vscode-test/**
-.vscode-test-web/**
-.git
+
+# Git and CI
 .gitignore
 .gitattributes
-**/*.map
-**/*.ts
-!dist/**/*.d.ts
-.eslintrc.json
-tsconfig.json
+.gitflow
+.github/**
+
+# Build artifacts
+*.vsix
+*.map
+Makefile
+.markdownlint.json
+
+# Source and configs
 src/**
-test/**
-quick-test.js
-USAGE_EXAMPLE.ts
-../**
+tsconfig.json
+tsconfig.tsbuildinfo
+
+# Node modules (safe because we bundle)
 node_modules/**
-webpack.config.js
-!resources/**/*.gif
-!images/**/*.gif
+
+# Exceptions for assets
+!resources/**
+!images/**

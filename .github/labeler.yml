@@ -1,13 +1,21 @@
-# PR labeler configuration for VS Code extension template
-extension:
-  - paths:
-      - 'src/**'
-      - 'package.json'
+
+# .github/labeler.yml  — actions/labeler v6 schema
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'src/**'
+      - any-glob-to-any-file: '!src/**/*.md'
+      - any-glob-to-any-file: '!src/test/**'
 
 ci:
-  - paths:
-      - '.github/workflows/**'
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: 'README.md'
+      - any-glob-to-any-file: 'docs/**'
 
 tests:
-  - paths:
-      - 'test/**'
+  - changed-files:
+      - any-glob-to-any-file: 'src/test/**'

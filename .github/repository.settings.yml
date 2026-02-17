@@ -1,0 +1,33 @@
+# Repository settings applied via GitHub REST API by .github/workflows/apply-settings-and-rulesets.yml
+# This repo uses GitFlow: develop is default, main is stable release.
+
+description: "VS Code extension for WinCC OA project management and system control"
+homepage: "https://github.com/winccoa-tools-pack"
+default_branch: "develop"
+
+has_issues: true
+has_wiki: false
+
+allow_squash_merge: true
+allow_merge_commit: false
+allow_rebase_merge: false
+allow_auto_merge: true
+
+delete_branch_on_merge: true
+
+topics:
+  - winccoa
+  - wincc-oa
+  - vscode
+  - automation
+  - vscode-extension
+  - scada
+  - hmi
+  - industrial-automation
+  - Siemens
+  - ETM
+  - winccoa-project-administration
+
+security:
+  enable_vulnerability_alerts: true
+  enable_automated_security_fixes: true
