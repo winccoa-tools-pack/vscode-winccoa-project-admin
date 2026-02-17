@@ -36,6 +36,7 @@ def main() -> None:
             "allow_squash_merge",
             "allow_merge_commit",
             "allow_rebase_merge",
+            "allow_auto_merge",
             "delete_branch_on_merge",
         }
 
