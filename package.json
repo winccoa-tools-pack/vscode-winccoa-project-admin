@@ -768,6 +768,6 @@
     "winccoaImage": "mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d7edf38"
+    "@winccoa-tools-pack/npm-winccoa-core": "0.2.6"
   }
 }
