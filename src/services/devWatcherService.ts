@@ -21,10 +21,7 @@ export class DevWatcherService {
     private _onDidChangeState = new vscode.EventEmitter<WatcherState>();
     readonly onDidChangeState = this._onDidChangeState.event;
 
-    constructor(
-        private context: vscode.ExtensionContext,
-        private pmon: PmonComponent
-    ) {}
+    constructor(private context: vscode.ExtensionContext, private pmon: PmonComponent) {}
 
     /**
      * Generate unique key for a manager watcher
@@ -41,8 +38,12 @@ export class DevWatcherService {
         return {
             defaultPatterns: config.get<Record<string, string[]>>('defaultPatterns', {}),
             debounceMs: config.get<number>('debounceMs', 500),
-            ignoredPatterns: config.get<string[]>('ignoredPatterns', ['**/node_modules/**', '**/dist/**', '**/*.d.ts']),
-            maxRetries: config.get<number>('maxRetries', 3)
+            ignoredPatterns: config.get<string[]>('ignoredPatterns', [
+                '**/node_modules/**',
+                '**/dist/**',
+                '**/*.d.ts',
+            ]),
+            maxRetries: config.get<number>('maxRetries', 3),
         };
     }
 
@@ -77,7 +78,9 @@ export class DevWatcherService {
      * Supports common WinCC OA file extensions: .ctl, .ctc, .lst, .pnl, .xml, .js, .ts
      */
     private extractFileFromOptions(startOptions: string): string | undefined {
-        const fileMatch = startOptions.match(/(?:^|\s)([^\s]+\.(?:ctl|ctc|lst|pnl|xml|js|ts))(?:\s|$)/i);
+        const fileMatch = startOptions.match(
+            /(?:^|\s)([^\s]+\.(?:ctl|ctc|lst|pnl|xml|js|ts))(?:\s|$)/i,
+        );
         if (!fileMatch) {
             return undefined;
         }
@@ -154,7 +157,10 @@ export class DevWatcherService {
                     if (match && match[1]) {
                         const projPath = match[1];
                         // Exclude the project itself
-                        if (projPath !== projectDir && !projPath.endsWith(path.basename(projectDir))) {
+                        if (
+                            projPath !== projectDir &&
+                            !projPath.endsWith(path.basename(projectDir))
+                        ) {
                             projPaths.push(projPath);
                         }
                     }
@@ -162,7 +168,10 @@ export class DevWatcherService {
             }
 
             if (projPaths.length > 0) {
-                ExtensionOutputChannel.debug(SOURCE, `Found ${projPaths.length} subproject(s): ${projPaths.join(', ')}`);
+                ExtensionOutputChannel.debug(
+                    SOURCE,
+                    `Found ${projPaths.length} subproject(s): ${projPaths.join(', ')}`,
+                );
             }
 
             return projPaths;
@@ -177,8 +186,8 @@ export class DevWatcherService {
      */
     private isTypeScriptManager(managerType: string, projectDir: string): boolean {
         const tsManagerTypes = ['node', 'wccoanode'];
-        const isNodeType = tsManagerTypes.some(t =>
-            managerType.toLowerCase().startsWith(t.toLowerCase())
+        const isNodeType = tsManagerTypes.some((t) =>
+            managerType.toLowerCase().startsWith(t.toLowerCase()),
         );
 
         if (!isNodeType) {
@@ -200,7 +209,7 @@ export class DevWatcherService {
         version: string,
         managerType: string,
         startOptions?: string,
-        watchConfig?: Partial<ManagerWatchConfig>
+        watchConfig?: Partial<ManagerWatchConfig>,
     ): Promise<void> {
         const key = this.getWatcherKey(projectId, managerIndex);
 
@@ -217,9 +226,12 @@ export class DevWatcherService {
             projectId,
             managerIndex,
             enabled: true,
-            watchPaths: watchConfig?.watchPaths || this.getDefaultPatternsForManager(managerType, startOptions),
+            watchPaths:
+                watchConfig?.watchPaths ||
+                this.getDefaultPatternsForManager(managerType, startOptions),
             customIgnorePatterns: watchConfig?.customIgnorePatterns,
-            waitForTsc: watchConfig?.waitForTsc ?? this.isTypeScriptManager(managerType, projectDir)
+            waitForTsc:
+                watchConfig?.waitForTsc ?? this.isTypeScriptManager(managerType, projectDir),
         };
 
         // Validate watch paths
@@ -229,9 +241,15 @@ export class DevWatcherService {
 
         // Resolve paths
         const resolvedPaths = this.resolveWatchPaths(config.watchPaths, projectDir);
-        const ignoredPatterns = [...globalConfig.ignoredPatterns, ...(config.customIgnorePatterns || [])];
+        const ignoredPatterns = [
+            ...globalConfig.ignoredPatterns,
+            ...(config.customIgnorePatterns || []),
+        ];
 
-        ExtensionOutputChannel.info(SOURCE, `Starting watcher for ${projectId}:${managerIndex} (${managerType})`);
+        ExtensionOutputChannel.info(
+            SOURCE,
+            `Starting watcher for ${projectId}:${managerIndex} (${managerType})`,
+        );
         ExtensionOutputChannel.debug(SOURCE, `Watch paths: ${resolvedPaths.join(', ')}`);
         ExtensionOutputChannel.debug(SOURCE, `Ignored patterns: ${ignoredPatterns.join(', ')}`);
         ExtensionOutputChannel.debug(SOURCE, `Wait for TSC: ${config.waitForTsc}`);
@@ -241,7 +259,7 @@ export class DevWatcherService {
             projectId,
             managerIndex,
             status: 'watching',
-            watchedFileCount: 0
+            watchedFileCount: 0,
         };
         this.states.set(key, state);
 
@@ -252,8 +270,8 @@ export class DevWatcherService {
             ignoreInitial: true,
             awaitWriteFinish: {
                 stabilityThreshold: 100,
-                pollInterval: 50
-            }
+                pollInterval: 50,
+            },
         });
 
         watcher.on('ready', () => {
@@ -266,18 +284,36 @@ export class DevWatcherService {
             }
 
             state.watchedFileCount = fileCount;
-            ExtensionOutputChannel.info(SOURCE, `Watcher ready for ${managerType} (${fileCount} files in ${directories.length} directories)`);
-            ExtensionOutputChannel.debug(SOURCE, `Watching directories: ${directories.slice(0, 5).join(', ')}${directories.length > 5 ? ` ... and ${directories.length - 5} more` : ''}`);
+            ExtensionOutputChannel.info(
+                SOURCE,
+                `Watcher ready for ${managerType} (${fileCount} files in ${directories.length} directories)`,
+            );
+            ExtensionOutputChannel.debug(
+                SOURCE,
+                `Watching directories: ${directories.slice(0, 5).join(', ')}${
+                    directories.length > 5 ? ` ... and ${directories.length - 5} more` : ''
+                }`,
+            );
             this._onDidChangeState.fire({ ...state });
         });
 
-        watcher.on('change', (filePath) => this.onFileChange(key, filePath, 'changed', config, globalConfig.debounceMs));
-        watcher.on('add', (filePath) => this.onFileChange(key, filePath, 'added', config, globalConfig.debounceMs));
-        watcher.on('unlink', (filePath) => this.onFileChange(key, filePath, 'removed', config, globalConfig.debounceMs));
+        watcher.on('change', (filePath) =>
+            this.onFileChange(key, filePath, 'changed', config, globalConfig.debounceMs),
+        );
+        watcher.on('add', (filePath) =>
+            this.onFileChange(key, filePath, 'added', config, globalConfig.debounceMs),
+        );
+        watcher.on('unlink', (filePath) =>
+            this.onFileChange(key, filePath, 'removed', config, globalConfig.debounceMs),
+        );
 
         watcher.on('error', (error) => {
             const errorMsg = error instanceof Error ? error.message : String(error);
-            ExtensionOutputChannel.error(SOURCE, `Watcher error for ${key}: ${errorMsg}`, error instanceof Error ? error : new Error(String(error)));
+            ExtensionOutputChannel.error(
+                SOURCE,
+                `Watcher error for ${key}: ${errorMsg}`,
+                error instanceof Error ? error : new Error(String(error)),
+            );
             this.updateState(key, { status: 'error', error: errorMsg });
         });
 
@@ -300,7 +336,7 @@ export class DevWatcherService {
         filePath: string,
         action: string,
         config: ManagerWatchConfig,
-        debounceMs: number
+        debounceMs: number,
     ): void {
         const state = this.states.get(key);
         if (!state) {
@@ -328,9 +364,15 @@ export class DevWatcherService {
 
             if (config.waitForTsc && filePath.endsWith('.ts')) {
                 // For TypeScript files, wait a bit longer for compilation
-                ExtensionOutputChannel.info(SOURCE, `TypeScript file changed, waiting 2s for compilation...`);
+                ExtensionOutputChannel.info(
+                    SOURCE,
+                    `TypeScript file changed, waiting 2s for compilation...`,
+                );
                 setTimeout(() => {
-                    ExtensionOutputChannel.debug(SOURCE, `Triggering restart after TypeScript compilation wait`);
+                    ExtensionOutputChannel.debug(
+                        SOURCE,
+                        `Triggering restart after TypeScript compilation wait`,
+                    );
                     this.triggerRestart(key);
                 }, 2000);
             } else {
@@ -350,7 +392,7 @@ export class DevWatcherService {
         managerIndex: number,
         targetState: ProjEnvManagerState,
         timeoutMs: number = 10000,
-        pollIntervalMs: number = 500
+        pollIntervalMs: number = 500,
     ): Promise<boolean> {
         const startTime = Date.now();
 
@@ -364,13 +406,18 @@ export class DevWatcherService {
             }
 
             const stateStr = this.getStateString(manager.state);
-            ExtensionOutputChannel.debug(SOURCE, `Manager ${managerIndex} current state: ${stateStr}, target: ${this.getStateString(targetState)}`);
+            ExtensionOutputChannel.debug(
+                SOURCE,
+                `Manager ${managerIndex} current state: ${stateStr}, target: ${this.getStateString(
+                    targetState,
+                )}`,
+            );
 
             if (manager.state === targetState) {
                 return true;
             }
 
-            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
         }
 
         return false;
@@ -412,8 +459,14 @@ export class DevWatcherService {
         const { projectId, managerIndex } = state;
         const globalConfig = this.getConfig();
 
-        ExtensionOutputChannel.info(SOURCE, `Restarting manager ${managerIndex} for ${projectId}...`);
-        ExtensionOutputChannel.debug(SOURCE, `Restart attempt ${retryCount + 1}/${globalConfig.maxRetries + 1}`);
+        ExtensionOutputChannel.info(
+            SOURCE,
+            `Restarting manager ${managerIndex} for ${projectId}...`,
+        );
+        ExtensionOutputChannel.debug(
+            SOURCE,
+            `Restart attempt ${retryCount + 1}/${globalConfig.maxRetries + 1}`,
+        );
 
         try {
             // Stop manager
@@ -427,12 +480,24 @@ export class DevWatcherService {
 
             // Wait for manager to actually stop (poll until NotRunning)
             ExtensionOutputChannel.debug(SOURCE, `Polling for manager ${managerIndex} to stop...`);
-            const stopped = await this.waitForManagerState(projectId, managerIndex, ProjEnvManagerState.NotRunning, 10000, 300);
+            const stopped = await this.waitForManagerState(
+                projectId,
+                managerIndex,
+                ProjEnvManagerState.NotRunning,
+                10000,
+                300,
+            );
 
             if (!stopped) {
-                ExtensionOutputChannel.warn(SOURCE, `Manager ${managerIndex} did not reach NotRunning state within timeout, proceeding anyway`);
+                ExtensionOutputChannel.warn(
+                    SOURCE,
+                    `Manager ${managerIndex} did not reach NotRunning state within timeout, proceeding anyway`,
+                );
             } else {
-                ExtensionOutputChannel.debug(SOURCE, `Manager ${managerIndex} stopped successfully`);
+                ExtensionOutputChannel.debug(
+                    SOURCE,
+                    `Manager ${managerIndex} stopped successfully`,
+                );
             }
 
             // Start manager
@@ -446,34 +511,48 @@ export class DevWatcherService {
 
             // Wait for manager to actually start (poll until Running)
             ExtensionOutputChannel.debug(SOURCE, `Polling for manager ${managerIndex} to start...`);
-            const started = await this.waitForManagerState(projectId, managerIndex, ProjEnvManagerState.Running, 15000, 500);
+            const started = await this.waitForManagerState(
+                projectId,
+                managerIndex,
+                ProjEnvManagerState.Running,
+                15000,
+                500,
+            );
 
             if (!started) {
-                throw new Error(`Manager ${managerIndex} did not reach Running state within timeout`);
+                throw new Error(
+                    `Manager ${managerIndex} did not reach Running state within timeout`,
+                );
             }
 
-            ExtensionOutputChannel.success(SOURCE, `Manager ${managerIndex} restarted successfully and verified running`);
+            ExtensionOutputChannel.success(
+                SOURCE,
+                `Manager ${managerIndex} restarted successfully and verified running`,
+            );
             this.updateState(key, {
                 status: 'watching',
                 lastRestart: new Date(),
-                error: undefined
+                error: undefined,
             });
-
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             ExtensionOutputChannel.error(SOURCE, `Failed to restart manager: ${errorMsg}`);
 
             // Retry logic
             if (retryCount < globalConfig.maxRetries) {
-                ExtensionOutputChannel.info(SOURCE, `Retrying restart (${retryCount + 1}/${globalConfig.maxRetries})...`);
+                ExtensionOutputChannel.info(
+                    SOURCE,
+                    `Retrying restart (${retryCount + 1}/${globalConfig.maxRetries})...`,
+                );
                 this.restartingManagers.delete(key);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
                 return this.triggerRestart(key, retryCount + 1);
             }
 
             this.updateState(key, { status: 'error', error: errorMsg });
-            vscode.window.showErrorMessage(`Dev Watcher: Failed to restart manager after ${globalConfig.maxRetries} attempts: ${errorMsg}`);
-
+            vscode.window.showErrorMessage(
+                `Dev Watcher: Failed to restart manager after ${globalConfig.maxRetries} attempts: ${errorMsg}`,
+            );
         } finally {
             this.restartingManagers.delete(key);
 
@@ -571,12 +650,16 @@ export class DevWatcherService {
     /**
      * Save watcher config to workspace state
      */
-    private saveWatcherConfig(projectId: string, managerIndex: number, config: ManagerWatchConfig): void {
+    private saveWatcherConfig(
+        projectId: string,
+        managerIndex: number,
+        config: ManagerWatchConfig,
+    ): void {
         const stateKey = `devWatcher.configs.${projectId}`;
         const configs = this.context.workspaceState.get<ManagerWatchConfig[]>(stateKey, []);
 
         // Update or add config
-        const existingIndex = configs.findIndex(c => c.managerIndex === managerIndex);
+        const existingIndex = configs.findIndex((c) => c.managerIndex === managerIndex);
         if (existingIndex >= 0) {
             configs[existingIndex] = config;
         } else {
@@ -592,7 +675,7 @@ export class DevWatcherService {
     getSavedConfig(projectId: string, managerIndex: number): ManagerWatchConfig | undefined {
         const stateKey = `devWatcher.configs.${projectId}`;
         const configs = this.context.workspaceState.get<ManagerWatchConfig[]>(stateKey, []);
-        return configs.find(c => c.managerIndex === managerIndex);
+        return configs.find((c) => c.managerIndex === managerIndex);
     }
 
     /**
@@ -608,7 +691,7 @@ export class DevWatcherService {
                     activeWatchers.push({
                         projectId: state.projectId,
                         managerIndex: state.managerIndex,
-                        config
+                        config,
                     });
                 }
             }
@@ -622,9 +705,15 @@ export class DevWatcherService {
      */
     async restoreWatchers(
         getProjectInfo: (projectId: string) => { projectDir: string; version: string } | undefined,
-        getManagerInfo: (projectId: string, managerIndex: number) => { type: string; startOptions?: string } | undefined
+        getManagerInfo: (
+            projectId: string,
+            managerIndex: number,
+        ) => { type: string; startOptions?: string } | undefined,
     ): Promise<void> {
-        const savedWatchers = this.context.globalState.get<PersistedWatcherState[]>('devWatcher.activeWatchers', []);
+        const savedWatchers = this.context.globalState.get<PersistedWatcherState[]>(
+            'devWatcher.activeWatchers',
+            [],
+        );
 
         if (savedWatchers.length === 0) {
             return;
@@ -636,13 +725,19 @@ export class DevWatcherService {
             try {
                 const projectInfo = getProjectInfo(saved.projectId);
                 if (!projectInfo) {
-                    ExtensionOutputChannel.warn(SOURCE, `Project ${saved.projectId} not found, skipping watcher restoration`);
+                    ExtensionOutputChannel.warn(
+                        SOURCE,
+                        `Project ${saved.projectId} not found, skipping watcher restoration`,
+                    );
                     continue;
                 }
 
                 const managerInfo = getManagerInfo(saved.projectId, saved.managerIndex);
                 if (!managerInfo) {
-                    ExtensionOutputChannel.warn(SOURCE, `Manager ${saved.managerIndex} not found in ${saved.projectId}, skipping`);
+                    ExtensionOutputChannel.warn(
+                        SOURCE,
+                        `Manager ${saved.managerIndex} not found in ${saved.projectId}, skipping`,
+                    );
                     continue;
                 }
 
@@ -653,14 +748,13 @@ export class DevWatcherService {
                     projectInfo.version,
                     managerInfo.type,
                     managerInfo.startOptions,
-                    saved.config
+                    saved.config,
                 );
-
             } catch (error) {
                 ExtensionOutputChannel.error(
                     SOURCE,
                     `Failed to restore watcher for ${saved.projectId}:${saved.managerIndex}`,
-                    error instanceof Error ? error : new Error(String(error))
+                    error instanceof Error ? error : new Error(String(error)),
                 );
             }
         }

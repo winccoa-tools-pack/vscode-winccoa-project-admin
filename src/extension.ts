@@ -103,7 +103,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                     await devWatcherService.restoreWatchers(
                         (projectId) => {
                             const projects = projectManager.getRunningProjects();
-                            const project = projects.find(p => p.id === projectId);
+                            const project = projects.find((p) => p.id === projectId);
                             if (project) {
                                 return { projectDir: project.projectDir, version: project.version };
                             }
@@ -111,16 +111,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                         },
                         (projectId, managerIndex) => {
                             const managers = managerTreeProvider.getManagers();
-                            const manager = managers.find(m => m.idx === managerIndex);
+                            const manager = managers.find((m) => m.idx === managerIndex);
                             if (manager?.options?.component) {
-                                return { type: manager.options.component, startOptions: manager.options.startOptions };
+                                return {
+                                    type: manager.options.component,
+                                    startOptions: manager.options.startOptions,
+                                };
                             }
                             return undefined;
-                        }
+                        },
                     );
                 } catch (err) {
                     const restoreError = err instanceof Error ? err : new Error(String(err));
-                    ExtensionOutputChannel.error('Extension', 'Failed to restore dev watchers', restoreError);
+                    ExtensionOutputChannel.error(
+                        'Extension',
+                        'Failed to restore dev watchers',
+                        restoreError,
+                    );
                 }
             })
             .catch((err) => {
@@ -248,19 +255,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register dev watcher commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.toggleWatcher', async (item: { managerData?: ManagerDisplayData }) => {
-                if (item && item.managerData) {
-                    await managerTreeProvider.toggleWatcher(item.managerData);
-                }
-            })
+            vscode.commands.registerCommand(
+                'winccoa.manager.toggleWatcher',
+                async (item: { managerData?: ManagerDisplayData }) => {
+                    if (item && item.managerData) {
+                        await managerTreeProvider.toggleWatcher(item.managerData);
+                    }
+                },
+            ),
         );
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.configureWatcher', async (item: { managerData?: ManagerDisplayData }) => {
-                if (item && item.managerData) {
-                    await managerTreeProvider.configureWatcher(item.managerData);
-                }
-            })
+            vscode.commands.registerCommand(
+                'winccoa.manager.configureWatcher',
+                async (item: { managerData?: ManagerDisplayData }) => {
+                    if (item && item.managerData) {
+                        await managerTreeProvider.configureWatcher(item.managerData);
+                    }
+                },
+            ),
         );
 
         context.subscriptions.push(
@@ -270,7 +283,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
                     devWatcherService.stopWatcher(watcher.projectId, watcher.managerIndex);
                 }
                 vscode.window.showInformationMessage(`Stopped ${watchers.length} watcher(s)`);
-            })
+            }),
         );
         ExtensionOutputChannel.info('Extension', 'Registered dev watcher commands');
 
@@ -483,7 +496,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         ExtensionOutputChannel.info('Extension', 'Registered utility commands');
 
         // Cleanup on dispose
-        context.subscriptions.push(projectManager, statusBarManager, { dispose: () => devWatcherService.dispose() });
+        context.subscriptions.push(projectManager, statusBarManager, {
+            dispose: () => devWatcherService.dispose(),
+        });
 
         ExtensionOutputChannel.success('Extension', 'Extension activated successfully');
 

@@ -205,7 +205,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                     this.getStatusText(mgr.info.state),
                     mgr,
                     startOptions,
-                    watcherState
+                    watcherState,
                 );
             });
         }
@@ -1060,7 +1060,10 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
 
         const managerType = managerData.options?.component || 'unknown';
-        const isActive = this.devWatcherService.isWatcherActive(this.currentProjectId, managerData.idx);
+        const isActive = this.devWatcherService.isWatcherActive(
+            this.currentProjectId,
+            managerData.idx,
+        );
 
         if (isActive) {
             // Stop watcher
@@ -1068,15 +1071,19 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             vscode.window.showInformationMessage(`Stopped file watcher for ${managerType}`);
         } else {
             // Check if there's a saved config, otherwise use defaults
-            const savedConfig = this.devWatcherService.getSavedConfig(this.currentProjectId, managerData.idx);
-            const defaultPatterns = this.devWatcherService.getDefaultPatternsForManager(managerType);
+            const savedConfig = this.devWatcherService.getSavedConfig(
+                this.currentProjectId,
+                managerData.idx,
+            );
+            const defaultPatterns =
+                this.devWatcherService.getDefaultPatternsForManager(managerType);
 
             if (!savedConfig && defaultPatterns.length === 0) {
                 // No default patterns - prompt user to configure
                 const configure = await vscode.window.showWarningMessage(
                     `No watch patterns configured for ${managerType}. Would you like to configure them now?`,
                     'Configure',
-                    'Cancel'
+                    'Cancel',
                 );
 
                 if (configure === 'Configure') {
@@ -1093,7 +1100,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                     currentProject.version,
                     managerType,
                     managerData.options?.startOptions,
-                    savedConfig
+                    savedConfig,
                 );
                 vscode.window.showInformationMessage(`Started file watcher for ${managerType}`);
             } catch (error) {
@@ -1120,7 +1127,10 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         const managerType = managerData.options?.component || 'unknown';
 
         // Get current config or defaults
-        const savedConfig = this.devWatcherService.getSavedConfig(this.currentProjectId, managerData.idx);
+        const savedConfig = this.devWatcherService.getSavedConfig(
+            this.currentProjectId,
+            managerData.idx,
+        );
         const defaultPatterns = this.devWatcherService.getDefaultPatternsForManager(managerType);
         const currentPaths = savedConfig?.watchPaths || defaultPatterns;
 
@@ -1132,7 +1142,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             items.push({
                 label: path,
                 picked: true,
-                description: 'Current'
+                description: 'Current',
             });
         }
 
@@ -1142,7 +1152,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                 items.push({
                     label: path,
                     picked: false,
-                    description: 'Suggested'
+                    description: 'Suggested',
                 });
             }
         }
@@ -1150,13 +1160,13 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         // Add option to add custom path
         items.push({
             label: '$(add) Add custom path...',
-            description: 'Enter a custom glob pattern'
+            description: 'Enter a custom glob pattern',
         });
 
         const selected = await vscode.window.showQuickPick(items, {
             canPickMany: true,
             placeHolder: `Select watch paths for ${managerType}`,
-            title: 'Configure Watch Paths'
+            title: 'Configure Watch Paths',
         });
 
         if (!selected) {
@@ -1164,16 +1174,16 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
 
         // Check if user wants to add custom path
-        const addCustom = selected.find(s => s.label.includes('Add custom path'));
+        const addCustom = selected.find((s) => s.label.includes('Add custom path'));
         let watchPaths = selected
-            .filter(s => !s.label.includes('Add custom path'))
-            .map(s => s.label);
+            .filter((s) => !s.label.includes('Add custom path'))
+            .map((s) => s.label);
 
         if (addCustom) {
             const customPath = await vscode.window.showInputBox({
                 prompt: 'Enter custom watch path (glob pattern)',
                 placeHolder: 'e.g., scripts/**/*.ctl or javascript/**/*.ts',
-                title: 'Add Custom Watch Path'
+                title: 'Add Custom Watch Path',
             });
 
             if (customPath) {
@@ -1193,7 +1203,10 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         }
 
         // If watcher is active, restart with new config
-        const isActive = this.devWatcherService.isWatcherActive(this.currentProjectId, managerData.idx);
+        const isActive = this.devWatcherService.isWatcherActive(
+            this.currentProjectId,
+            managerData.idx,
+        );
 
         if (isActive) {
             this.devWatcherService.stopWatcher(this.currentProjectId, managerData.idx);
@@ -1207,11 +1220,11 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                 currentProject.version,
                 managerType,
                 managerData.options?.startOptions,
-                { watchPaths }
+                { watchPaths },
             );
 
             vscode.window.showInformationMessage(
-                `Watch paths configured for ${managerType}: ${watchPaths.length} pattern(s)`
+                `Watch paths configured for ${managerType}: ${watchPaths.length} pattern(s)`,
             );
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
@@ -1230,7 +1243,7 @@ class ManagerItem extends vscode.TreeItem {
         public readonly status?: string,
         managerData?: ManagerDisplayData,
         startOptions?: string,
-        watcherState?: WatcherState
+        watcherState?: WatcherState,
     ) {
         super(label, collapsibleState);
 
@@ -1270,9 +1283,7 @@ class ManagerItem extends vscode.TreeItem {
                     'circle-filled',
                     new vscode.ThemeColor('testing.iconPassed'),
                 );
-                desc = startOptions
-                    ? `${startOptions} (PID: ${info.pid})`
-                    : `PID: ${info.pid}`;
+                desc = startOptions ? `${startOptions} (PID: ${info.pid})` : `PID: ${info.pid}`;
             } else if (info.state === ProjEnvManagerState.NotRunning) {
                 this.iconPath = new vscode.ThemeIcon(
                     'circle-outline',
@@ -1321,10 +1332,14 @@ class ManagerItem extends vscode.TreeItem {
                     tooltipText += `\nFiles watched: ${watcherState.watchedFileCount}`;
                 }
                 if (watcherState.lastChange) {
-                    tooltipText += `\nLast change: ${new Date(watcherState.lastChange).toLocaleTimeString()}`;
+                    tooltipText += `\nLast change: ${new Date(
+                        watcherState.lastChange,
+                    ).toLocaleTimeString()}`;
                 }
                 if (watcherState.lastRestart) {
-                    tooltipText += `\nLast restart: ${new Date(watcherState.lastRestart).toLocaleTimeString()}`;
+                    tooltipText += `\nLast restart: ${new Date(
+                        watcherState.lastRestart,
+                    ).toLocaleTimeString()}`;
                 }
                 if (watcherState.error) {
                     tooltipText += `\nError: ${watcherState.error}`;
