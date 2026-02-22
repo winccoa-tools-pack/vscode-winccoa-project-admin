@@ -248,7 +248,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
 
         // Register dev watcher commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.toggleWatcher', async (item: any) => {
+            vscode.commands.registerCommand('winccoa.manager.toggleWatcher', async (item: { managerData?: ManagerDisplayData }) => {
                 if (item && item.managerData) {
                     await managerTreeProvider.toggleWatcher(item.managerData);
                 }
@@ -256,7 +256,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<WinCCO
         );
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('winccoa.manager.configureWatcher', async (item: any) => {
+            vscode.commands.registerCommand('winccoa.manager.configureWatcher', async (item: { managerData?: ManagerDisplayData }) => {
                 if (item && item.managerData) {
                     await managerTreeProvider.configureWatcher(item.managerData);
                 }

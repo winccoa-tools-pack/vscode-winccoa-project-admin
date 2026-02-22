@@ -11,7 +11,7 @@ import { ExtensionOutputChannel } from './extensionOutput';
 import { SystemTreeProvider } from './views/systemTreeProvider';
 import { ManagerTreeProvider } from './views/managerTreeProvider';
 import { ProjEnvManagerState } from '@winccoa-tools-pack/npm-winccoa-core';
-import type { ProjectInfo, WatcherState } from './types';
+import type { ProjectInfo } from './types';
 import type {
     ProjEnvManagerInfo,
     ProjEnvManagerOptions,
@@ -1863,7 +1863,7 @@ class ToggleWatcherTool implements vscode.LanguageModelTool<ToggleWatcherInput> 
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<ToggleWatcherInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken, // eslint-disable-line @typescript-eslint/no-unused-vars
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
@@ -2005,13 +2005,14 @@ class ToggleWatcherTool implements vscode.LanguageModelTool<ToggleWatcherInput> 
                     )
                 ]);
             }
-        } catch (error: any) {
-            ExtensionOutputChannel.error('LanguageModelTool', 'Toggle watcher failed', error);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Toggle watcher failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message || String(error)
+                        error: err.message
                     }, null, 2)
                 )
             ]);
@@ -2034,7 +2035,7 @@ class WatcherStatusTool implements vscode.LanguageModelTool<WatcherStatusInput> 
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<WatcherStatusInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken, // eslint-disable-line @typescript-eslint/no-unused-vars
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
@@ -2082,13 +2083,14 @@ class WatcherStatusTool implements vscode.LanguageModelTool<WatcherStatusInput> 
                     }, null, 2)
                 )
             ]);
-        } catch (error: any) {
-            ExtensionOutputChannel.error('LanguageModelTool', 'Get watcher status failed', error);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Get watcher status failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message || String(error)
+                        error: err.message
                     }, null, 2)
                 )
             ]);
