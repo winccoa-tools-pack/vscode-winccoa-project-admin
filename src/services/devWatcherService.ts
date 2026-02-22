@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import * as chokidar from 'chokidar';
 import * as path from 'path';
 import * as fs from 'fs';
-import { PmonComponent } from '@winccoa-tools-pack/npm-winccoa-core';
+import { PmonComponent, ProjEnvManagerState } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
-import { ManagerWatchConfig, WatcherState, WatcherStatus, PersistedWatcherState } from '../types';
+import { ManagerWatchConfig, WatcherState, PersistedWatcherState } from '../types';
 
 const SOURCE = 'DevWatcher';
 
@@ -259,12 +259,15 @@ export class DevWatcherService {
         watcher.on('ready', () => {
             const watched = watcher.getWatched();
             let fileCount = 0;
-            for (const dir of Object.values(watched)) {
-                fileCount += dir.length;
+            const directories: string[] = [];
+            for (const [dir, files] of Object.entries(watched)) {
+                fileCount += files.length;
+                directories.push(dir);
             }
 
             state.watchedFileCount = fileCount;
-            ExtensionOutputChannel.info(SOURCE, `Watcher ready for ${managerType} (${fileCount} files)`);
+            ExtensionOutputChannel.info(SOURCE, `Watcher ready for ${managerType} (${fileCount} files in ${directories.length} directories)`);
+            ExtensionOutputChannel.debug(SOURCE, `Watching directories: ${directories.slice(0, 5).join(', ')}${directories.length > 5 ? ` ... and ${directories.length - 5} more` : ''}`);
             this._onDidChangeState.fire({ ...state });
         });
 
@@ -273,8 +276,9 @@ export class DevWatcherService {
         watcher.on('unlink', (filePath) => this.onFileChange(key, filePath, 'removed', config, globalConfig.debounceMs));
 
         watcher.on('error', (error) => {
-            ExtensionOutputChannel.error(SOURCE, `Watcher error for ${key}`, error instanceof Error ? error : new Error(String(error)));
-            this.updateState(key, { status: 'error', error: String(error) });
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            ExtensionOutputChannel.error(SOURCE, `Watcher error for ${key}: ${errorMsg}`, error instanceof Error ? error : new Error(String(error)));
+            this.updateState(key, { status: 'error', error: errorMsg });
         });
 
         this.watchers.set(key, watcher);
@@ -299,7 +303,10 @@ export class DevWatcherService {
         debounceMs: number
     ): void {
         const state = this.states.get(key);
-        if (!state) return;
+        if (!state) {
+            ExtensionOutputChannel.debug(SOURCE, `No state found for ${key}, ignoring file change`);
+            return;
+        }
 
         ExtensionOutputChannel.debug(SOURCE, `File ${action}: ${filePath}`);
 
@@ -310,23 +317,79 @@ export class DevWatcherService {
         // Clear existing debounce timer
         const existingTimer = this.debounceTimers.get(key);
         if (existingTimer) {
+            ExtensionOutputChannel.debug(SOURCE, `Clearing existing debounce timer for ${key}`);
             clearTimeout(existingTimer);
         }
 
         // Set new debounce timer
+        ExtensionOutputChannel.debug(SOURCE, `Setting debounce timer (${debounceMs}ms) for ${key}`);
         const timer = setTimeout(() => {
             this.debounceTimers.delete(key);
 
             if (config.waitForTsc && filePath.endsWith('.ts')) {
                 // For TypeScript files, wait a bit longer for compilation
-                ExtensionOutputChannel.info(SOURCE, `TypeScript file changed, waiting for compilation...`);
-                setTimeout(() => this.triggerRestart(key), 2000);
+                ExtensionOutputChannel.info(SOURCE, `TypeScript file changed, waiting 2s for compilation...`);
+                setTimeout(() => {
+                    ExtensionOutputChannel.debug(SOURCE, `Triggering restart after TypeScript compilation wait`);
+                    this.triggerRestart(key);
+                }, 2000);
             } else {
+                ExtensionOutputChannel.debug(SOURCE, `Triggering restart after debounce`);
                 this.triggerRestart(key);
             }
         }, debounceMs);
 
         this.debounceTimers.set(key, timer);
+    }
+
+    /**
+     * Wait for manager to reach a specific state
+     */
+    private async waitForManagerState(
+        projectId: string,
+        managerIndex: number,
+        targetState: ProjEnvManagerState,
+        timeoutMs: number = 10000,
+        pollIntervalMs: number = 500
+    ): Promise<boolean> {
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < timeoutMs) {
+            const status = await this.pmon.getProjectStatus(projectId);
+            const manager = status?.managers?.[managerIndex];
+
+            if (!manager) {
+                ExtensionOutputChannel.debug(SOURCE, `Manager ${managerIndex} not found in status`);
+                return false;
+            }
+
+            const stateStr = this.getStateString(manager.state);
+            ExtensionOutputChannel.debug(SOURCE, `Manager ${managerIndex} current state: ${stateStr}, target: ${this.getStateString(targetState)}`);
+
+            if (manager.state === targetState) {
+                return true;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        }
+
+        return false;
+    }
+
+    /**
+     * Get human-readable state string
+     */
+    private getStateString(state: ProjEnvManagerState): string {
+        switch (state) {
+            case ProjEnvManagerState.Running:
+                return 'Running';
+            case ProjEnvManagerState.NotRunning:
+                return 'NotRunning';
+            case ProjEnvManagerState.Init:
+                return 'Init';
+            default:
+                return `Unknown(${state})`;
+        }
     }
 
     /**
@@ -350,24 +413,46 @@ export class DevWatcherService {
         const globalConfig = this.getConfig();
 
         ExtensionOutputChannel.info(SOURCE, `Restarting manager ${managerIndex} for ${projectId}...`);
+        ExtensionOutputChannel.debug(SOURCE, `Restart attempt ${retryCount + 1}/${globalConfig.maxRetries + 1}`);
 
         try {
             // Stop manager
+            ExtensionOutputChannel.debug(SOURCE, `Stopping manager ${managerIndex}...`);
             const stopResult = await this.pmon.stopManager(projectId, managerIndex);
+            ExtensionOutputChannel.debug(SOURCE, `Stop command exit code: ${stopResult}`);
+
             if (stopResult !== 0) {
                 throw new Error(`Failed to stop manager (exit code: ${stopResult})`);
             }
 
-            // Wait for graceful shutdown
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait for manager to actually stop (poll until NotRunning)
+            ExtensionOutputChannel.debug(SOURCE, `Polling for manager ${managerIndex} to stop...`);
+            const stopped = await this.waitForManagerState(projectId, managerIndex, ProjEnvManagerState.NotRunning, 10000, 300);
+
+            if (!stopped) {
+                ExtensionOutputChannel.warn(SOURCE, `Manager ${managerIndex} did not reach NotRunning state within timeout, proceeding anyway`);
+            } else {
+                ExtensionOutputChannel.debug(SOURCE, `Manager ${managerIndex} stopped successfully`);
+            }
 
             // Start manager
+            ExtensionOutputChannel.debug(SOURCE, `Starting manager ${managerIndex}...`);
             const startResult = await this.pmon.startManager(projectId, managerIndex);
+            ExtensionOutputChannel.debug(SOURCE, `Start command exit code: ${startResult}`);
+
             if (startResult !== 0) {
                 throw new Error(`Failed to start manager (exit code: ${startResult})`);
             }
 
-            ExtensionOutputChannel.success(SOURCE, `Manager ${managerIndex} restarted successfully`);
+            // Wait for manager to actually start (poll until Running)
+            ExtensionOutputChannel.debug(SOURCE, `Polling for manager ${managerIndex} to start...`);
+            const started = await this.waitForManagerState(projectId, managerIndex, ProjEnvManagerState.Running, 15000, 500);
+
+            if (!started) {
+                throw new Error(`Manager ${managerIndex} did not reach Running state within timeout`);
+            }
+
+            ExtensionOutputChannel.success(SOURCE, `Manager ${managerIndex} restarted successfully and verified running`);
             this.updateState(key, {
                 status: 'watching',
                 lastRestart: new Date(),
@@ -387,7 +472,7 @@ export class DevWatcherService {
             }
 
             this.updateState(key, { status: 'error', error: errorMsg });
-            vscode.window.showErrorMessage(`Dev Watcher: Failed to restart manager after ${globalConfig.maxRetries} attempts`);
+            vscode.window.showErrorMessage(`Dev Watcher: Failed to restart manager after ${globalConfig.maxRetries} attempts: ${errorMsg}`);
 
         } finally {
             this.restartingManagers.delete(key);
@@ -395,6 +480,7 @@ export class DevWatcherService {
             // Handle pending restart
             if (this.pendingRestarts.has(key)) {
                 this.pendingRestarts.delete(key);
+                ExtensionOutputChannel.debug(SOURCE, `Processing queued restart for ${key}`);
                 setTimeout(() => this.triggerRestart(key), 500);
             }
         }
@@ -416,10 +502,12 @@ export class DevWatcherService {
      */
     stopWatcher(projectId: string, managerIndex: number): void {
         const key = this.getWatcherKey(projectId, managerIndex);
+        ExtensionOutputChannel.debug(SOURCE, `Stopping watcher for ${key}`);
 
         // Clear debounce timer
         const timer = this.debounceTimers.get(key);
         if (timer) {
+            ExtensionOutputChannel.debug(SOURCE, `Clearing debounce timer for ${key}`);
             clearTimeout(timer);
             this.debounceTimers.delete(key);
         }
@@ -427,8 +515,20 @@ export class DevWatcherService {
         // Close chokidar watcher
         const watcher = this.watchers.get(key);
         if (watcher) {
+            ExtensionOutputChannel.debug(SOURCE, `Closing chokidar watcher for ${key}`);
             watcher.close();
             this.watchers.delete(key);
+        }
+
+        // Clear any pending restarts
+        if (this.pendingRestarts.has(key)) {
+            ExtensionOutputChannel.debug(SOURCE, `Clearing pending restart for ${key}`);
+            this.pendingRestarts.delete(key);
+        }
+
+        if (this.restartingManagers.has(key)) {
+            ExtensionOutputChannel.debug(SOURCE, `Clearing restarting flag for ${key}`);
+            this.restartingManagers.delete(key);
         }
 
         // Update state
@@ -501,7 +601,7 @@ export class DevWatcherService {
     private saveActiveWatchers(): void {
         const activeWatchers: PersistedWatcherState[] = [];
 
-        for (const [key, state] of this.states) {
+        for (const [, state] of this.states) {
             if (state.status !== 'stopped') {
                 const config = this.getSavedConfig(state.projectId, state.managerIndex);
                 if (config) {
