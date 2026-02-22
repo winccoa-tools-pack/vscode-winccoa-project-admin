@@ -241,6 +241,9 @@ jobs:
                 ? `Automated **hotfix** PR for **v${version}**.`
                 : `Automated release PR for **v${version}**.`,
               '',
+              '> ⚠️ **Merge this PR using a merge commit** (not squash!) so that the',
+              '> upmerge back into `develop` can be resolved automatically.',
+              '',
               'Checklist:',
               '- [ ] CI passes on this branch',
               '- [ ] Pre-release workflow produced a tested VSIX (GitHub pre-release asset)',
