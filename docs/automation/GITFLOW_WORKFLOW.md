@@ -33,10 +33,13 @@ Workflow: `.github/workflows/gitflow.yml`
 Whenever `main` gets new commits, the workflow:
 
 1. Updates/creates `feature/upmerge-main-to-develop`
-2. Merges `main` into that branch
+2. Merges `main` into that branch (using `-X theirs` to auto-resolve conflicts in favour of main)
 3. Creates/updates a PR into `develop` (draft if merge conflicts are detected)
+4. Enables GitHub auto-merge (squash) on the PR so it merges automatically once required status checks pass
 
 This keeps the upmerge conflict-friendly and auditable.
+
+> **Note:** The auto-merge uses **squash** merge to comply with the `develop` branch's `required_linear_history` ruleset. The repo-level `allow_auto_merge` setting must be enabled (see `repository.settings.yml`).
 
 ## Creating release/hotfix branches
 

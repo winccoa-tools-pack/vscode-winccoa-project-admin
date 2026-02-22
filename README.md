@@ -210,7 +210,6 @@ This core library is used by:
 **WinCC OA** and **Siemens** are trademarks of Siemens AG. This project is not affiliated with, endorsed by, or sponsored by Siemens AG. This is a community-driven open source project created to enhance the development experience for WinCC OA developers.
 
 ---
-
-Made with ❤️ for the WinCC OA community
+<center>Made with ❤️ for and by the WinCC OA community</center>
 
 [GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-control) • [Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-control/issues) • [WinCC OA Docs](https://www.winccoa.com)
