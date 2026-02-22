@@ -419,6 +419,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         try {
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
 
+            // Set the version for the pmon component
+            this.pmon.setVersion(project.version);
+
             // Step 1: Check if PMON is running
             ExtensionOutputChannel.debug(
                 'SystemTreeProvider',
@@ -483,6 +486,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
             try {
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
 
+                // Set the version for the pmon component
+                this.pmon.setVersion(project.version);
+
                 // Step 1: Stop all managers first
                 ExtensionOutputChannel.info(
                     'SystemTreeProvider',
@@ -534,6 +540,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         try {
             vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
+
+            // Set the version for the pmon component
+            this.pmon.setVersion(currentProject.version);
 
             // Step 1: Check if PMON is running
             ExtensionOutputChannel.debug(
@@ -604,6 +613,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showInformationMessage(
                     `⏹ Stopping system for ${currentProject.name}...`,
                 );
+
+                // Set the version for the pmon component
+                this.pmon.setVersion(currentProject.version);
 
                 // Step 1: Stop all managers first
                 ExtensionOutputChannel.info(
@@ -778,6 +790,9 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
                 vscode.window.showInformationMessage(
                     `⟳ Restarting PMON for ${currentProject.name}...`,
                 );
+
+                // Set the version for the pmon component
+                this.pmon.setVersion(currentProject.version);
 
                 // Stop PMON first
                 await this.pmon.stopProjectAndPmon(currentProject.id, undefined);

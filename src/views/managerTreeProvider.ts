@@ -75,6 +75,9 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         try {
             this.currentProjectId = currentProject.id;
 
+            // Set the version for the pmon component
+            this.pmon.setVersion(currentProject.version);
+
             // Get project status with manager info
             ExtensionOutputChannel.debug(
                 'ManagerTreeProvider',
