@@ -33,10 +33,13 @@ Workflow: `.github/workflows/gitflow.yml`
 Whenever `main` gets new commits, the workflow:
 
 1. Updates/creates `feature/upmerge-main-to-develop`
-2. Merges `main` into that branch
+2. Merges `main` into that branch (using `-X theirs` to auto-resolve conflicts in favour of main)
 3. Creates/updates a PR into `develop` (draft if merge conflicts are detected)
+4. Enables GitHub auto-merge (squash) on the PR so it merges automatically once required status checks pass
 
 This keeps the upmerge conflict-friendly and auditable.
+
+> **Note:** The auto-merge uses **squash** merge to comply with the `develop` branch's `required_linear_history` ruleset. The repo-level `allow_auto_merge` setting must be enabled (see `repository.settings.yml`).
 
 ## Creating release/hotfix branches
 
@@ -48,9 +51,17 @@ Use Actions → **Create Release Branch + PR**:
 - `version`: `X.Y.Z` (SemVer)
 - It creates `release/vX.Y.Z` or `hotfix/vX.Y.Z`
 - It bumps `package.json` version and refreshes `package-lock.json`
+- It generates a `CHANGELOG.md` entry for the new version
 - It opens a PR to `main`
 
-Important: this workflow does **not** update `CHANGELOG.md`.
+The changelog entry is generated from git commit messages. You can also run it locally:
+
+- `npm run generate:changelog` (prints the entry)
+- `npm run generate:changelog:write` (inserts it into `CHANGELOG.md`)
+
+For GitHub Actions, a local action is available:
+
+- `.github/actions/generate-changelog`
 
 ## Pre-release + release pipeline
 

@@ -149,7 +149,7 @@ jobs:
           ref: ${{ steps.branch.outputs.branch }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -179,6 +179,12 @@ jobs:
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
           npm install --ignore-scripts
 
+      - name: Generate CHANGELOG entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/generate-changelog.mjs --write
+
       - name: Commit and push changes
         shell: bash
         env:
@@ -194,6 +200,9 @@ jobs:
           git add package.json
           if [ -f package-lock.json ]; then
             git add package-lock.json
+          fi
+          if [ -f CHANGELOG.md ]; then
+            git add CHANGELOG.md
           fi
 
           git commit -m "chore(release): prepare v${VERSION}"
@@ -240,6 +249,9 @@ jobs:
               kind === 'hotfix'
                 ? `Automated **hotfix** PR for **v${version}**.`
                 : `Automated release PR for **v${version}**.`,
+              '',
+              '> ⚠️ **Merge this PR using a merge commit** (not squash!) so that the',
+              '> upmerge back into `develop` can be resolved automatically.',
               '',
               'Checklist:',
               '- [ ] CI passes on this branch',
