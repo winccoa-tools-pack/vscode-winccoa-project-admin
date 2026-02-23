@@ -19,7 +19,28 @@ permissions:
   pull-requests: write
  
 jobs:
+  changelog:
+    name: Changelog contains version heading
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+
+      - name: Skip (not a release/hotfix PR to main)
+        if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && (startsWith(github.event.pull_request.head.ref, 'release/') || startsWith(github.event.pull_request.head.ref, 'hotfix/'))) }}
+        run: echo "Changelog check skipped (only enforced for release/* and hotfix/* PRs targeting main)."
+
+      - name: Verify CHANGELOG.md is updated for package.json version
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && (startsWith(github.event.pull_request.head.ref, 'release/') || startsWith(github.event.pull_request.head.ref, 'hotfix/')) }}
+        run: node scripts/check-changelog-version.mjs
+
   lint:
+    needs: [changelog]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -35,6 +56,7 @@ jobs:
         run: npm run lint && npm run lint:md
 
   format:
+    needs: [changelog]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -116,6 +138,7 @@ jobs:
     if: ${{ needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     env:
+      OOM_KILLED: 'false'
       WORKDIR: /workspace
       IMAGE_NAME: mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core
     steps:
