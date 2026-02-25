@@ -3,7 +3,7 @@ import { suite, test, suiteSetup, suiteTeardown } from 'mocha';
 import * as vscode from 'vscode';
 import { ProjectManager } from '../../projectManager';
 import { registerRunnableTestProject, unregisterTestProject } from '../test-project-helpers';
-import { stopWatchingProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry';
+// import { stopWatchingProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry'; // Function removed in npm-winccoa-core
 import path from 'path';
 import fs from 'fs';
 import {
@@ -71,7 +71,7 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
 
             console.log('✅ Full integration test cleanup complete');
 
-            stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test
+            // stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test - Function removed in npm-winccoa-core
         } catch (error) {
             console.warn('⚠️  Cleanup warning (non-fatal):', error);
         }
