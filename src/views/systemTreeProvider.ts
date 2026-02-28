@@ -536,6 +536,7 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         const answer = await vscode.window.showWarningMessage(
             `Are you sure you want to stop ${project.name}?`,
+            { modal: true },
             'Yes',
             'No',
         );

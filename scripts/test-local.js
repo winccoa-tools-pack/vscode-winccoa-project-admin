@@ -28,9 +28,11 @@ const localVsix = path.join(binDir, `${extensionName}-${version}-local-${count}.
 // [2/5] Package
 console.log(`[2/5] Packaging to ${localVsix}...`);
 console.log('Updating version badge in README.md...');
-let readme = fs.readFileSync('README.md', 'utf8');
-readme = readme.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/, 
-  `![Version](https://img.shields.io/badge/version-${version}.local.${count}-blue.svg)`);
+const readmeBackup = fs.readFileSync('README.md', 'utf8');
+let readme = readmeBackup;
+// Replace both GitHub release badge and static badge
+readme = readme.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/(github\/v\/release\/[^)]+|badge\/version-[^)]*)\)/, 
+  `![Version](https://img.shields.io/badge/version-${version}.local.${count}-orange.svg)`);
 fs.writeFileSync('README.md', readme);
 
 console.log('Backing up package.json...');
@@ -47,9 +49,7 @@ try {
 } catch (error) {
   console.error('Packaging failed!');
   fs.writeFileSync('package.json', pkgBackup);
-  readme = readme.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/, 
-    `![Version](https://img.shields.io/badge/version-${version}-blue.svg)`);
-  fs.writeFileSync('README.md', readme);
+  fs.writeFileSync('README.md', readmeBackup);
   process.exit(1);
 }
 
@@ -57,9 +57,7 @@ console.log('Restoring package.json...');
 fs.writeFileSync('package.json', pkgBackup);
 
 console.log('Restoring README.md...');
-readme = readme.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/, 
-  `![Version](https://img.shields.io/badge/version-${version}-blue.svg)`);
-fs.writeFileSync('README.md', readme);
+fs.writeFileSync('README.md', readmeBackup);
 
 // [3/5] Uninstall
 console.log('\n[3/5] Uninstalling existing extension...');
