@@ -3,7 +3,6 @@ import { suite, test, suiteSetup, suiteTeardown } from 'mocha';
 import * as vscode from 'vscode';
 import { ProjectManager } from '../../projectManager';
 import { registerRunnableTestProject, unregisterTestProject } from '../test-project-helpers';
-// import { stopWatchingProjectRegistries } from '@winccoa-tools-pack/npm-winccoa-core/types/project/ProjEnvProjectRegistry'; // Function removed in npm-winccoa-core
 import path from 'path';
 import fs from 'fs';
 import {
