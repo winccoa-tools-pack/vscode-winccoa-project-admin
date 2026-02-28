@@ -69,8 +69,6 @@ suite('Full VS Code Integration Tests with WinCC OA', () => {
             }
 
             console.log('✅ Full integration test cleanup complete');
-
-            // stopWatchingProjectRegistries(); // Ensure we stop watching for project registry changes after the test - Function removed in npm-winccoa-core
         } catch (error) {
             console.warn('⚠️  Cleanup warning (non-fatal):', error);
         }
