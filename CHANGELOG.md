@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Project Stop Confirmation**: Changed from dismissible notification toast (bottom-right) to modal dialog (center)
+- **Project Stop Confirmation**: Changed from dismissible notification toast (bottom-right) to modal dialog (center) ([#28](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/28))
   - Modal dialog prevents users from missing the confirmation prompt when notifications are disabled
   - Consistent with manager deletion behavior (both use modal dialogs)
   - Resolves issue where stop confirmation could be missed if extension notifications were turned off
