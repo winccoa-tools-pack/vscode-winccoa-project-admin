@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Manager Settings: Start Options with quotes** ([#29](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/29)): Start options containing quoted arguments (e.g. `-p "vision/login.pnl"`) were truncated at the first quote due to unescaped HTML in the input field value attribute. Fixed by HTML-escaping the start options before rendering.
+- **Manager Settings: Start Options with quotes** ([#29](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/29)):
+  Start options containing quoted arguments (e.g. `-p "vision/login.pnl"`) were truncated at the first
+  quote due to unescaped HTML in the input field value attribute. Fixed by HTML-escaping before rendering.
 
 ## [2.4.0] - 2026-02-28
 
