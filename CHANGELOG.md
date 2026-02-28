@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-02-28
+
+### Fixed
+
+- **Manager Settings: Start Options with quotes** ([#29](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/29)): Start options containing quoted arguments (e.g. `-p "vision/login.pnl"`) were truncated at the first quote due to unescaped HTML in the input field value attribute. Fixed by HTML-escaping the start options before rendering.
+
 ## [2.4.0] - 2026-02-28
 
 ### Changed

@@ -84,8 +84,17 @@ export class ManagerSettingsPanel {
         }
     }
 
+    private _escapeAttr(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     private _getHtmlContent(options: ProjEnvManagerOptions): string {
         const nonce = this._getNonce();
+        const startOptionsEscaped = this._escapeAttr(options.startOptions || '');
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -226,7 +235,7 @@ export class ManagerSettingsPanel {
     
     <div class="info-box">
         <strong>Manager:</strong> <span class="manager-name">${options.component}</span><br>
-        <strong>Options:</strong> ${options.startOptions || '(none)'}
+        <strong>Options:</strong> ${startOptionsEscaped || '(none)'}
     </div>
     
     <form id="settingsForm">
@@ -284,7 +293,7 @@ export class ManagerSettingsPanel {
                 <div class="label-description">Command line arguments</div>
             </label>
             <input type="text" id="startOptions" name="startOptions" 
-                   value="${options.startOptions || ''}" 
+                   value="${startOptionsEscaped}" 
                    placeholder="e.g., -num 1 -f script.lst">
         </div>
         
