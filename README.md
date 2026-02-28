@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/github/v/release/winccoa-tools-pack/vscode-winccoa-project-admin?label=version)
+![Version](https://img.shields.io/badge/version-2.4.1-blue.svg)
 ![License](https://img.shields.io/github/license/winccoa-tools-pack/vscode-winccoa-project-admin)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109.2-007ACC.svg)
 [![Coverage](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin/graph/badge.svg)](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin)
