@@ -303,7 +303,7 @@ export class ManagerSettingsPanel {
         
         <div class="button-group">
             <button type="submit" class="btn-primary">Save</button>
-            <button type="button" class="btn-secondary" onclick="cancelSettings()">Cancel</button>
+            <button type="button" class="btn-secondary" id="cancelButton">Cancel</button>
         </div>
     </form>
     
@@ -329,11 +329,11 @@ export class ManagerSettingsPanel {
             });
         });
         
-        function cancelSettings() {
+        document.getElementById('cancelButton').addEventListener('click', () => {
             vscode.postMessage({
                 command: 'cancel'
             });
-        }
+        });
     </script>
 </body>
 </html>`;
