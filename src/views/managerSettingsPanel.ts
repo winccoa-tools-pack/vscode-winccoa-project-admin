@@ -48,23 +48,24 @@ export class ManagerSettingsPanel {
         // Open beside current editor (feels more like a dialog)
         const column = vscode.ViewColumn.Beside;
 
-        // If panel exists, reveal it
+        // If panel exists, dispose it first to allow switching between managers
         if (ManagerSettingsPanel.currentPanel) {
-            ManagerSettingsPanel.currentPanel._panel.reveal(column);
-        } else {
-            // Create new panel
-            const panel = vscode.window.createWebviewPanel(
-                'managerSettings',
-                'Manager Settings',
-                column,
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: false, // Don't retain - more modal-like
-                },
-            );
-
-            ManagerSettingsPanel.currentPanel = new ManagerSettingsPanel(panel, currentOptions);
+            ManagerSettingsPanel.currentPanel._panel.dispose();
+            ManagerSettingsPanel.currentPanel = undefined;
         }
+
+        // Create new panel
+        const panel = vscode.window.createWebviewPanel(
+            'managerSettings',
+            'Manager Settings',
+            column,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: false, // Don't retain - more modal-like
+            },
+        );
+
+        ManagerSettingsPanel.currentPanel = new ManagerSettingsPanel(panel, currentOptions);
 
         return new Promise((resolve) => {
             if (ManagerSettingsPanel.currentPanel) {
