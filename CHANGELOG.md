@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] - 2026-03-01
+
+### Fixed
+
+- **Manager Settings: Cannot switch between managers** ([#31](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/31)):
+  When Manager Settings panel was already open, clicking to open settings for a different manager had no effect.
+  Panel only called `reveal()` without updating content. Fixed by disposing existing panel before creating new one,
+  ensuring settings are always loaded for the selected manager.
+
 ## [2.4.2] - 2026-03-01
 
 ### Fixed
