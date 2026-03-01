@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] - 2026-03-01
+
+### Fixed
+
+- **Manager Settings: Cancel Button not working** ([#30](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/30)):
+  Cancel button had no effect when clicked. Function was not accessible in global scope due to inline `onclick`
+  attribute. Fixed by using addEventListener pattern (consistent with Save button). Cancel now properly closes
+  the window without saving changes.
+
 ## [2.4.1] - 2026-02-28
 
 ### Fixed

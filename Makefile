@@ -1,4 +1,4 @@
-.PHONY: help install build clean watch package test test-local
+.PHONY: help install build lint clean watch package test test-local
 
 # Variables
 EXTENSION_NAME := winccoa-project-admin
@@ -41,6 +41,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make install     - Install all dependencies"
 	@echo "  make build       - Build extension"
+	@echo "  make lint        - Lint TypeScript and Markdown files"
 	@echo "  make clean       - Remove build artifacts"
 	@echo "  make watch       - Watch mode for development"
 	@echo "  make package     - Package extension as .vsix"
@@ -66,6 +67,14 @@ build:
 	@echo "Building extension..."
 	$(NPM) run compile
 	@echo "Build completed successfully!"
+
+# Lint TypeScript and Markdown files
+lint:
+	@echo "Linting TypeScript files..."
+	$(NPM) run lint
+	@echo "Linting Markdown files..."
+	$(NPM) run lint:md
+	@echo "Lint completed successfully!"
 
 # Clean build artifacts
 clean:
