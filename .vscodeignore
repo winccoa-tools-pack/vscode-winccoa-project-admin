@@ -17,7 +17,6 @@ Makefile
 
 # Source and configs
 src/**
-out/**
 tsconfig.json
 tsconfig.tsbuildinfo
 
