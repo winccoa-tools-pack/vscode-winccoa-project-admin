@@ -281,12 +281,12 @@
         },
         {
           "command": "winccoa.manager.delete",
-          "when": "view == winccoa.managerView && viewItem == manager",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
           "group": "manager@2"
         },
         {
           "command": "winccoa.manager.edit",
-          "when": "view == winccoa.managerView && viewItem == manager",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
           "group": "manager@1"
         },
         {
@@ -297,7 +297,7 @@
         {
           "command": "winccoa.manager.configureWatcher",
           "when": "view == winccoa.managerView && viewItem =~ /^manager/",
-          "group": "watcher@1"
+          "group": "manager@3"
         },
         {
           "command": "winccoa.project.start",
