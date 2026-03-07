@@ -115,54 +115,6 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         this._onDidChangeTreeData.fire();
     }
 
-    /**
-     * Get valid version for PMON operations
-     * Falls back to parsing config file if project.version is invalid
-     */
-    private getValidVersion(project: ProjectInfo): string {
-        // Check if current version is valid (not "unknown", not empty)
-        if (project.version && project.version !== 'unknown') {
-            return project.version;
-        }
-
-        ExtensionOutputChannel.warn(
-            'SystemTreeProvider',
-            `Project ${project.id} has invalid version "${project.version}", parsing from config`,
-        );
-
-        // Fallback: Parse from config file
-        try {
-            const configPath = path.join(project.projectDir, 'config', 'config');
-
-            if (!fs.existsSync(configPath)) {
-                throw new Error(`Config file not found: ${configPath}`);
-            }
-
-            const configContent = fs.readFileSync(configPath, 'utf-8');
-            const versionMatch = configContent.match(
-                /proj_version\s*=\s*"([0-9]+\.[0-9]+(?:\.[0-9]+)?)"/i,
-            );
-
-            if (versionMatch && versionMatch[1]) {
-                const version = versionMatch[1];
-                // Normalize to major.minor format
-                const normalized = version.split('.').slice(0, 2).join('.');
-                ExtensionOutputChannel.info(
-                    'SystemTreeProvider',
-                    `Parsed version from config: ${normalized}`,
-                );
-                return normalized;
-            }
-
-            throw new Error(`No proj_version found in ${configPath}`);
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            throw new Error(
-                `Cannot determine WinCC OA version for project ${project.id}: ${err.message}`,
-            );
-        }
-    }
-
     getTreeItem(element: SystemItem): vscode.TreeItem {
         return element;
     }
@@ -171,11 +123,6 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         if (!element) {
             // Root level - show system status based on current project
             const currentProject = this.projectManager.getCurrentProject();
-
-            // Set version if we have a current project
-            if (currentProject) {
-                this.pmon.setVersion(currentProject.version);
-            }
 
             // If no projects loaded yet, show loading state
             if (!currentProject && this.projectManager.getRunningProjects().length === 0) {
@@ -470,15 +417,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            // Get valid version (with fallback to config parsing)
-            const version = this.getValidVersion(project);
-            ExtensionOutputChannel.debug(
-                'SystemTreeProvider',
-                `Setting WinCC OA version: ${version}`,
-            );
-            this.pmon.setVersion(version);
-
             vscode.window.showInformationMessage(`⟳ Starting ${project.name}...`);
+
+            // Set the version for the pmon component
+            this.pmon.setVersion(project.version);
 
             // Step 1: Check if PMON is running
             ExtensionOutputChannel.debug(
@@ -543,15 +485,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         if (answer === 'Yes') {
             try {
-                // Get valid version (with fallback to config parsing)
-                const version = this.getValidVersion(project);
-                ExtensionOutputChannel.debug(
-                    'SystemTreeProvider',
-                    `Setting WinCC OA version: ${version}`,
-                );
-                this.pmon.setVersion(version);
-
                 vscode.window.showInformationMessage(`⏹ Stopping ${project.name}...`);
+
+                // Set the version for the pmon component
+                this.pmon.setVersion(project.version);
 
                 // Step 1: Stop all managers first
                 ExtensionOutputChannel.info(
@@ -603,14 +540,10 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
         }
 
         try {
-            // Version is already parsed in toProjectInfo()
-            ExtensionOutputChannel.debug(
-                'SystemTreeProvider',
-                `Setting WinCC OA version: ${currentProject.version}`,
-            );
-            this.pmon.setVersion(currentProject.version);
-
             vscode.window.showInformationMessage(`⟳ Starting system for ${currentProject.name}...`);
+
+            // Set the version for the pmon component
+            this.pmon.setVersion(currentProject.version);
 
             // Step 1: Check if PMON is running
             ExtensionOutputChannel.debug(
@@ -678,16 +611,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         if (answer === 'Yes') {
             try {
-                // Version is already parsed in toProjectInfo()
-                ExtensionOutputChannel.debug(
-                    'SystemTreeProvider',
-                    `Setting WinCC OA version: ${currentProject.version}`,
-                );
-                this.pmon.setVersion(currentProject.version);
-
                 vscode.window.showInformationMessage(
                     `⏹ Stopping system for ${currentProject.name}...`,
                 );
+
+                // Set the version for the pmon component
+                this.pmon.setVersion(currentProject.version);
 
                 // Step 1: Stop all managers first
                 ExtensionOutputChannel.info(
@@ -859,12 +788,12 @@ export class SystemTreeProvider implements vscode.TreeDataProvider<SystemItem> {
 
         if (answer === 'Yes') {
             try {
-                // Set WinCC OA version for pmon component
-                this.pmon.setVersion(currentProject.version);
-
                 vscode.window.showInformationMessage(
                     `⟳ Restarting PMON for ${currentProject.name}...`,
                 );
+
+                // Set the version for the pmon component
+                this.pmon.setVersion(currentProject.version);
 
                 // Stop PMON first
                 await this.pmon.stopProjectAndPmon(currentProject.id, undefined);

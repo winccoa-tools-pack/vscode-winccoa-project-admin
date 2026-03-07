@@ -282,7 +282,7 @@ export class ManagerSettingsPanel {
                 Reset Min
                 <div class="label-description">Counter reset time (0-60 min)</div>
             </label>
-            <input type="number" id="resetMin" name="resetMin" 
+            <input type="number" id="resetMin" name="resetMin"
                    min="0" max="60" value="${options.resetMin}" required>
             <div class="current-value">Typical: 1 (or 2 for archive/proxy/sim)</div>
         </div>
