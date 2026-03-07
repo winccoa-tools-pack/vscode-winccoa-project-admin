@@ -265,19 +265,24 @@
       ],
       "view/item/context": [
         {
-          "command": "winccoa.manager.start",
-          "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
-        },
-        {
-          "command": "winccoa.manager.stop",
-          "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
+          "command": "winccoa.manager.toggleWatcher",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
+          "group": "inline@1"
         },
         {
           "command": "winccoa.manager.restart",
           "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
+          "group": "inline@2"
+        },
+        {
+          "command": "winccoa.manager.start",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline@3"
+        },
+        {
+          "command": "winccoa.manager.stop",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline@4"
         },
         {
           "command": "winccoa.manager.delete",
@@ -288,11 +293,6 @@
           "command": "winccoa.manager.edit",
           "when": "view == winccoa.managerView && viewItem =~ /^manager/",
           "group": "manager@1"
-        },
-        {
-          "command": "winccoa.manager.toggleWatcher",
-          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
-          "group": "inline"
         },
         {
           "command": "winccoa.manager.configureWatcher",
