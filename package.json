@@ -211,6 +211,23 @@
         "command": "winccoa.project.removeFromFavorites",
         "title": "Remove from Favorites",
         "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa.manager.toggleWatcher",
+        "title": "Toggle File Watcher",
+        "category": "WinCC OA",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "winccoa.manager.configureWatcher",
+        "title": "Configure Watch Paths",
+        "category": "WinCC OA",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "winccoa.manager.stopAllWatchers",
+        "title": "Stop All File Watchers",
+        "category": "WinCC OA"
       }
     ],
     "menus": {
@@ -248,29 +265,39 @@
       ],
       "view/item/context": [
         {
-          "command": "winccoa.manager.start",
-          "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
-        },
-        {
-          "command": "winccoa.manager.stop",
-          "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
+          "command": "winccoa.manager.toggleWatcher",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
+          "group": "inline@1"
         },
         {
           "command": "winccoa.manager.restart",
           "when": "view == winccoa.managerView && viewItem == manager",
-          "group": "inline"
+          "group": "inline@2"
+        },
+        {
+          "command": "winccoa.manager.start",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline@3"
+        },
+        {
+          "command": "winccoa.manager.stop",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "inline@4"
         },
         {
           "command": "winccoa.manager.delete",
-          "when": "view == winccoa.managerView && viewItem == manager",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
           "group": "manager@2"
         },
         {
           "command": "winccoa.manager.edit",
-          "when": "view == winccoa.managerView && viewItem == manager",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
           "group": "manager@1"
+        },
+        {
+          "command": "winccoa.manager.configureWatcher",
+          "when": "view == winccoa.managerView && viewItem =~ /^manager/",
+          "group": "manager@3"
         },
         {
           "command": "winccoa.project.start",
@@ -686,6 +713,58 @@
             "managerNum"
           ]
         }
+      },
+      {
+        "name": "winccoa_toggle_watcher",
+        "displayName": "Toggle File Watcher",
+        "modelDescription": "Toggle the file watcher for a specific WinCC OA manager. When active, the watcher monitors files and automatically restarts the manager when changes are detected. Use when the user wants to enable/disable auto-restart on file changes.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_watcher",
+        "icon": "$(eye)",
+        "userDescription": "Toggle file watcher for automatic manager restart",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "managerNum": {
+              "type": "number",
+              "description": "The manager number to toggle watcher for"
+            },
+            "projectId": {
+              "type": "string",
+              "description": "The project ID/name (optional - defaults to active project)"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "start",
+                "stop",
+                "toggle"
+              ],
+              "description": "Action to perform: start, stop, or toggle (default: toggle)"
+            }
+          },
+          "required": [
+            "managerNum"
+          ]
+        }
+      },
+      {
+        "name": "winccoa_watcher_status",
+        "displayName": "Get File Watcher Status",
+        "modelDescription": "Get the status of all active file watchers. Shows which managers have active watchers and their current state. Use when the user asks about watcher status or wants to see which managers are being watched.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_watcher_status",
+        "icon": "$(list-unordered)",
+        "userDescription": "Get status of all active file watchers",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string",
+              "description": "Filter by project ID (optional - shows all if not specified)"
+            }
+          }
+        }
       }
     ],
     "configuration": {
@@ -709,6 +788,69 @@
             "Detailed debugging information",
             "Very verbose trace information (for troubleshooting)"
           ]
+        },
+        "winccoaProjectAdmin.devWatcher.defaultPatterns": {
+          "type": "object",
+          "default": {
+            "node": [
+              "scripts/libs/**/*.ctl",
+              "javascript/**/*.js",
+              "javascript/**/*.ts",
+              "scripts/libs/**/*.ctl"
+            ],
+            "WCCOAnode": [
+              "scripts/libs/**/*.ctl",
+              "javascript/**/*.js",
+              "javascript/**/*.ts",
+              "scripts/libs/**/*.ctl"
+            ],
+            "CTRL": [
+              "scripts/**/*.ctl",
+              "scripts/libs/**/*.ctl"
+            ],
+            "WCCOActrl": [
+              "scripts/**/*.ctl",
+              "scripts/libs/**/*.ctl"
+            ],
+            "UI": [
+              "panels/**/*.xml",
+              "panels/**/*.pnl"
+            ]
+          },
+          "description": "Default watch patterns by manager type. Keys are manager type prefixes (e.g., 'node', 'CTRL'), values are arrays of glob patterns relative to project root.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "winccoaProjectAdmin.devWatcher.debounceMs": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Debounce delay in milliseconds before triggering manager restart after file changes"
+        },
+        "winccoaProjectAdmin.devWatcher.ignoredPatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/*.d.ts",
+            "**/.git/**"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Glob patterns to ignore when watching files"
+        },
+        "winccoaProjectAdmin.devWatcher.maxRetries": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum number of restart retries on failure"
         }
       }
     }
@@ -768,6 +910,7 @@
     "winccoaImage": "mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "0.2.6"
+    "@winccoa-tools-pack/npm-winccoa-core": "0.2.6",
+    "chokidar": "^3.6.0"
   }
 }

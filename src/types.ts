@@ -176,3 +176,62 @@ export interface WinCCOACoreAPI {
      */
     onDidChangeProject: (listener: (project: ProjectInfo | undefined) => void) => void;
 }
+
+// ============================================================================
+// Dev Watcher Types
+// ============================================================================
+
+/**
+ * Watcher status states
+ */
+export type WatcherStatus = 'stopped' | 'watching' | 'restarting' | 'error';
+
+/**
+ * Configuration for watching files for a specific manager
+ */
+export interface ManagerWatchConfig {
+    /** Project ID this config belongs to */
+    projectId: string;
+    /** Manager index in the project */
+    managerIndex: number;
+    /** Whether the watcher is enabled */
+    enabled: boolean;
+    /** Paths to watch (relative to project root or absolute) */
+    watchPaths: string[];
+    /** Additional patterns to ignore */
+    customIgnorePatterns?: string[];
+    /** Whether to wait for TypeScript compilation (auto-detected if not set) */
+    waitForTsc?: boolean;
+}
+
+/**
+ * Runtime state of a file watcher
+ */
+export interface WatcherState {
+    /** Project ID */
+    projectId: string;
+    /** Manager index */
+    managerIndex: number;
+    /** Current watcher status */
+    status: WatcherStatus;
+    /** Timestamp of last file change detected */
+    lastChange?: Date;
+    /** Timestamp of last manager restart */
+    lastRestart?: Date;
+    /** Error message if status is 'error' */
+    error?: string;
+    /** Number of files being watched */
+    watchedFileCount?: number;
+}
+
+/**
+ * Persisted watcher state for restoration on extension activation
+ */
+export interface PersistedWatcherState {
+    /** Project ID */
+    projectId: string;
+    /** Manager index */
+    managerIndex: number;
+    /** Watch configuration to restore */
+    config: ManagerWatchConfig;
+}
