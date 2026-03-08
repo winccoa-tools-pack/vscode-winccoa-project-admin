@@ -179,6 +179,12 @@ jobs:
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
           npm install --ignore-scripts
 
+      - name: Generate CHANGELOG entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/generate-changelog.mjs --write
+
       - name: Commit and push changes
         shell: bash
         env:
@@ -194,6 +200,9 @@ jobs:
           git add package.json
           if [ -f package-lock.json ]; then
             git add package-lock.json
+          fi
+          if [ -f CHANGELOG.md ]; then
+            git add CHANGELOG.md
           fi
 
           git commit -m "chore(release): prepare v${VERSION}"
