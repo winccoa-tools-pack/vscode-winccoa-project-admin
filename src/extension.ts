@@ -44,6 +44,27 @@ function hasSubprojectPath(value: unknown): value is { subprojectPath: string } 
     return typeof value.subprojectPath === 'string';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function hasManagerData(value: unknown): value is { managerData: ManagerDisplayData } {
+    if (!isRecord(value)) return false;
+    const managerData = value.managerData;
+    return isRecord(managerData) && typeof managerData.idx === 'number';
+}
+
+function hasProjectData(value: unknown): value is { projectData: ProjectInfo } {
+    if (!isRecord(value)) return false;
+    const projectData = value.projectData;
+    return isRecord(projectData) && typeof projectData.id === 'string';
+}
+
+function hasSubprojectPath(value: unknown): value is { subprojectPath: string } {
+    if (!isRecord(value)) return false;
+    return typeof value.subprojectPath === 'string';
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<WinCCOACoreAPI> {
     // Initialize logger first
     ExtensionOutputChannel.initialize();

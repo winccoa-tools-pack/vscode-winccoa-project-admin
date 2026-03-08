@@ -300,6 +300,16 @@
           "group": "manager@3"
         },
         {
+          "command": "winccoa.manager.delete",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@2"
+        },
+        {
+          "command": "winccoa.manager.edit",
+          "when": "view == winccoa.managerView && viewItem == manager",
+          "group": "manager@1"
+        },
+        {
           "command": "winccoa.project.start",
           "when": "view == winccoa.systemView && viewItem =~ /^project(-favorite|-nonfavorite)?$/",
           "group": "inline@1"

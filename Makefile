@@ -58,15 +58,15 @@ help:
 
 # Install dependencies
 install:
-	@echo "Installing dependencies..."
-	$(NPM) install
-	@echo "Dependencies installed successfully!"
+    @echo "Installing dependencies..."
+    $(NPM) install
+    @echo "Dependencies installed successfully!"
 
 # Build everything
 build:
-	@echo "Building extension..."
-	$(NPM) run compile
-	@echo "Build completed successfully!"
+    @echo "Building extension..."
+    $(NPM) run compile
+    @echo "Build completed successfully!"
 
 # Lint TypeScript and Markdown files
 lint:
@@ -86,22 +86,22 @@ clean:
 
 # Watch mode for development
 watch:
-	@echo "Starting watch mode..."
-	$(NPM) run watch
+    @echo "Starting watch mode..."
+    $(NPM) run watch
 
 # Package extension
 package: build
-	@echo "Packaging production release..."
-	@-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
-	@echo "Updating version badge in README.md..."
-	@node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
-	@$(VSCE) package --no-dependencies --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
-	@echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
+    @echo "Packaging production release..."
+    @-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
+    @echo "Updating version badge in README.md..."
+    @node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
+    @$(VSCE) package --no-dependencies --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+    @echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
 
 # Run tests
 test:
-	@echo "Running tests..."
-	$(NPM) test
+    @echo "Running tests..."
+    $(NPM) test
 
 # Local test target - Build, package with local stamp, replace extension, restart VS Code
 test-local:
