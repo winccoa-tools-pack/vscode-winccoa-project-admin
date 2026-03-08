@@ -51,9 +51,17 @@ Use Actions → **Create Release Branch + PR**:
 - `version`: `X.Y.Z` (SemVer)
 - It creates `release/vX.Y.Z` or `hotfix/vX.Y.Z`
 - It bumps `package.json` version and refreshes `package-lock.json`
+- It generates a `CHANGELOG.md` entry for the new version
 - It opens a PR to `main`
 
-Important: this workflow does **not** update `CHANGELOG.md`.
+The changelog entry is generated from git commit messages. You can also run it locally:
+
+- `npm run generate:changelog` (prints the entry)
+- `npm run generate:changelog:write` (inserts it into `CHANGELOG.md`)
+
+For GitHub Actions, a local action is available:
+
+- `.github/actions/generate-changelog`
 
 ## Pre-release + release pipeline
 
