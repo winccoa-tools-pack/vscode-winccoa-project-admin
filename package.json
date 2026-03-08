@@ -11,6 +11,10 @@
     "type": "git",
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin"
   },
+  "bugs": {
+    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues"
+  },
+  "homepage": "https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin#readme",
   "engines": {
     "vscode": "^1.109.2"
   },
@@ -23,12 +27,15 @@
     "scada",
     "hmi",
     "siemens",
+    "etm",
+    "industrial",
+    "automation",
     "core"
   ],
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "private": false,
   "contributes": {
     "viewsContainers": {
@@ -715,6 +722,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "check:changelog": "node scripts/check-changelog-version.mjs",
+    "generate:changelog": "node scripts/generate-changelog.mjs",
+    "generate:changelog:write": "node scripts/generate-changelog.mjs --write",
     "compile": "webpack",
     "clean:out": "node -e \"require('fs').rmSync('out',{ recursive:true, force:true, maxRetries:10, retryDelay:200 })\"",
     "clean:out-tests": "node -e \"try{require('fs').rmSync('out/test',{ recursive:true, force:true, maxRetries:10, retryDelay:200 })}catch(e){console.warn('clean:out-tests skipped:', e.message)}\"",
@@ -727,7 +737,7 @@
     "start:insiders": "code-insiders --extensionDevelopmentPath=.",
     "dev": "npm run watch",
     "watch": "webpack --watch",
-    "pretest": "npm run compile:tsc && npm run lint",
+    "pretest": "npm run compile && npm run compile:tsc && npm run lint",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
@@ -744,19 +754,21 @@
     "style-check": "npm run format:check && npm run lint"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.6",
     "@types/node": "^25.2.3",
     "@types/vscode": "^1.107.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
-    "@typescript-eslint/parser": "^8.55.0",
-    "@vscode/test-cli": "^0.0.11",
+    "@typescript-eslint/parser": "^8.56.0",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "copyfiles": "^2.4.1",
-    "eslint": "^8.50.0",
+    "eslint": "^10.0.1",
     "glob": "^13.0.3",
+    "globals": "^17.3.0",
     "markdownlint-cli": "^0.47.0",
-    "mocha": "^11.3.0",
+    "mocha": "^11.7.5",
     "prettier": "^2.8.8",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
@@ -764,10 +776,29 @@
     "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1"
   },
+  "overrides": {
+    "diff": "8.0.3",
+    "minimatch": "10.2.2",
+    "mocha": {
+      "minimatch": "10.2.2"
+    },
+    "@vscode/test-cli": {
+      "minimatch": "10.2.2"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "10.2.2"
+    },
+    "markdownlint-cli": {
+      "minimatch": "10.2.2"
+    },
+    "@vscode/vsce": {
+      "minimatch": "10.2.2"
+    }
+  },
   "config": {
     "winccoaImage": "mpokornyetm/winccoa-tools-pack-npm-winccoa-core:npm-winccoa-core"
   },
   "dependencies": {
-    "@winccoa-tools-pack/npm-winccoa-core": "0.2.4-d7edf38"
+    "@winccoa-tools-pack/npm-winccoa-core": "0.2.6"
   }
 }

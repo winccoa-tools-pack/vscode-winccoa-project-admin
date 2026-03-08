@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-02-18
+
+### Changed
+
+- **Dev Dependencies**: Updated `@types/node` and `glob` (lockfile refresh)
+
+## [2.3.0] - 2026-02-17
+
+### Fixed
+
+- **Build Output Path**: Webpack now emits the extension bundle to `out/` (matches `main: ./out/extension.js`)
+
+### Changed
+
+- **Dev Dependencies**: Adjusted `@types/node` and `glob` versions
+
 ## [2.2.1] - 2026-02-14
 
 ### Fixed

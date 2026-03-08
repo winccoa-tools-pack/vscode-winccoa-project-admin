@@ -37,6 +37,95 @@ jobs:
       timeout_seconds: 1800
       poll_interval_seconds: 10
 
+  changelog-preview:
+    name: Changelog preview (comment)
+    needs: [wait-required-workflows]
+    if: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.base.ref == 'main' &&
+        (startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/')) &&
+        needs.wait-required-workflows.result == 'success'
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+
+      - name: Generate changelog entry
+        id: gen
+        uses: ./.github/actions/generate-changelog
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- winccoa-changelog-preview -->';
+            const entry = String('${{ steps.gen.outputs.changelog }}' || '').trim();
+
+            if (!entry) {
+              core.warning('No changelog entry generated; skipping PR comment.');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.warning('No pull_request payload; skipping PR comment.');
+              return;
+            }
+
+            const body = [
+              marker,
+              '### 📝 Suggested CHANGELOG entry (auto-generated)',
+              '',
+              'This is generated from commit messages (Conventional Commits). Please review and edit `CHANGELOG.md` if needed.',
+              '',
+              '```markdown',
+              entry,
+              '```',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = pr.number;
+
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.data.find(c => typeof c.body === 'string' && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.notice(`Updated changelog preview comment (#${existing.id}).`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+              core.notice(`Created changelog preview comment (#${created.data.id}).`);
+            }
+
   pre-release:
     needs: [wait-required-workflows]
     if: ${{ always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.wait-required-workflows.result == 'success')) }}

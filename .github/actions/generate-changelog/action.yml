@@ -1,0 +1,49 @@
+name: Generate changelog entry
+description: Generates a Keep a Changelog entry for the current package.json version based on git commits.
+
+inputs:
+  write:
+    description: If true, inserts the generated entry into CHANGELOG.md
+    required: false
+    default: 'false'
+  from_tag:
+    description: Optional tag to start from (e.g. v2.3.0). If omitted, uses the latest stable SemVer tag.
+    required: false
+    default: ''
+  date:
+    description: Optional date override (YYYY-MM-DD). If omitted, uses today.
+    required: false
+    default: ''
+
+outputs:
+  changelog:
+    description: The generated changelog entry markdown
+    value: ${{ steps.gen.outputs.changelog }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate changelog entry
+      id: gen
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ARGS=()
+        if [ "${{ inputs.write }}" = "true" ]; then
+          ARGS+=("--write")
+        fi
+        if [ -n "${{ inputs.from_tag }}" ]; then
+          ARGS+=("--from-tag" "${{ inputs.from_tag }}")
+        fi
+        if [ -n "${{ inputs.date }}" ]; then
+          ARGS+=("--date" "${{ inputs.date }}")
+        fi
+
+        ENTRY=$(node scripts/generate-changelog.mjs "${ARGS[@]}")
+
+        {
+          echo 'changelog<<EOF'
+          echo "$ENTRY"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"

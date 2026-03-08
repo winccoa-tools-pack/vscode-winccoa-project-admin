@@ -1,27 +1,64 @@
-import typescriptEslint from "typescript-eslint";
+import js from '@eslint/js';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import globals from 'globals';
 
-export default [{
-    files: ["**/*.ts"],
-}, {
-    plugins: {
-        "@typescript-eslint": typescriptEslint.plugin,
+export default [
+    // Base ESLint recommended rules
+    js.configs.recommended,
+
+    // TypeScript files
+    {
+        files: ['**/*.ts', '**/*.tsx'],
+        languageOptions: {
+            parser: tsParser,
+            parserOptions: {
+                project: ['./tsconfig.json'],
+                sourceType: 'module',
+                ecmaVersion: 2021,
+            },
+            globals: {
+                ...globals.node,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': tsPlugin,
+        },
+        rules: {
+            ...tsPlugin.configs.recommended.rules,
+            'no-undef': 'off', // TypeScript handles this, and NodeJS is a TypeScript type
+        },
     },
 
-    languageOptions: {
-        parser: typescriptEslint.parser,
-        ecmaVersion: 2022,
-        sourceType: "module",
+    // Legacy tests: allow patterns common in test setup
+    {
+        files: ['src/test/**/*.ts'],
+        languageOptions: {
+            globals: {
+                ...globals.mocha,
+            },
+        },
+        rules: {
+            'no-unassigned-vars': 'off',
+            '@typescript-eslint/no-explicit-any': 'off',
+        },
     },
 
-    rules: {
-        "@typescript-eslint/naming-convention": ["warn", {
-            selector: "import",
-            format: ["camelCase", "PascalCase"],
-        }],
-
-        curly: "warn",
-        eqeqeq: "warn",
-        "no-throw-literal": "warn",
-        semi: "warn",
+    // JavaScript scripts in scripts/ directory
+    {
+        files: ['scripts/**/*.js'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+        rules: {
+            'no-undef': 'off', // Node.js globals are defined
+        },
     },
-}];
+
+    // Ignore typical output folders
+    {
+        ignores: ['node_modules/', 'dist/', 'out/', 'coverage/', 'scripts/run-node-tests.ts'],
+    },
+];
