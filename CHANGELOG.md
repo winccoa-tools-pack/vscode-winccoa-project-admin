@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-03-08
+
+### Added
+
+- **DevWatcher: Automatic Manager Restart on File Change** ([#15](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/pull/15) by [@JaMa-95](https://github.com/JaMa-95)):
+  Adds a `DevWatcherService` that monitors project files and automatically restarts WinCC OA managers when their files change.
+  - Automatically watches the manager's own file (`.ctl`, `.ctc`, `.lst`, `.pnl`, `.xml`, `.js`, `.ts`) extracted from its start options
+  - Resolves watch paths across the main project and all subprojects
+  - TypeScript-aware: detects `tsconfig.json` and waits for compilation before restarting node managers
+  - Debounced file change handling with configurable delay, retry logic, and queued restarts
+  - Persists watcher state for automatic restoration on extension reload
+  - Copilot Language Model Tool integration
+  - Toggle watcher via hover button (👁) in the manager tree view — positioned left of Restart/Start/Stop
+  - Right-click → **Configure Watch Paths** to customize watched glob patterns per manager
+  - New configuration options:
+    - `winccoaProjectAdmin.devWatcher.defaultPatterns` — default watch glob patterns per manager type
+    - `winccoaProjectAdmin.devWatcher.debounceMs` — file change debounce delay (default: 500ms)
+    - `winccoaProjectAdmin.devWatcher.ignoredPatterns` — glob patterns to ignore
+    - `winccoaProjectAdmin.devWatcher.maxRetries` — max restart retry attempts (default: 3)
+
+### Fixed
+
+- **Manager Context Menu**: Configure Watch Paths, Edit Manager, and Delete Manager are now grouped together and visible in all manager states (including when watcher is active)
+- **Manager Inline Buttons**: Watcher toggle (👁) is now positioned leftmost so existing Start/Stop/Restart buttons stay in their familiar positions
+
 ## [2.4.2] - 2026-03-01
 
 ### Fixed
