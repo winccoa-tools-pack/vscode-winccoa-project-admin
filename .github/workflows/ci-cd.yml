@@ -126,7 +126,7 @@ jobs:
         with:
           swap-size-gb: 4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Login to Docker Hub (optional)
         shell: bash
         env:
