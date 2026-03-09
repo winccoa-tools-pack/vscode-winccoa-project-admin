@@ -911,6 +911,6 @@
   },
   "dependencies": {
     "@winccoa-tools-pack/npm-winccoa-core": "0.2.6",
-    "chokidar": "^3.6.0"
+    "chokidar": "^5.0.0"
   }
 }
