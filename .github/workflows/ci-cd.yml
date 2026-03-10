@@ -90,7 +90,7 @@ jobs:
           CI: true
       - name: Upload unit coverage artifact
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '25.x' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-unitTests
           path: |
