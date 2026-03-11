@@ -143,13 +143,13 @@ jobs:
             core.setOutput('branch', releaseBranch);
 
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ steps.branch.outputs.branch }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -240,6 +240,9 @@ jobs:
               kind === 'hotfix'
                 ? `Automated **hotfix** PR for **v${version}**.`
                 : `Automated release PR for **v${version}**.`,
+              '',
+              '> ⚠️ **Merge this PR using a merge commit** (not squash!) so that the',
+              '> upmerge back into `develop` can be resolved automatically.',
               '',
               'Checklist:',
               '- [ ] CI passes on this branch',

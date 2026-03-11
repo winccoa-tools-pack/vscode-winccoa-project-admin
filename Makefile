@@ -1,4 +1,4 @@
-.PHONY: help install build clean watch package test test-local
+.PHONY: help install build lint clean watch package test test-local
 
 # Variables
 EXTENSION_NAME := winccoa-project-admin
@@ -23,80 +23,86 @@ LOCAL_COUNTER_FILE := $(BIN_DIR)/.local_build_counter
 
 # OS Detection
 ifeq ($(OS),Windows_NT)
-    DETECTED_OS := Windows
-    RM := del /Q /F
-    RMDIR := rmdir /S /Q
-    MKDIR := mkdir
-    KILL_CODE := taskkill /IM Code.exe /F 2>nul || echo "No VS Code process found"
+	DETECTED_OS := Windows
+	RM := del /Q /F
+	RMDIR := rmdir /S /Q
+	MKDIR := mkdir
+	KILL_CODE := taskkill /IM Code.exe /F 2>nul || echo "No VS Code process found"
 else
-    DETECTED_OS := $(shell uname -s)
-    RM := rm -f
-    RMDIR := rm -rf
-    MKDIR := mkdir -p
-    KILL_CODE := pkill -f "$(CODE_BIN)" 2>/dev/null || echo "No VS Code process found"
+	DETECTED_OS := $(shell uname -s)
+	RM := rm -f
+	RMDIR := rm -rf
+	MKDIR := mkdir -p
+	KILL_CODE := pkill -f "$(CODE_BIN)" 2>/dev/null || echo "No VS Code process found"
 endif
 
 # Default target
 help:
-    @echo "Available targets:"
-    @echo "  make install     - Install all dependencies"
-    @echo "  make build       - Build extension"
-    @echo "  make clean       - Remove build artifacts"
-    @echo "  make watch       - Watch mode for development"
-    @echo "  make package     - Package extension as .vsix"
-    @echo "  make test        - Run tests"
-    @echo "  make test-local  - Build, package with local stamp, install in VS Code, open test workspace"
-    @echo ""
-    @echo "Local Test Configuration:"
-    @echo "  TEST_WORKSPACE        - Path to test workspace (default: ../DevEnv.code-workspace)"
-    @echo "  CODE_BIN              - VS Code binary (default: code, use 'code-insiders' for Insiders)"
-    @echo "  FORCE_CLOSE_VSCODE    - Close all VS Code instances before opening (default: no, use 'yes' to force)"
-    @echo "  SKIP_UNINSTALL        - Skip uninstall step (default: yes)"
-    @echo "  CLOSE_OLD_WINDOW      - Close old window and open fresh (default: no)"
-    @echo "  Example: make test-local TEST_WORKSPACE=/path/to/workspace CODE_BIN=code-insiders"
+	@echo "Available targets:"
+	@echo "  make install     - Install all dependencies"
+	@echo "  make build       - Build extension"
+	@echo "  make lint        - Lint TypeScript and Markdown files"
+	@echo "  make clean       - Remove build artifacts"
+	@echo "  make watch       - Watch mode for development"
+	@echo "  make package     - Package extension as .vsix"
+	@echo "  make test        - Run tests"
+	@echo "  make test-local  - Build, package with local stamp, install in VS Code, open test workspace"
+	@echo ""
+	@echo "Local Test Configuration:"
+	@echo "  TEST_WORKSPACE        - Path to test workspace (default: DevEnv.code-workspace)"
+	@echo "  CODE_BIN              - VS Code binary (default: code, use 'code-insiders' for Insiders)"
+	@echo "  FORCE_CLOSE_VSCODE    - Close all VS Code instances before opening (default: no, use 'yes' to force)"
+	@echo "  SKIP_UNINSTALL        - Skip uninstall step (default: yes)"
+	@echo "  CLOSE_OLD_WINDOW      - Close old window and open fresh (default: no)"
+	@echo "  Example: make test-local TEST_WORKSPACE=/path/to/workspace CODE_BIN=code-insiders"
 
 # Install dependencies
 install:
-    @echo "Installing dependencies..."
-    $(NPM) install
-    @echo "Dependencies installed successfully!"
+	@echo "Installing dependencies..."
+	$(NPM) install
+	@echo "Dependencies installed successfully!"
 
 # Build everything
 build:
-    @echo "Building extension..."
-    $(NPM) run compile
-    @echo "Build completed successfully!"
+	@echo "Building extension..."
+	$(NPM) run compile
+	@echo "Build completed successfully!"
+
+# Lint TypeScript and Markdown files
+lint:
+	@echo "Linting TypeScript files..."
+	$(NPM) run lint
+	@echo "Linting Markdown files..."
+	$(NPM) run lint:md
+	@echo "Lint completed successfully!"
 
 # Clean build artifacts
 clean:
-    @echo "Cleaning build artifacts..."
-    $(RMDIR) $(DIST_DIR)/
-    $(RMDIR) out/
-    $(RMDIR) $(BIN_DIR)/
-    $(RMDIR) node_modules/
-    @echo "Clean completed!"
+	@echo "Cleaning build artifacts..."
+	@$(RMDIR) $(DIST_DIR) 2>nul || true
+	@$(RMDIR) out 2>nul || true
+	@$(RMDIR) $(BIN_DIR) 2>nul || true
+	@echo "Clean completed!"
 
 # Watch mode for development
 watch:
-    @echo "Starting watch mode..."
-    $(NPM) run watch
+	@echo "Starting watch mode..."
+	$(NPM) run watch
 
 # Package extension
 package: build
-    @echo "Packaging production release..."
-    @-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
-    @echo "Updating version badge in README.md..."
-    @node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
-    @$(VSCE) package --no-dependencies --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
-    @echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
+	@echo "Packaging production release..."
+	@-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
+	@echo "Updating version badge in README.md..."
+	@node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]*\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
+	@$(VSCE) package --no-dependencies --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+	@echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
 
 # Run tests
 test:
-    @echo "Running tests..."
-    $(NPM) test
+	@echo "Running tests..."
+	$(NPM) test
 
 # Local test target - Build, package with local stamp, replace extension, restart VS Code
-# Local test target - Build, package with local stamp, replace extension, restart VS Code
 test-local:
-    @node scripts/test-local.js $(BIN_DIR) $(EXTENSION_NAME) $(VERSION) $(EXT_ID) $(CODE_BIN) $(TEST_WORKSPACE)
-    @LOCAL_COUNT=$$(cat $(LOCAL_COUNTER_FILE)); \
+	@node scripts/test-local.js $(BIN_DIR) $(EXTENSION_NAME) $(VERSION) $(EXT_ID) $(CODE_BIN) $(TEST_WORKSPACE)
