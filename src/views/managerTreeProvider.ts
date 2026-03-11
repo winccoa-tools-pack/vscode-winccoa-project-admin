@@ -8,6 +8,8 @@ import {
 } from '@winccoa-tools-pack/npm-winccoa-core';
 import { ExtensionOutputChannel } from '../extensionOutput';
 import { ManagerSettingsPanel } from './managerSettingsPanel';
+import { DevWatcherService } from '../services/devWatcherService';
+import { WatcherState } from '../types';
 
 export interface ManagerDisplayData {
     idx: number;
@@ -25,6 +27,8 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
     private pollInterval: NodeJS.Timeout | undefined;
     private pmon: PmonComponent = new PmonComponent();
     private currentProjectId: string | undefined;
+    private devWatcherService: DevWatcherService | undefined;
+    private watcherStates: Map<string, WatcherState> = new Map();
 
     constructor(private projectManager: ProjectManager) {
         // Start polling for manager status
@@ -71,21 +75,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
         try {
             this.currentProjectId = currentProject.id;
 
-            // Set WinCC OA version for pmon component (already parsed in toProjectInfo())
-            if (!currentProject.version || currentProject.version === 'unknown') {
-                ExtensionOutputChannel.warn(
-                    'ManagerTreeProvider',
-                    `Project ${currentProject.id} has invalid version: ${currentProject.version}`,
-                );
-                this.managers = [];
-                this._onDidChangeTreeData.fire();
-                return;
-            }
-
-            ExtensionOutputChannel.debug(
-                'ManagerTreeProvider',
-                `Setting WinCC OA version: ${currentProject.version}`,
-            );
+            // Set the version for the pmon component
             this.pmon.setVersion(currentProject.version);
 
             // Get project status with manager info
@@ -206,6 +196,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
             return this.managers.map((mgr) => {
                 const componentName = mgr.options?.component || 'Unknown';
                 const startOptions = mgr.options?.startOptions || '';
+                const watcherState = this.getWatcherState(mgr.idx);
 
                 return new ManagerItem(
                     componentName,
@@ -214,6 +205,7 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                     this.getStatusText(mgr.info.state),
                     mgr,
                     startOptions,
+                    watcherState,
                 );
             });
         }
@@ -623,8 +615,8 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
                             component: componentName,
                             startMode: modeSelection.mode,
                             secondToKill: 30,
-                            resetMin: 1,
-                            resetStartCounter: 3,
+                            resetStartCounter: 1,
+                            resetMin: 0,
                             startOptions: startOptions || '',
                         };
 
@@ -1007,6 +999,238 @@ export class ManagerTreeProvider implements vscode.TreeDataProvider<ManagerItem>
 
         return usedNums.length;
     }
+
+    // ========================================================================
+    // Dev Watcher Integration
+    // ========================================================================
+
+    /**
+     * Get the pmon component for use by DevWatcherService
+     */
+    getPmon(): PmonComponent {
+        return this.pmon;
+    }
+
+    /**
+     * Set the DevWatcherService instance
+     */
+    setDevWatcherService(service: DevWatcherService): void {
+        this.devWatcherService = service;
+
+        // Subscribe to watcher state changes
+        service.onDidChangeState((state) => {
+            const key = `${state.projectId}:${state.managerIndex}`;
+            if (state.status === 'stopped') {
+                this.watcherStates.delete(key);
+            } else {
+                this.watcherStates.set(key, state);
+            }
+            // Refresh tree view to update icons
+            this._onDidChangeTreeData.fire();
+        });
+    }
+
+    /**
+     * Get watcher state for a manager
+     */
+    private getWatcherState(managerIndex: number): WatcherState | undefined {
+        if (!this.currentProjectId) return undefined;
+        const key = `${this.currentProjectId}:${managerIndex}`;
+        return this.watcherStates.get(key);
+    }
+
+    /**
+     * Toggle file watcher for a manager
+     */
+    async toggleWatcher(managerData: ManagerDisplayData): Promise<void> {
+        if (!this.devWatcherService) {
+            vscode.window.showErrorMessage('Dev Watcher service not initialized');
+            return;
+        }
+
+        if (!this.currentProjectId) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
+        const currentProject = this.projectManager.getCurrentProject();
+        if (!currentProject) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
+        const managerType = managerData.options?.component || 'unknown';
+        const isActive = this.devWatcherService.isWatcherActive(
+            this.currentProjectId,
+            managerData.idx,
+        );
+
+        if (isActive) {
+            // Stop watcher
+            this.devWatcherService.stopWatcher(this.currentProjectId, managerData.idx);
+            vscode.window.showInformationMessage(`Stopped file watcher for ${managerType}`);
+        } else {
+            // Check if there's a saved config, otherwise use defaults
+            const savedConfig = this.devWatcherService.getSavedConfig(
+                this.currentProjectId,
+                managerData.idx,
+            );
+            const defaultPatterns =
+                this.devWatcherService.getDefaultPatternsForManager(managerType);
+
+            if (!savedConfig && defaultPatterns.length === 0) {
+                // No default patterns - prompt user to configure
+                const configure = await vscode.window.showWarningMessage(
+                    `No watch patterns configured for ${managerType}. Would you like to configure them now?`,
+                    'Configure',
+                    'Cancel',
+                );
+
+                if (configure === 'Configure') {
+                    await this.configureWatcher(managerData);
+                }
+                return;
+            }
+
+            try {
+                await this.devWatcherService.startWatcher(
+                    this.currentProjectId,
+                    managerData.idx,
+                    currentProject.projectDir,
+                    currentProject.version,
+                    managerType,
+                    managerData.options?.startOptions,
+                    savedConfig,
+                );
+                vscode.window.showInformationMessage(`Started file watcher for ${managerType}`);
+            } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to start watcher: ${errorMsg}`);
+            }
+        }
+    }
+
+    /**
+     * Configure watch paths for a manager
+     */
+    async configureWatcher(managerData: ManagerDisplayData): Promise<void> {
+        if (!this.devWatcherService) {
+            vscode.window.showErrorMessage('Dev Watcher service not initialized');
+            return;
+        }
+
+        if (!this.currentProjectId) {
+            vscode.window.showErrorMessage('No project selected');
+            return;
+        }
+
+        const managerType = managerData.options?.component || 'unknown';
+
+        // Get current config or defaults
+        const savedConfig = this.devWatcherService.getSavedConfig(
+            this.currentProjectId,
+            managerData.idx,
+        );
+        const defaultPatterns = this.devWatcherService.getDefaultPatternsForManager(managerType);
+        const currentPaths = savedConfig?.watchPaths || defaultPatterns;
+
+        // Build quick pick items
+        const items: vscode.QuickPickItem[] = [];
+
+        // Add current/default paths
+        for (const path of currentPaths) {
+            items.push({
+                label: path,
+                picked: true,
+                description: 'Current',
+            });
+        }
+
+        // Add suggested paths that aren't already included
+        for (const path of defaultPatterns) {
+            if (!currentPaths.includes(path)) {
+                items.push({
+                    label: path,
+                    picked: false,
+                    description: 'Suggested',
+                });
+            }
+        }
+
+        // Add option to add custom path
+        items.push({
+            label: '$(add) Add custom path...',
+            description: 'Enter a custom glob pattern',
+        });
+
+        const selected = await vscode.window.showQuickPick(items, {
+            canPickMany: true,
+            placeHolder: `Select watch paths for ${managerType}`,
+            title: 'Configure Watch Paths',
+        });
+
+        if (!selected) {
+            return;
+        }
+
+        // Check if user wants to add custom path
+        const addCustom = selected.find((s) => s.label.includes('Add custom path'));
+        let watchPaths = selected
+            .filter((s) => !s.label.includes('Add custom path'))
+            .map((s) => s.label);
+
+        if (addCustom) {
+            const customPath = await vscode.window.showInputBox({
+                prompt: 'Enter custom watch path (glob pattern)',
+                placeHolder: 'e.g., scripts/**/*.ctl or javascript/**/*.ts',
+                title: 'Add Custom Watch Path',
+            });
+
+            if (customPath) {
+                watchPaths.push(customPath);
+            }
+        }
+
+        if (watchPaths.length === 0) {
+            vscode.window.showWarningMessage('No watch paths selected');
+            return;
+        }
+
+        // Save the configuration
+        const currentProject = this.projectManager.getCurrentProject();
+        if (!currentProject) {
+            return;
+        }
+
+        // If watcher is active, restart with new config
+        const isActive = this.devWatcherService.isWatcherActive(
+            this.currentProjectId,
+            managerData.idx,
+        );
+
+        if (isActive) {
+            this.devWatcherService.stopWatcher(this.currentProjectId, managerData.idx);
+        }
+
+        try {
+            await this.devWatcherService.startWatcher(
+                this.currentProjectId,
+                managerData.idx,
+                currentProject.projectDir,
+                currentProject.version,
+                managerType,
+                managerData.options?.startOptions,
+                { watchPaths },
+            );
+
+            vscode.window.showInformationMessage(
+                `Watch paths configured for ${managerType}: ${watchPaths.length} pattern(s)`,
+            );
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to apply configuration: ${errorMsg}`);
+        }
+    }
 }
 
 class ManagerItem extends vscode.TreeItem {
@@ -1019,6 +1243,7 @@ class ManagerItem extends vscode.TreeItem {
         public readonly status?: string,
         managerData?: ManagerDisplayData,
         startOptions?: string,
+        watcherState?: WatcherState,
     ) {
         super(label, collapsibleState);
 
@@ -1035,37 +1260,60 @@ class ManagerItem extends vscode.TreeItem {
         } else if (itemType === 'manager' && managerData) {
             const info = managerData.info;
 
+            // Build description with watcher indicator
+            let desc = '';
+            let watcherIndicator = '';
+
+            if (watcherState) {
+                switch (watcherState.status) {
+                    case 'watching':
+                        watcherIndicator = '👁 ';
+                        break;
+                    case 'restarting':
+                        watcherIndicator = '🔄 ';
+                        break;
+                    case 'error':
+                        watcherIndicator = '⚠️ ';
+                        break;
+                }
+            }
+
             if (info.state === ProjEnvManagerState.Running) {
                 this.iconPath = new vscode.ThemeIcon(
                     'circle-filled',
                     new vscode.ThemeColor('testing.iconPassed'),
                 );
-                const desc = startOptions
-                    ? `${startOptions} (PID: ${info.pid})`
-                    : `PID: ${info.pid}`;
-                this.description = desc;
+                desc = startOptions ? `${startOptions} (PID: ${info.pid})` : `PID: ${info.pid}`;
             } else if (info.state === ProjEnvManagerState.NotRunning) {
                 this.iconPath = new vscode.ThemeIcon(
                     'circle-outline',
                     new vscode.ThemeColor('testing.iconFailed'),
                 );
-                this.description = startOptions || status;
+                desc = startOptions || status || '';
             } else if (info.state === ProjEnvManagerState.Init) {
                 this.iconPath = new vscode.ThemeIcon(
                     'loading~spin',
                     new vscode.ThemeColor('testing.iconQueued'),
                 );
-                this.description = startOptions || status;
+                desc = startOptions || status || '';
             } else {
                 this.iconPath = new vscode.ThemeIcon(
                     'warning',
                     new vscode.ThemeColor('testing.iconErrored'),
                 );
-                this.description = startOptions || status;
+                desc = startOptions || status || '';
             }
 
-            this.contextValue = 'manager';
+            this.description = watcherIndicator + desc;
 
+            // Set contextValue based on watcher state for different menu options
+            if (watcherState && watcherState.status !== 'stopped') {
+                this.contextValue = 'manager-watching';
+            } else {
+                this.contextValue = 'manager';
+            }
+
+            // Build tooltip
             let tooltipText = `${this.label} - ${status}\nManager Index: ${managerData.idx}`;
             tooltipText += `\nPID: ${info.pid}`;
             tooltipText += `\nStart Mode: ${info.startMode}`;
@@ -1075,6 +1323,29 @@ class ManagerItem extends vscode.TreeItem {
             if (info.startTime) {
                 tooltipText += `\nStart Time: ${info.startTime}`;
             }
+
+            // Add watcher info to tooltip
+            if (watcherState) {
+                tooltipText += `\n\n--- File Watcher ---`;
+                tooltipText += `\nStatus: ${watcherState.status}`;
+                if (watcherState.watchedFileCount) {
+                    tooltipText += `\nFiles watched: ${watcherState.watchedFileCount}`;
+                }
+                if (watcherState.lastChange) {
+                    tooltipText += `\nLast change: ${new Date(
+                        watcherState.lastChange,
+                    ).toLocaleTimeString()}`;
+                }
+                if (watcherState.lastRestart) {
+                    tooltipText += `\nLast restart: ${new Date(
+                        watcherState.lastRestart,
+                    ).toLocaleTimeString()}`;
+                }
+                if (watcherState.error) {
+                    tooltipText += `\nError: ${watcherState.error}`;
+                }
+            }
+
             this.tooltip = tooltipText;
         } else if (itemType === 'info') {
             this.iconPath = new vscode.ThemeIcon('info');

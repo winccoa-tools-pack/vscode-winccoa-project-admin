@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/github/v/release/winccoa-tools-pack/vscode-winccoa-project-admin?label=version)
+![Version](https://img.shields.io/badge/version-2.4.1-blue.svg)
 ![License](https://img.shields.io/github/license/winccoa-tools-pack/vscode-winccoa-project-admin)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109.2-007ACC.svg)
 [![Coverage](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin/graph/badge.svg)](https://codecov.io/gh/winccoa-tools-pack/vscode-winccoa-project-admin)
@@ -210,7 +210,6 @@ This core library is used by:
 **WinCC OA** and **Siemens** are trademarks of Siemens AG. This project is not affiliated with, endorsed by, or sponsored by Siemens AG. This is a community-driven open source project created to enhance the development experience for WinCC OA developers.
 
 ---
-
-Made with ❤️ for the WinCC OA community
+<center>Made with ❤️ for and by the WinCC OA community</center>
 
 [GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-control) • [Issues](https://github.com/winccoa-tools-pack/vscode-winccoa-control/issues) • [WinCC OA Docs](https://www.winccoa.com)

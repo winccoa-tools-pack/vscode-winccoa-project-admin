@@ -16,6 +16,7 @@ import type {
     ProjEnvManagerInfo,
     ProjEnvManagerOptions,
 } from '@winccoa-tools-pack/npm-winccoa-core';
+import { DevWatcherService } from './services/devWatcherService';
 
 /**
  * Language Model Tools Service
@@ -24,12 +25,20 @@ import type {
  */
 export class LanguageModelToolsService {
     private disposables: vscode.Disposable[] = [];
+    private devWatcherService: DevWatcherService | undefined;
 
     constructor(
         private projectManager: ProjectManager,
         private systemTreeProvider: SystemTreeProvider,
         private managerTreeProvider: ManagerTreeProvider,
     ) {}
+
+    /**
+     * Set the DevWatcherService for watcher tools
+     */
+    setDevWatcherService(service: DevWatcherService): void {
+        this.devWatcherService = service;
+    }
 
     /**
      * Register all Language Model Tools
@@ -185,6 +194,29 @@ export class LanguageModelToolsService {
             'LanguageModelTools',
             '✅ Registered: winccoa_configure_manager',
         );
+
+        // Dev Watcher Tools
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_toggle_watcher...');
+        this.disposables.push(
+            vscode.lm.registerTool(
+                'winccoa_toggle_watcher',
+                new ToggleWatcherTool(
+                    this.projectManager,
+                    this.managerTreeProvider,
+                    () => this.devWatcherService,
+                ),
+            ),
+        );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_toggle_watcher');
+
+        ExtensionOutputChannel.debug('LanguageModelTools', 'Registering winccoa_watcher_status...');
+        this.disposables.push(
+            vscode.lm.registerTool(
+                'winccoa_watcher_status',
+                new WatcherStatusTool(() => this.devWatcherService),
+            ),
+        );
+        ExtensionOutputChannel.info('LanguageModelTools', '✅ Registered: winccoa_watcher_status');
 
         // Add to context subscriptions
         context.subscriptions.push(...this.disposables);
@@ -1800,6 +1832,311 @@ class ConfigureManagerTool implements vscode.LanguageModelTool<ConfigureManagerI
         } catch (error: unknown) {
             const err = error instanceof Error ? error : new Error(String(error));
             ExtensionOutputChannel.error('LanguageModelTool', 'Configure manager failed', err);
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: err.message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
+            ]);
+        }
+    }
+}
+
+// ============================================================================
+// Tool 11: Toggle File Watcher
+// ============================================================================
+
+interface ToggleWatcherInput {
+    managerNum: number;
+    projectId?: string;
+    action?: 'start' | 'stop' | 'toggle';
+}
+
+class ToggleWatcherTool implements vscode.LanguageModelTool<ToggleWatcherInput> {
+    constructor(
+        private projectManager: ProjectManager,
+        private managerTreeProvider: ManagerTreeProvider,
+        private getDevWatcherService: () => DevWatcherService | undefined,
+    ) {}
+
+    async invoke(
+        options: vscode.LanguageModelToolInvocationOptions<ToggleWatcherInput>,
+        _token: vscode.CancellationToken, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ): Promise<vscode.LanguageModelToolResult> {
+        try {
+            const input = options.input;
+            console.log('[ToggleWatcherTool] Toggle watcher for manager:', input.managerNum);
+            ExtensionOutputChannel.debug(
+                'LanguageModelTool',
+                `Toggle watcher: manager ${input.managerNum}`,
+            );
+
+            const devWatcherService = this.getDevWatcherService();
+            if (!devWatcherService) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: false,
+                                error: 'Dev Watcher service not available',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            }
+
+            if (input.managerNum === undefined || input.managerNum === null) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: false,
+                                error: 'managerNum is required',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            }
+
+            // Determine which project to use
+            let project: ProjectInfo | undefined;
+            if (input.projectId) {
+                const allProjects = await this.projectManager.getAllRunnableProjects();
+                project = allProjects.find((p) => p.id === input.projectId);
+
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify(
+                                {
+                                    success: false,
+                                    error: `Project '${input.projectId}' not found`,
+                                },
+                                null,
+                                2,
+                            ),
+                        ),
+                    ]);
+                }
+            } else {
+                project = this.projectManager.getCurrentProject();
+
+                if (!project) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            JSON.stringify(
+                                {
+                                    success: false,
+                                    error: 'No project specified and no active project set',
+                                },
+                                null,
+                                2,
+                            ),
+                        ),
+                    ]);
+                }
+            }
+
+            // Get manager info
+            const managers = this.managerTreeProvider.getManagers();
+            const manager = managers.find((m) => m.idx === input.managerNum);
+
+            if (!manager) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: false,
+                                error: `Manager ${input.managerNum} not found`,
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            }
+
+            const managerType = manager.options?.component || 'unknown';
+            const isActive = devWatcherService.isWatcherActive(project.id, input.managerNum);
+
+            // Determine action
+            let shouldStart: boolean;
+            if (input.action === 'start') {
+                shouldStart = true;
+            } else if (input.action === 'stop') {
+                shouldStart = false;
+            } else {
+                // toggle
+                shouldStart = !isActive;
+            }
+
+            if (shouldStart && !isActive) {
+                // Start watcher
+                const savedConfig = devWatcherService.getSavedConfig(project.id, input.managerNum);
+                await devWatcherService.startWatcher(
+                    project.id,
+                    input.managerNum,
+                    project.projectDir,
+                    project.version,
+                    managerType,
+                    manager.options?.startOptions,
+                    savedConfig,
+                );
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: true,
+                                message: `File watcher started for ${managerType}`,
+                                projectId: project.id,
+                                managerNum: input.managerNum,
+                                status: 'watching',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            } else if (!shouldStart && isActive) {
+                // Stop watcher
+                devWatcherService.stopWatcher(project.id, input.managerNum);
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: true,
+                                message: `File watcher stopped for ${managerType}`,
+                                projectId: project.id,
+                                managerNum: input.managerNum,
+                                status: 'stopped',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            } else {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: true,
+                                message: `Watcher already ${
+                                    isActive ? 'running' : 'stopped'
+                                } for ${managerType}`,
+                                projectId: project.id,
+                                managerNum: input.managerNum,
+                                status: isActive ? 'watching' : 'stopped',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            }
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Toggle watcher failed', err);
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: err.message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
+            ]);
+        }
+    }
+}
+
+// ============================================================================
+// Tool 12: Get Watcher Status
+// ============================================================================
+
+interface WatcherStatusInput {
+    projectId?: string;
+}
+
+class WatcherStatusTool implements vscode.LanguageModelTool<WatcherStatusInput> {
+    constructor(private getDevWatcherService: () => DevWatcherService | undefined) {}
+
+    async invoke(
+        options: vscode.LanguageModelToolInvocationOptions<WatcherStatusInput>,
+        _token: vscode.CancellationToken, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ): Promise<vscode.LanguageModelToolResult> {
+        try {
+            const input = options.input;
+            console.log('[WatcherStatusTool] Getting watcher status');
+            ExtensionOutputChannel.debug('LanguageModelTool', 'Get watcher status');
+
+            const devWatcherService = this.getDevWatcherService();
+            if (!devWatcherService) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(
+                        JSON.stringify(
+                            {
+                                success: false,
+                                error: 'Dev Watcher service not available',
+                            },
+                            null,
+                            2,
+                        ),
+                    ),
+                ]);
+            }
+
+            // Get all active watchers
+            const allWatchers = devWatcherService.getAllActiveWatchers();
+
+            // Filter by project if specified
+            let watchers = allWatchers;
+            if (input.projectId) {
+                watchers = allWatchers.filter((w) => w.projectId === input.projectId);
+            }
+
+            // Format watcher data
+            const watcherData = watchers.map((w) => ({
+                projectId: w.projectId,
+                managerIndex: w.managerIndex,
+                status: w.status,
+                watchedFileCount: w.watchedFileCount,
+                lastChange: w.lastChange ? new Date(w.lastChange).toISOString() : null,
+                lastRestart: w.lastRestart ? new Date(w.lastRestart).toISOString() : null,
+                error: w.error,
+            }));
+
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(
+                    JSON.stringify(
+                        {
+                            success: true,
+                            activeWatcherCount: watchers.length,
+                            watchers: watcherData,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
+            ]);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            ExtensionOutputChannel.error('LanguageModelTool', 'Get watcher status failed', err);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify(

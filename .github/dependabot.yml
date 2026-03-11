@@ -12,6 +12,8 @@ updates:
       time: "09:00"
       timezone: "Europe/Prague"
     open-pull-requests-limit: 10
+    # Automatically rebase PRs when base branch changes
+    rebase-strategy: "auto"
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"
@@ -65,6 +67,8 @@ updates:
       time: "09:30"
       timezone: "Europe/Prague"
     open-pull-requests-limit: 5
+    # Automatically rebase PRs when base branch changes
+    rebase-strategy: "auto"
     commit-message:
       prefix: "ci"
       include: "scope"

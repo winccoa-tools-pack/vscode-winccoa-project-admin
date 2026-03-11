@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-03-08
+
+### Added
+
+- **DevWatcher: Automatic Manager Restart on File Change** ([#15](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/pull/15) by [@JaMa-95](https://github.com/JaMa-95)):
+  Adds a `DevWatcherService` that monitors project files and automatically restarts WinCC OA managers when their files change.
+  - Automatically watches the manager's own file (`.ctl`, `.ctc`, `.lst`, `.pnl`, `.xml`, `.js`, `.ts`) extracted from its start options
+  - Resolves watch paths across the main project and all subprojects
+  - TypeScript-aware: detects `tsconfig.json` and waits for compilation before restarting node managers
+  - Debounced file change handling with configurable delay, retry logic, and queued restarts
+  - Persists watcher state for automatic restoration on extension reload
+  - Copilot Language Model Tool integration
+  - Toggle watcher via hover button (👁) in the manager tree view — positioned left of Restart/Start/Stop
+  - Right-click → **Configure Watch Paths** to customize watched glob patterns per manager
+  - New configuration options:
+    - `winccoaProjectAdmin.devWatcher.defaultPatterns` — default watch glob patterns per manager type
+    - `winccoaProjectAdmin.devWatcher.debounceMs` — file change debounce delay (default: 500ms)
+    - `winccoaProjectAdmin.devWatcher.ignoredPatterns` — glob patterns to ignore
+    - `winccoaProjectAdmin.devWatcher.maxRetries` — max restart retry attempts (default: 3)
+
+### Fixed
+
+- **Manager Context Menu**: Configure Watch Paths, Edit Manager, and Delete Manager are now grouped together and visible in all manager states (including when watcher is active)
+- **Manager Inline Buttons**: Watcher toggle (👁) is now positioned leftmost so existing Start/Stop/Restart buttons stay in their familiar positions
+
+## [2.4.2] - 2026-03-01
+
+### Fixed
+
+- **Manager Settings: Cancel Button not working** ([#30](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/30)):
+  Cancel button had no effect when clicked. Function was not accessible in global scope due to inline `onclick`
+  attribute. Fixed by using addEventListener pattern (consistent with Save button). Cancel now properly closes
+  the window without saving changes.
+
+## [2.4.1] - 2026-02-28
+
+### Fixed
+
+- **Manager Settings: Start Options with quotes** ([#29](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/29)):
+  Start options containing quoted arguments (e.g. `-p "vision/login.pnl"`) were truncated at the first
+  quote due to unescaped HTML in the input field value attribute. Fixed by HTML-escaping before rendering.
+
+## [2.4.0] - 2026-02-28
+
+### Changed
+
+- **Project Stop Confirmation**: Changed from dismissible notification toast (bottom-right) to modal dialog (center) ([#28](https://github.com/winccoa-tools-pack/vscode-winccoa-project-admin/issues/28))
+  - Modal dialog prevents users from missing the confirmation prompt when notifications are disabled
+  - Consistent with manager deletion behavior (both use modal dialogs)
+  - Resolves issue where stop confirmation could be missed if extension notifications were turned off
+
 ## [2.2.1] - 2026-02-14
 
 ### Fixed

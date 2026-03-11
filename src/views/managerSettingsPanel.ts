@@ -84,8 +84,17 @@ export class ManagerSettingsPanel {
         }
     }
 
+    private _escapeAttr(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     private _getHtmlContent(options: ProjEnvManagerOptions): string {
         const nonce = this._getNonce();
+        const startOptionsEscaped = this._escapeAttr(options.startOptions || '');
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -226,7 +235,7 @@ export class ManagerSettingsPanel {
     
     <div class="info-box">
         <strong>Manager:</strong> <span class="manager-name">${options.component}</span><br>
-        <strong>Options:</strong> ${options.startOptions || '(none)'}
+        <strong>Options:</strong> ${startOptionsEscaped || '(none)'}
     </div>
     
     <form id="settingsForm">
@@ -273,7 +282,7 @@ export class ManagerSettingsPanel {
                 Reset Min
                 <div class="label-description">Counter reset time (0-60 min)</div>
             </label>
-            <input type="number" id="resetMin" name="resetMin" 
+            <input type="number" id="resetMin" name="resetMin"
                    min="0" max="60" value="${options.resetMin}" required>
             <div class="current-value">Typical: 1 (or 2 for archive/proxy/sim)</div>
         </div>
@@ -284,7 +293,7 @@ export class ManagerSettingsPanel {
                 <div class="label-description">Command line arguments</div>
             </label>
             <input type="text" id="startOptions" name="startOptions" 
-                   value="${options.startOptions || ''}" 
+                   value="${startOptionsEscaped}" 
                    placeholder="e.g., -num 1 -f script.lst">
         </div>
         
@@ -294,7 +303,7 @@ export class ManagerSettingsPanel {
         
         <div class="button-group">
             <button type="submit" class="btn-primary">Save</button>
-            <button type="button" class="btn-secondary" onclick="cancelSettings()">Cancel</button>
+            <button type="button" class="btn-secondary" id="cancelButton">Cancel</button>
         </div>
     </form>
     
@@ -320,11 +329,11 @@ export class ManagerSettingsPanel {
             });
         });
         
-        function cancelSettings() {
+        document.getElementById('cancelButton').addEventListener('click', () => {
             vscode.postMessage({
                 command: 'cancel'
             });
-        }
+        });
     </script>
 </body>
 </html>`;
